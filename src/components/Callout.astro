@@ -1,0 +1,79 @@
+---
+interface Props {
+  type?: 'info' | 'tip' | 'warning' | 'note';
+  title?: string;
+}
+
+const { type = 'info', title } = Astro.props;
+
+const icons = {
+  info: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5M10 6h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+  tip: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.5L10 15l-4.9 2.2.9-5.5-4-3.9 5.5-.8L10 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+  warning: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3L2 17h16L10 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4M10 14h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+  note: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 3h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><path d="M7 7h6M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+};
+---
+
+<aside class={`callout callout--${type}`}>
+  <div class="callout-icon" set:html={icons[type]} />
+  <div class="callout-content">
+    {title && <strong class="callout-title">{title}</strong>}
+    <slot />
+  </div>
+</aside>
+
+<style>
+  .callout {
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--border-radius);
+    margin: var(--spacing-lg) 0;
+    background-color: var(--color-surface);
+    border-left: 3px solid var(--callout-color);
+  }
+
+  .callout--info {
+    --callout-color: var(--color-accent);
+  }
+
+  .callout--tip {
+    --callout-color: var(--color-success);
+  }
+
+  .callout--warning {
+    --callout-color: var(--color-warning);
+  }
+
+  .callout--note {
+    --callout-color: var(--color-text-muted);
+  }
+
+  .callout-icon {
+    flex-shrink: 0;
+    color: var(--callout-color);
+    margin-top: 2px;
+  }
+
+  .callout-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .callout-title {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+    color: var(--color-text);
+  }
+
+  .callout-content :global(p) {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  .callout-content :global(p + p) {
+    margin-top: var(--spacing-sm);
+  }
+</style>

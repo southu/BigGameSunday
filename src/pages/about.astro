@@ -1,0 +1,75 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import ContentSection from '../components/ContentSection.astro';
+---
+
+<Layout
+  title="About"
+  description="Learn about BigGameSunday's mission to provide sports betting education and analysis for smarter, more disciplined wagering decisions."
+>
+  <Hero
+    title="About BigGameSunday"
+    subtitle="Sports betting education and analysis for the thinking bettor."
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <p>
+          BigGameSunday was founded on a simple premise: sports betting should be approached with the same rigor and discipline as any other skill-based endeavor. We're not here to sell you picks or promise overnight riches. Instead, we provide the educational foundation and analytical framework to help you make better decisions.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Our Philosophy" id="philosophy">
+        <h3>Education Over Hype</h3>
+        <p>
+          The sports betting industry is filled with noise—touts promising guaranteed winners, flashy promotions, and unrealistic expectations. We take a different approach. Our content focuses on teaching sustainable principles that help you develop as a bettor over the long term.
+        </p>
+
+        <h3>Process Over Outcomes</h3>
+        <p>
+          Short-term results in sports betting are heavily influenced by variance. A well-reasoned bet can lose, and a poorly-considered one can win. We emphasize developing a sound process—proper research, bankroll management, and disciplined execution—because that's what leads to long-term success.
+        </p>
+
+        <h3>Analytical Honesty</h3>
+        <p>
+          We don't pretend to have all the answers, and we're transparent about the challenges of profitable betting. Sports betting is difficult, markets are efficient, and edges are small. Our goal is to help you understand this reality and navigate it intelligently.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What We Cover" id="coverage">
+        <h3>Strategy and Fundamentals</h3>
+        <p>
+          From bankroll management to understanding odds formats, our strategy content covers the foundational knowledge every bettor needs. These aren't get-rich-quick schemes—they're the basics that underpin any sustainable approach.
+        </p>
+
+        <h3>Sport-Specific Analysis</h3>
+        <p>
+          Each sport presents unique betting challenges and opportunities. Our sport-specific sections dive into the factors that matter most for NFL, NBA, college football, college basketball, and MLB betting.
+        </p>
+
+        <h3>Market Education</h3>
+        <p>
+          Understanding how betting markets work—line movement, market efficiency, and the role of sharp vs. public money—helps you become a more informed participant. We explain these concepts without oversimplifying or overpromising.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Our Commitment" id="commitment">
+        <p>
+          We're committed to providing content that respects your intelligence and your time. You won't find clickbait, hype, or irresponsible gambling promotion here. What you will find is thoughtful analysis, honest assessment of the challenges involved, and educational content designed to help you improve.
+        </p>
+        <p>
+          Sports betting should be an entertaining complement to watching the games you love. Our goal is to help you engage with it responsibly and intelligently.
+        </p>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+</style>

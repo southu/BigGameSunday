@@ -1,0 +1,69 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import ContentSection from '../components/ContentSection.astro';
+---
+
+<Layout
+  title="Affiliate Disclosure"
+  description="Information about BigGameSunday's affiliate relationships and how we may earn commissions from recommendations."
+>
+  <Hero
+    title="Affiliate Disclosure"
+    subtitle="Transparency about our partnerships"
+    size="small"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <p class="last-updated">Last updated: January 2025</p>
+        <p>
+          BigGameSunday is committed to transparency with our readers. This disclosure explains how we may earn revenue through affiliate partnerships while maintaining our editorial independence.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Affiliate Relationships" id="relationships">
+        <p>
+          Some links on this Site may be affiliate links. This means that if you click on a link and sign up for a service or make a purchase, we may receive a commission at no additional cost to you. These partnerships help support our ability to create free educational content.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Editorial Independence" id="independence">
+        <p>
+          Our affiliate relationships do not influence our editorial content. We only recommend products and services that we believe provide value to our readers. Our opinions, analysis, and educational content are not affected by potential affiliate compensation.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Sportsbook References" id="sportsbooks">
+        <p>
+          When we discuss or compare sportsbooks, we may include affiliate links to those platforms. Our assessments are based on factors like odds competitiveness, user experience, and reputation—not on commission rates. We aim to provide balanced, honest evaluations regardless of affiliate status.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Your Choice" id="choice">
+        <p>
+          You are never obligated to use our affiliate links. If you prefer, you can navigate directly to any service we mention. Using our affiliate links is simply one way to support our continued operation while accessing the same products and services.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Questions" id="questions">
+        <p>
+          If you have questions about our affiliate relationships or disclosure practices, please contact us. We're committed to maintaining trust with our readers through honest, transparent communication.
+        </p>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .last-updated {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-lg);
+  }
+</style>

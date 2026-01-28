@@ -1,0 +1,73 @@
+---
+import SportLayout from '../layouts/SportLayout.astro';
+import ContentSection from '../components/ContentSection.astro';
+
+const topics = [
+  { title: 'Point Spreads', href: '/blog/category/nfl-spreads', description: 'Analysis of NFL point spread betting and key numbers' },
+  { title: 'Totals', href: '/blog/category/nfl-totals', description: 'Over/under betting strategies for NFL games' },
+  { title: 'Player Props', href: '/blog/category/nfl-props', description: 'Individual player performance betting markets' },
+  { title: 'Futures', href: '/blog/category/nfl-futures', description: 'Season-long bets on divisions, conferences, and championships' },
+];
+
+const articles = [
+  {
+    title: 'NFL Key Numbers Explained',
+    href: '/blog/nfl-key-numbers-explained',
+    description: 'Understanding the most important point spread margins in NFL betting.',
+    category: 'NFL',
+    categoryHref: '/blog/category/nfl',
+    image: 'https://images.pexels.com/photos/159745/football-american-football-team-sport-game-159745.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    title: 'Weather Impact on NFL Totals',
+    href: '/blog/weather-impact-nfl-totals',
+    description: 'How wind, rain, and cold affect scoring and betting lines.',
+    category: 'NFL',
+    categoryHref: '/blog/category/nfl',
+    image: 'https://images.pexels.com/photos/2570139/pexels-photo-2570139.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+];
+---
+
+<SportLayout
+  title="NFL Betting"
+  description="NFL betting analysis, strategies, and insights for point spreads, totals, props, and futures markets."
+  subtitle="Professional football betting analysis, trends, and strategic insights for the NFL season."
+  introText="The NFL is the most bet-on sport in North America, with massive weekly betting volume creating dynamic markets that reward informed analysis. From regular season matchups to playoff positioning and Super Bowl futures, understanding the nuances of NFL betting can provide meaningful edges."
+  topics={topics}
+  articles={articles}
+>
+  <ContentSection title="NFL Betting Markets" id="markets">
+    <h3>Spreads and Key Numbers</h3>
+    <p>
+      NFL point spreads are unique due to the scoring structure of football. Key numbers like 3 (field goal) and 7 (touchdown) occur far more frequently as final margins than other numbers. Understanding the value of buying or selling points around these key numbers is fundamental to NFL spread betting.
+    </p>
+
+    <h3>Totals and Scoring Trends</h3>
+    <p>
+      NFL totals betting requires analysis of offensive and defensive efficiency, pace of play, weather conditions, and situational factors. The league's scoring trends have shifted over time, and staying current with rule changes and offensive evolution is essential.
+    </p>
+
+    <h3>Prop Markets</h3>
+    <p>
+      NFL player props offer opportunities to leverage specific knowledge about matchups, game scripts, and usage patterns. From passing yards to rushing attempts to reception totals, prop markets can provide value when your analysis diverges from market pricing.
+    </p>
+  </ContentSection>
+
+  <ContentSection title="Analytical Framework" id="analysis">
+    <h3>Situational Analysis</h3>
+    <p>
+      NFL teams face varying situational factors throughout the season: short weeks, long travel, revenge games, playoff implications, and more. Evaluating these factors and their historical impact on performance and motivation is a key component of NFL handicapping.
+    </p>
+
+    <h3>Injury Impact</h3>
+    <p>
+      Injuries affect NFL outcomes more significantly than in most other sports due to smaller rosters and high physical demands. Tracking injury reports, understanding positional importance, and gauging backup quality are all essential skills.
+    </p>
+
+    <h3>Market Efficiency</h3>
+    <p>
+      NFL betting markets are among the most efficient in sports betting due to the volume of analysis and betting action. Finding edges requires focusing on areas where you have specialized knowledge or can process information faster than the market adjusts.
+    </p>
+  </ContentSection>
+</SportLayout>

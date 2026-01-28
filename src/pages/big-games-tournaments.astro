@@ -1,0 +1,73 @@
+---
+import SportLayout from '../layouts/SportLayout.astro';
+import ContentSection from '../components/ContentSection.astro';
+
+const topics = [
+  { title: 'Super Bowl', href: '/blog/category/super-bowl', description: 'The biggest betting event of the year' },
+  { title: 'March Madness', href: '/blog/category/march-madness', description: 'NCAA Tournament betting strategies' },
+  { title: 'Playoffs', href: '/blog/category/playoffs', description: 'Postseason betting across all major sports' },
+  { title: 'Championships', href: '/blog/category/championships', description: 'NBA Finals, World Series, and more' },
+];
+
+const articles = [
+  {
+    title: 'Super Bowl Betting Guide',
+    href: '/blog/super-bowl-betting-guide',
+    description: 'Everything you need to know for the biggest game of the year.',
+    category: 'Big Games',
+    categoryHref: '/blog/category/big-games',
+    image: 'https://images.pexels.com/photos/159745/football-american-football-team-sport-game-159745.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    title: 'Playoff Betting Adjustments',
+    href: '/blog/playoff-betting-adjustments',
+    description: 'How postseason dynamics change the betting equation.',
+    category: 'Big Games',
+    categoryHref: '/blog/category/big-games',
+    image: 'https://images.pexels.com/photos/248547/pexels-photo-248547.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+];
+---
+
+<SportLayout
+  title="Big Games & Tournaments"
+  description="Betting analysis for major sporting events including the Super Bowl, March Madness, playoffs, and championship games."
+  subtitle="Strategic analysis for the biggest events on the sports betting calendar."
+  introText="Major sporting events draw unprecedented betting interest, creating unique market dynamics. The Super Bowl alone generates more betting handle than any other single event. Understanding how these high-profile games differ from regular season matchups—and how to adjust your approach accordingly—is essential for serious bettors."
+  topics={topics}
+  articles={articles}
+>
+  <ContentSection title="The Big Game Difference" id="difference">
+    <h3>Increased Market Attention</h3>
+    <p>
+      Major events attract not just more betting volume but a different composition of bettors. Casual bettors flood the market, potentially creating value opportunities. However, sportsbooks also sharpen their lines for marquee events, making edges harder to find.
+    </p>
+
+    <h3>Extended Preparation Time</h3>
+    <p>
+      Playoff games and championships involve longer preparation periods than regular season matchups. Coaching adjustments, game-planning, and strategic changes become more pronounced. Teams can address weaknesses exposed in earlier meetings.
+    </p>
+
+    <h3>Heightened Motivation</h3>
+    <p>
+      Effort and focus are maximized in elimination games and championship settings. The motivational advantages that some teams hold during the regular season largely disappear when everything is on the line.
+    </p>
+  </ContentSection>
+
+  <ContentSection title="Event-Specific Strategies" id="strategies">
+    <h3>Super Bowl</h3>
+    <p>
+      The two-week buildup to the Super Bowl creates extensive line movement as information is digested and public sentiment shifts. Early line value often exists before casual betting drives lines away from their true values. Prop markets expand dramatically, offering numerous angles.
+    </p>
+
+    <h3>March Madness</h3>
+    <p>
+      The NCAA Tournament's single-elimination format creates high variance. Underdogs have better chances than in a series format, and first-round upsets are common. Understanding which factors predict tournament success—experience, defense, three-point shooting—helps identify value.
+    </p>
+
+    <h3>Playoff Series</h3>
+    <p>
+      Multi-game playoff series reward different analysis than single games. Home court patterns, rest advantages, and adjustment capabilities become paramount. Series prices often offer more value than individual game lines.
+    </p>
+  </ContentSection>
+</SportLayout>

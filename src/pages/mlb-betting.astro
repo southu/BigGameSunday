@@ -1,0 +1,73 @@
+---
+import SportLayout from '../layouts/SportLayout.astro';
+import ContentSection from '../components/ContentSection.astro';
+
+const topics = [
+  { title: 'Moneylines', href: '/blog/category/mlb-moneylines', description: 'Navigating MLB favorites and underdogs' },
+  { title: 'Run Lines', href: '/blog/category/mlb-runlines', description: 'Understanding the 1.5 run spread in baseball' },
+  { title: 'Totals', href: '/blog/category/mlb-totals', description: 'Factors affecting over/under in baseball' },
+  { title: 'First 5 Innings', href: '/blog/category/mlb-first5', description: 'Betting on starting pitcher matchups' },
+];
+
+const articles = [
+  {
+    title: 'Starting Pitcher Analysis',
+    href: '/blog/starting-pitcher-analysis',
+    description: 'How to evaluate the most important factor in MLB betting.',
+    category: 'MLB',
+    categoryHref: '/blog/category/mlb',
+    image: 'https://images.pexels.com/photos/209977/pexels-photo-209977.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    title: 'Ballpark Factors',
+    href: '/blog/ballpark-factors',
+    description: 'How venue affects run scoring and betting lines.',
+    category: 'MLB',
+    categoryHref: '/blog/category/mlb',
+    image: 'https://images.pexels.com/photos/163516/baseball-player-shortstop-infield-163516.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+];
+---
+
+<SportLayout
+  title="MLB Betting"
+  description="MLB betting analysis covering moneylines, run lines, totals, and starting pitcher evaluation strategies."
+  subtitle="Baseball betting strategies for the 162-game marathon season."
+  introText="Baseball's long season and daily games create a betting environment unlike any other sport. The emphasis on starting pitching, the impact of ballpark factors, and the prevalence of underdogs winning outright make MLB a unique market that rewards patient, disciplined bettors who understand its nuances."
+  topics={topics}
+  articles={articles}
+>
+  <ContentSection title="MLB Betting Markets" id="markets">
+    <h3>Moneylines</h3>
+    <p>
+      Unlike most sports, baseball betting centers on moneylines rather than point spreads. This creates a different calculus: taking underdogs at plus-money prices can be profitable even with a sub-50% win rate. Understanding how to assess value on both sides of the moneyline is fundamental.
+    </p>
+
+    <h3>Run Lines</h3>
+    <p>
+      The run line (+/- 1.5 runs) offers an alternative to straight moneyline betting. Run line favorites offer plus-money prices, while run line underdogs provide cushion at reduced returns. Knowing when to use run lines versus moneylines is a key strategic decision.
+    </p>
+
+    <h3>Totals</h3>
+    <p>
+      MLB totals are influenced by a complex mix of factors: starting pitchers, bullpen quality, lineup construction, ballpark dimensions, and weather. Successfully betting totals requires synthesizing all these elements into a coherent projection.
+    </p>
+  </ContentSection>
+
+  <ContentSection title="Key Factors" id="factors">
+    <h3>Starting Pitching</h3>
+    <p>
+      The starting pitcher is the single most important factor in any MLB game. Ace pitchers can single-handedly suppress opposing offenses, while weak starters put their teams at immediate disadvantage. Evaluating pitcher matchups is the foundation of MLB handicapping.
+    </p>
+
+    <h3>Bullpen Usage</h3>
+    <p>
+      Modern baseball uses bullpens more heavily than ever, making reliever availability and effectiveness crucial. Understanding workload patterns, platoon advantages, and high-leverage usage helps assess late-game dynamics.
+    </p>
+
+    <h3>Ballpark and Weather</h3>
+    <p>
+      Baseball venues vary dramatically in their impact on scoring. Coors Field inflates offense; pitcher-friendly parks suppress it. Wind, humidity, and temperature add additional variables. Incorporating these factors into your analysis is essential.
+    </p>
+  </ContentSection>
+</SportLayout>

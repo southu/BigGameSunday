@@ -1,0 +1,120 @@
+---
+interface Props {
+  title: string;
+  subtitle?: string;
+  size?: 'large' | 'medium' | 'small';
+  align?: 'left' | 'center';
+  backgroundImage?: string;
+}
+
+const {
+  title,
+  subtitle,
+  size = 'large',
+  align = 'left',
+  backgroundImage,
+} = Astro.props;
+---
+
+<section class={`hero hero--${size} hero--${align}`} style={backgroundImage ? `--bg-image: url(${backgroundImage})` : undefined}>
+  {backgroundImage && <div class="hero-overlay"></div>}
+  <div class="hero-content container">
+    <h1 class="hero-title">{title}</h1>
+    {subtitle && <p class="hero-subtitle">{subtitle}</p>}
+    <slot />
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    padding: var(--spacing-4xl) 0;
+    background-color: var(--color-bg-secondary);
+    background-image: var(--bg-image);
+    background-size: cover;
+    background-position: center;
+  }
+
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(15, 20, 25, 0.85), rgba(15, 20, 25, 0.95));
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero--large {
+    padding: var(--spacing-4xl) 0 calc(var(--spacing-4xl) + var(--spacing-xl));
+  }
+
+  .hero--medium {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .hero--small {
+    padding: var(--spacing-2xl) 0;
+  }
+
+  .hero--center .hero-content {
+    text-align: center;
+    max-width: var(--max-width-content);
+    margin: 0 auto;
+  }
+
+  .hero--left .hero-content {
+    max-width: var(--max-width-content);
+  }
+
+  .hero-title {
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: var(--spacing-md);
+    color: var(--color-text);
+  }
+
+  .hero--medium .hero-title {
+    font-size: 2.5rem;
+  }
+
+  .hero--small .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    margin: 0;
+    max-width: 640px;
+  }
+
+  .hero--center .hero-subtitle {
+    margin: 0 auto;
+  }
+
+  @media (max-width: 768px) {
+    .hero--large {
+      padding: var(--spacing-3xl) 0;
+    }
+
+    .hero-title {
+      font-size: 2.25rem;
+    }
+
+    .hero--medium .hero-title {
+      font-size: 2rem;
+    }
+
+    .hero--small .hero-title {
+      font-size: 1.75rem;
+    }
+
+    .hero-subtitle {
+      font-size: 1.1rem;
+    }
+  }
+</style>

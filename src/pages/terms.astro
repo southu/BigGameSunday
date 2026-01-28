@@ -1,0 +1,81 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import ContentSection from '../components/ContentSection.astro';
+---
+
+<Layout
+  title="Terms of Service"
+  description="Terms and conditions governing your use of the BigGameSunday website and services."
+>
+  <Hero
+    title="Terms of Service"
+    subtitle="Terms and conditions of use"
+    size="small"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <p class="last-updated">Last updated: January 2025</p>
+        <p>
+          By accessing and using BigGameSunday ("the Site"), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the Site.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Educational Content Only" id="educational">
+        <p>
+          The content on this Site is for educational and informational purposes only. Nothing on this Site constitutes financial advice, gambling advice, or a recommendation to place any specific bet. All betting decisions are made at your own risk.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="No Guarantees" id="guarantees">
+        <p>
+          We make no representations or warranties about the accuracy, completeness, or suitability of any information on this Site. Past performance discussed in our content does not guarantee future results. Sports betting involves risk, and you may lose money.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Legal Compliance" id="legal">
+        <p>
+          You are responsible for ensuring that your use of any information on this Site complies with all applicable laws in your jurisdiction. Sports betting is not legal in all locations, and you must verify the legality of betting activities where you reside.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Intellectual Property" id="ip">
+        <p>
+          All content on this Site, including text, graphics, and logos, is the property of BigGameSunday or its content creators. You may not reproduce, distribute, or create derivative works without our written permission.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="User Conduct" id="conduct">
+        <p>
+          You agree not to use this Site for any unlawful purpose or in any way that could damage, disable, or impair the Site's functionality. You may not attempt to gain unauthorized access to any part of the Site.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Limitation of Liability" id="liability">
+        <p>
+          To the maximum extent permitted by law, BigGameSunday shall not be liable for any direct, indirect, incidental, or consequential damages arising from your use of this Site or reliance on its content.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Changes to Terms" id="changes">
+        <p>
+          We reserve the right to modify these Terms at any time. Continued use of the Site after changes constitutes acceptance of the modified Terms.
+        </p>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .last-updated {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-lg);
+  }
+</style>

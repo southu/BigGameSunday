@@ -1,0 +1,113 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import ContentSection from '../components/ContentSection.astro';
+import LinkCard from '../components/LinkCard.astro';
+import Callout from '../components/Callout.astro';
+
+const strategyTopics = [
+  { title: 'Bankroll Management', href: '/blog/category/bankroll-management', description: 'Protect and grow your betting capital with proven techniques' },
+  { title: 'Line Shopping', href: '/blog/category/line-shopping', description: 'Find the best odds across multiple sportsbooks' },
+  { title: 'Value Betting', href: '/blog/category/value-betting', description: 'Identify and capitalize on mispriced lines' },
+  { title: 'Record Keeping', href: '/blog/category/record-keeping', description: 'Track your bets and analyze your performance' },
+];
+---
+
+<Layout
+  title="Betting Strategy"
+  description="Learn proven sports betting strategies, bankroll management techniques, and analytical approaches to make smarter wagering decisions."
+>
+  <Hero
+    title="Betting Strategy"
+    subtitle="Develop a disciplined, analytical approach to sports betting with our comprehensive strategy guides."
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <p>
+          Successful sports betting isn't about luck or hunches—it's about developing a systematic approach grounded in research, discipline, and sound money management. At BigGameSunday, we focus on the fundamentals that separate recreational bettors from those who approach wagering with a long-term mindset.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Foundation Principles" id="foundation">
+        <h3>Bankroll Management</h3>
+        <p>
+          Your bankroll is the foundation of your betting activity. Without proper management, even skilled handicappers can find themselves unable to weather inevitable losing streaks. We recommend establishing a dedicated bankroll separate from your everyday finances and implementing a consistent unit-based staking system.
+        </p>
+
+        <h3>Understanding Value</h3>
+        <p>
+          Value betting is the cornerstone of profitable wagering. A value bet occurs when the probability of an outcome is greater than what the odds imply. Learning to identify these opportunities requires both quantitative analysis and qualitative judgment about how markets price events.
+        </p>
+
+        <h3>Discipline and Emotional Control</h3>
+        <p>
+          The psychological aspect of betting is often underestimated. Chasing losses, overconfidence after wins, and betting on favorite teams without justification are common pitfalls. Developing the discipline to stick to your strategy regardless of recent results is essential.
+        </p>
+      </ContentSection>
+
+      <Callout type="tip" title="Start With the Basics">
+        <p>New to sports betting? Begin with bankroll management and understanding odds before diving into advanced strategies. A strong foundation prevents costly mistakes.</p>
+      </Callout>
+
+      <ContentSection title="Key Strategy Topics" id="topics">
+        <div class="topics-grid">
+          {strategyTopics.map((topic) => (
+            <LinkCard
+              title={topic.title}
+              href={topic.href}
+              description={topic.description}
+            />
+          ))}
+        </div>
+      </ContentSection>
+
+      <ContentSection title="Analytical Approach" id="analytical">
+        <h3>Research and Data</h3>
+        <p>
+          Informed betting decisions start with research. This includes studying team and player statistics, understanding situational factors like injuries and travel, and analyzing historical trends. However, data should inform your decisions, not dictate them blindly.
+        </p>
+
+        <h3>Line Movement</h3>
+        <p>
+          Understanding why lines move—whether due to sharp action, public betting patterns, or news events—can provide valuable insights. Learning to read line movement helps you time your bets more effectively and identify where the market may be overreacting.
+        </p>
+
+        <h3>Record Keeping</h3>
+        <p>
+          Tracking your bets in detail is crucial for long-term improvement. Beyond just wins and losses, record your reasoning, the odds you received, and relevant context. This data becomes invaluable for identifying your strengths, weaknesses, and areas for refinement.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Long-Term Mindset" id="mindset">
+        <p>
+          Sports betting should be viewed as a marathon, not a sprint. Short-term results are heavily influenced by variance, and even the most skilled bettors experience losing periods. Success is measured over hundreds or thousands of bets, not days or weeks.
+        </p>
+        <p>
+          Focus on making quality decisions rather than outcomes. A well-reasoned bet that loses is still a good bet if the process was sound. Conversely, a poorly-considered bet that wins shouldn't be celebrated—it reinforces bad habits.
+        </p>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .topics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+  }
+
+  @media (max-width: 600px) {
+    .topics-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,73 @@
+---
+import SportLayout from '../layouts/SportLayout.astro';
+import ContentSection from '../components/ContentSection.astro';
+
+const topics = [
+  { title: 'Conference Analysis', href: '/blog/category/cfb-conferences', description: 'Breaking down betting angles by conference' },
+  { title: 'Spread Strategies', href: '/blog/category/cfb-spreads', description: 'Handling large point spreads in mismatches' },
+  { title: 'Totals', href: '/blog/category/cfb-totals', description: 'Scoring trends across different styles of play' },
+  { title: 'Bowl Season', href: '/blog/category/bowl-games', description: 'Navigating the unique bowl game betting environment' },
+];
+
+const articles = [
+  {
+    title: 'Motivation in Bowl Games',
+    href: '/blog/motivation-bowl-games',
+    description: 'Why team motivation matters more in the postseason.',
+    category: 'College Football',
+    categoryHref: '/blog/category/college-football',
+    image: 'https://images.pexels.com/photos/159517/football-american-football-helmet-player-159517.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    title: 'Early Season CFB Betting',
+    href: '/blog/early-season-cfb-betting',
+    description: 'Finding value when information is limited.',
+    category: 'College Football',
+    categoryHref: '/blog/category/college-football',
+    image: 'https://images.pexels.com/photos/1618269/pexels-photo-1618269.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+];
+---
+
+<SportLayout
+  title="College Football Betting"
+  description="College football betting analysis covering conference matchups, spreads, totals, and bowl season strategies."
+  subtitle="CFB betting strategies from Week 1 through the College Football Playoff."
+  introText="College football offers a unique betting landscape with over 130 FBS teams, dramatic talent disparities, and passionate fan bases that can distort betting markets. The sheer volume of games each Saturday creates opportunities for bettors willing to do the research that casual bettors skip."
+  topics={topics}
+  articles={articles}
+>
+  <ContentSection title="CFB Betting Landscape" id="landscape">
+    <h3>Large Spreads</h3>
+    <p>
+      College football features spreads that would be unthinkable in professional sports. Lines of 30, 40, or even 50 points are common when powerhouses face lesser opponents. Understanding how to approach these mismatches—whether to bet them, fade them, or focus on totals—is a key skill.
+    </p>
+
+    <h3>Conference Dynamics</h3>
+    <p>
+      Each conference has its own style of play, officiating tendencies, and competitive balance. SEC games play differently than Big 12 shootouts or Big Ten ground battles. Recognizing these patterns helps inform spread and totals analysis.
+    </p>
+
+    <h3>Information Edges</h3>
+    <p>
+      With so many teams and games, the college football betting market has more inefficiencies than the NFL. Dedicated research into smaller programs, coaching changes, and roster turnover can uncover value that more casual bettors miss.
+    </p>
+  </ContentSection>
+
+  <ContentSection title="Seasonal Considerations" id="seasonal">
+    <h3>Early Season</h3>
+    <p>
+      The first weeks of the college football season involve significant uncertainty. New starters, coaching changes, and scheme adjustments make early lines particularly soft. However, the limited sample size cuts both ways—overreacting to Week 1 results is a common mistake.
+    </p>
+
+    <h3>Conference Play</h3>
+    <p>
+      Once conference play begins, the sample size grows and trends become clearer. Rivalry games, divisional implications, and scheduling quirks create specific angles that reward attention to detail.
+    </p>
+
+    <h3>Bowl Season</h3>
+    <p>
+      Bowl games present a unique betting environment. Long layoffs, opt-outs from NFL-bound players, and varying levels of team motivation create a different analytical challenge. Understanding which factors matter most in bowl games is essential.
+    </p>
+  </ContentSection>
+</SportLayout>

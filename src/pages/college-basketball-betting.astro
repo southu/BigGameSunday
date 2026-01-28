@@ -1,0 +1,73 @@
+---
+import SportLayout from '../layouts/SportLayout.astro';
+import ContentSection from '../components/ContentSection.astro';
+
+const topics = [
+  { title: 'March Madness', href: '/blog/category/march-madness', description: 'Tournament betting strategies and bracket analysis' },
+  { title: 'Conference Tournaments', href: '/blog/category/conference-tournaments', description: 'Betting the conference championship events' },
+  { title: 'Regular Season', href: '/blog/category/cbb-regular-season', description: 'Finding value across the long college basketball season' },
+  { title: 'Totals', href: '/blog/category/cbb-totals', description: 'Pace and efficiency in college basketball scoring' },
+];
+
+const articles = [
+  {
+    title: 'First Round Tournament Strategy',
+    href: '/blog/first-round-tournament-strategy',
+    description: 'How to approach the opening games of March Madness.',
+    category: 'College Basketball',
+    categoryHref: '/blog/category/college-basketball',
+    image: 'https://images.pexels.com/photos/2277981/pexels-photo-2277981.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    title: 'Mid-Major Betting Value',
+    href: '/blog/mid-major-betting-value',
+    description: 'Finding edges in less-followed conferences.',
+    category: 'College Basketball',
+    categoryHref: '/blog/category/college-basketball',
+    image: 'https://images.pexels.com/photos/945471/pexels-photo-945471.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+];
+---
+
+<SportLayout
+  title="College Basketball Betting"
+  description="College basketball betting analysis covering March Madness, conference tournaments, and regular season strategies."
+  subtitle="From November tip-off through the Final Four, analysis for the college hoops betting season."
+  introText="College basketball's sprawling landscape—over 350 Division I teams playing thousands of games—creates a market where specialization pays dividends. While March Madness captures the public's attention, sharp bettors know that the regular season and conference tournaments offer substantial value for those willing to put in the work."
+  topics={topics}
+  articles={articles}
+>
+  <ContentSection title="CBB Betting Markets" id="markets">
+    <h3>Regular Season</h3>
+    <p>
+      The college basketball regular season runs from November through early March, with games nearly every day. This volume creates opportunities but also demands discipline—chasing action on unfamiliar teams is a recipe for losses.
+    </p>
+
+    <h3>Conference Tournaments</h3>
+    <p>
+      Conference tournaments bring a different dynamic: teams playing multiple games in consecutive days, bracket implications, and varying levels of desperation. These events reward understanding of specific conference dynamics and team depth.
+    </p>
+
+    <h3>March Madness</h3>
+    <p>
+      The NCAA Tournament is the most bet-upon event outside the Super Bowl. Single-elimination creates variance, but the massive public interest also creates market inefficiencies that analytical bettors can exploit.
+    </p>
+  </ContentSection>
+
+  <ContentSection title="Key Factors" id="factors">
+    <h3>Pace and Efficiency</h3>
+    <p>
+      Understanding tempo is crucial for college basketball betting. Slow, grinding defensive teams create lower totals but also tighter games. Up-tempo teams produce more variance but also more opportunities for totals plays.
+    </p>
+
+    <h3>Experience and Roster Turnover</h3>
+    <p>
+      College basketball rosters turn over constantly through transfers, early NBA departures, and graduations. Teams with experienced upperclassmen often have edges that take time for betting markets to fully price in.
+    </p>
+
+    <h3>Home Court Advantage</h3>
+    <p>
+      Home court matters more in college basketball than almost any other sport. Raucous student sections, familiarity with unique arena dimensions, and travel fatigue for visitors all contribute to significant home edges.
+    </p>
+  </ContentSection>
+</SportLayout>

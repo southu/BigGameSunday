@@ -1,0 +1,73 @@
+---
+import SportLayout from '../layouts/SportLayout.astro';
+import ContentSection from '../components/ContentSection.astro';
+
+const topics = [
+  { title: 'Spreads', href: '/blog/category/nba-spreads', description: 'NBA point spread betting analysis and strategies' },
+  { title: 'Totals', href: '/blog/category/nba-totals', description: 'Over/under betting in high-scoring NBA matchups' },
+  { title: 'Player Props', href: '/blog/category/nba-props', description: 'Points, rebounds, assists, and combined props' },
+  { title: 'Futures', href: '/blog/category/nba-futures', description: 'Championship, MVP, and division betting markets' },
+];
+
+const articles = [
+  {
+    title: 'Rest Days and NBA Betting',
+    href: '/blog/rest-days-nba-betting',
+    description: 'How back-to-backs and rest patterns affect NBA performance.',
+    category: 'NBA',
+    categoryHref: '/blog/category/nba',
+    image: 'https://images.pexels.com/photos/2891884/pexels-photo-2891884.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    title: 'NBA Totals in the Modern Era',
+    href: '/blog/nba-totals-modern-era',
+    description: 'Adjusting totals strategies for the pace-and-space era.',
+    category: 'NBA',
+    categoryHref: '/blog/category/nba',
+    image: 'https://images.pexels.com/photos/1752757/pexels-photo-1752757.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+];
+---
+
+<SportLayout
+  title="NBA Betting"
+  description="NBA betting analysis, strategies, and insights for point spreads, totals, player props, and futures markets."
+  subtitle="Basketball betting insights covering the regular season through the NBA Finals."
+  introText="The NBA's 82-game regular season creates abundant betting opportunities, but also requires understanding the league's unique dynamics. Star player rest, back-to-back schedules, and the widening gap between contenders and lottery teams all shape how smart bettors approach the market."
+  topics={topics}
+  articles={articles}
+>
+  <ContentSection title="NBA Betting Markets" id="markets">
+    <h3>Spreads and Blowouts</h3>
+    <p>
+      NBA spreads can be volatile, with large favorites common and blowouts frequent. Understanding when teams are motivated, when they're coasting, and how garbage time affects final margins is crucial for spread betting success.
+    </p>
+
+    <h3>Totals and Pace</h3>
+    <p>
+      NBA totals are heavily influenced by pace of play and three-point shooting. Modern NBA offenses have pushed totals higher, but the variance in game-to-game scoring creates opportunities for bettors who can identify when lines are mispriced.
+    </p>
+
+    <h3>Player Props</h3>
+    <p>
+      The NBA's star-driven nature makes player props particularly relevant. With detailed statistics available for every aspect of performance, prop markets offer numerous angles for analysis-driven betting.
+    </p>
+  </ContentSection>
+
+  <ContentSection title="Key Factors" id="factors">
+    <h3>Schedule and Rest</h3>
+    <p>
+      The NBA schedule creates predictable patterns: teams on rest advantages typically outperform, while those on the second night of back-to-backs often struggle. Markets price these factors, but understanding the magnitude of their impact is valuable.
+    </p>
+
+    <h3>Load Management</h3>
+    <p>
+      Star player rest has become a significant factor in NBA betting. Late scratches can dramatically shift lines and create opportunities for bettors monitoring injury reports closely. Knowing which teams rest stars and in what situations helps anticipate these moves.
+    </p>
+
+    <h3>Playoff vs. Regular Season</h3>
+    <p>
+      NBA playoff betting differs markedly from regular season wagering. Teams play with more intensity, rotations shorten, and coaching adjustments matter more. Adjusting your approach for the postseason is essential.
+    </p>
+  </ContentSection>
+</SportLayout>

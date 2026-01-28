@@ -1,0 +1,234 @@
+---
+const currentYear = new Date().getFullYear();
+
+const footerLinks = {
+  sports: [
+    { href: '/nfl-betting', label: 'NFL Betting' },
+    { href: '/nba-betting', label: 'NBA Betting' },
+    { href: '/college-football-betting', label: 'College Football' },
+    { href: '/college-basketball-betting', label: 'College Basketball' },
+    { href: '/mlb-betting', label: 'MLB Betting' },
+  ],
+  resources: [
+    { href: '/betting-strategy', label: 'Betting Strategy' },
+    { href: '/sportsbooks-odds', label: 'Sportsbooks & Odds' },
+    { href: '/big-games-tournaments', label: 'Big Games' },
+    { href: '/blog', label: 'Blog' },
+  ],
+  company: [
+    { href: '/about', label: 'About Us' },
+    { href: '/privacy', label: 'Privacy Policy' },
+    { href: '/terms', label: 'Terms of Service' },
+    { href: '/affiliate-disclosure', label: 'Affiliate Disclosure' },
+  ],
+};
+---
+
+<footer class="footer">
+  <div class="footer-main container">
+    <div class="footer-brand">
+      <a href="/" class="footer-logo">
+        <span class="logo-text">BigGame</span><span class="logo-accent">Sunday</span>
+      </a>
+      <p class="footer-tagline">
+        Sports betting education and analysis for smarter, more disciplined decisions.
+      </p>
+    </div>
+
+    <div class="footer-links">
+      <div class="footer-column">
+        <h4 class="footer-heading">Sports</h4>
+        <ul class="footer-list">
+          {footerLinks.sports.map((link) => (
+            <li><a href={link.href}>{link.label}</a></li>
+          ))}
+        </ul>
+      </div>
+
+      <div class="footer-column">
+        <h4 class="footer-heading">Resources</h4>
+        <ul class="footer-list">
+          {footerLinks.resources.map((link) => (
+            <li><a href={link.href}>{link.label}</a></li>
+          ))}
+        </ul>
+      </div>
+
+      <div class="footer-column">
+        <h4 class="footer-heading">Company</h4>
+        <ul class="footer-list">
+          {footerLinks.company.map((link) => (
+            <li><a href={link.href}>{link.label}</a></li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <div class="container footer-bottom-inner">
+      <div class="responsible-notice">
+        <strong>Responsible Betting:</strong> Gambling involves risk. Please bet responsibly and only wager what you can afford to lose. If you or someone you know has a gambling problem, call 1-800-GAMBLER.
+      </div>
+      <div class="footer-legal">
+        <p>&copy; {currentYear} BigGameSunday.com. All rights reserved.</p>
+        <p class="affiliate-notice">
+          This site may contain affiliate links. See our <a href="/affiliate-disclosure">affiliate disclosure</a> for details.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    background-color: var(--color-bg-secondary);
+    margin-top: var(--spacing-4xl);
+  }
+
+  .footer-main {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: var(--spacing-3xl);
+    padding: var(--spacing-3xl) var(--spacing-lg);
+  }
+
+  .footer-brand {
+    max-width: 280px;
+  }
+
+  .footer-logo {
+    font-family: var(--font-heading);
+    font-size: 1.35rem;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: var(--spacing-md);
+  }
+
+  .logo-text {
+    color: var(--color-text);
+  }
+
+  .logo-accent {
+    color: var(--color-accent);
+  }
+
+  .footer-tagline {
+    color: var(--color-text-secondary);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .footer-links {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-xl);
+  }
+
+  .footer-heading {
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .footer-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .footer-list li {
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .footer-list a {
+    color: var(--color-text-secondary);
+    font-size: 0.9375rem;
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .footer-list a:hover {
+    color: var(--color-accent);
+  }
+
+  .footer-bottom {
+    background-color: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+    padding: var(--spacing-xl) 0;
+  }
+
+  .footer-bottom-inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+
+  .responsible-notice {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    line-height: 1.6;
+    padding: var(--spacing-md);
+    background-color: var(--color-surface);
+    border-radius: var(--border-radius);
+    border-left: 3px solid var(--color-warning);
+  }
+
+  .responsible-notice strong {
+    color: var(--color-warning);
+  }
+
+  .footer-legal {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+  }
+
+  .footer-legal p {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+  }
+
+  .affiliate-notice a {
+    color: var(--color-text-secondary);
+  }
+
+  .affiliate-notice a:hover {
+    color: var(--color-accent);
+  }
+
+  @media (max-width: 900px) {
+    .footer-main {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-2xl);
+    }
+
+    .footer-brand {
+      max-width: none;
+    }
+
+    .footer-links {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 600px) {
+    .footer-links {
+      grid-template-columns: 1fr;
+    }
+
+    .footer-legal {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>

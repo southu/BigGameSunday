@@ -1,0 +1,121 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../../../layouts/Layout.astro';
+import Hero from '../../../components/Hero.astro';
+import ArticleCard from '../../../components/ArticleCard.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  const allTags = posts.flatMap(post => post.data.tags);
+  const uniqueTags = [...new Set(allTags)];
+
+  return uniqueTags.map(tag => ({
+    params: { tag },
+    props: {
+      posts: posts
+        .filter(post => post.data.tags.includes(tag) && !post.data.draft)
+        .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()),
+      tag,
+    },
+  }));
+}
+
+const { posts, tag } = Astro.props;
+---
+
+<Layout
+  title={`Articles tagged "${tag}"`}
+  description={`Browse all articles tagged with "${tag}" on BigGameSunday.`}
+>
+  <Hero
+    title={`Tag: ${tag}`}
+    subtitle={`${posts.length} article${posts.length !== 1 ? 's' : ''} with this tag`}
+    size="small"
+  />
+
+  <div class="container">
+    <div class="tag-content">
+      <nav class="breadcrumb">
+        <a href="/blog">Blog</a>
+        <span class="breadcrumb-separator">/</span>
+        <span>Tag: {tag}</span>
+      </nav>
+
+      <div class="posts-grid">
+        {posts.map((post) => (
+          <ArticleCard
+            title={post.data.title}
+            href={`/blog/${post.id}`}
+            description={post.data.description}
+            date={post.data.pubDate}
+            category={post.data.category}
+            categoryHref={`/blog/category/${post.data.category}`}
+            image={post.data.image}
+          />
+        ))}
+      </div>
+
+      {posts.length === 0 && (
+        <div class="empty-state">
+          <p>No articles found with this tag yet.</p>
+          <a href="/blog">Browse all articles</a>
+        </div>
+      )}
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .tag-content {
+    padding: var(--spacing-2xl) 0 var(--spacing-4xl);
+  }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-xl);
+    font-size: 0.875rem;
+  }
+
+  .breadcrumb a {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+  }
+
+  .breadcrumb a:hover {
+    color: var(--color-accent);
+  }
+
+  .breadcrumb-separator {
+    color: var(--color-text-muted);
+  }
+
+  .breadcrumb span:last-child {
+    color: var(--color-text);
+  }
+
+  .posts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: var(--spacing-4xl);
+    color: var(--color-text-secondary);
+  }
+
+  .empty-state a {
+    display: inline-block;
+    margin-top: var(--spacing-md);
+    color: var(--color-accent);
+  }
+
+  @media (max-width: 768px) {
+    .posts-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
