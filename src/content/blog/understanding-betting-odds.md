@@ -4,7 +4,7 @@ description: "Learn how to read and interpret different odds formats and calcula
 pubDate: 2025-01-15
 category: "strategy"
 tags: ["basics", "odds", "education"]
-image: "https://images.pexels.com/photos/159745/football-american-football-team-sport-game-159745.jpeg?auto=compress&cs=tinysrgb&w=800"
+image: "https://images.pexels.com/photos/46798/the-ball-stadion-football-the-pitch-46798.jpeg?auto=compress&cs=tinysrgb&w=800"
 featured: true
 ---
 
