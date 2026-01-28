@@ -1,0 +1,145 @@
+---
+title: "About BigGameSunday: Mission, Standards, and Responsible Betting"
+slug: about-biggamesunday-mission-standards-responsible-betting
+kind: webpage
+description: "Learn BigGameSunday’s mission, editorial standards, AI policy, and responsible betting commitment—built to help you understand betting markets clearly."
+---
+# About BigGameSunday: Mission, Standards, and Responsible Betting
+
+BigGameSunday is a sports betting education site for people who want to think clearly about betting markets—without hype, pressure, or “hot takes.” We focus on decision-making frameworks, market mechanics, and risk awareness across major sports.
+
+We don’t sell picks. We don’t promise outcomes. We aim to help you make better decisions, understand tradeoffs, and avoid common mistakes.
+
+## Why BigGameSunday Exists
+
+Sports betting has become easier to access and faster to place than ever. That convenience can be helpful—but it also makes it easier to bet impulsively, chase losses, or follow narratives that don’t hold up.
+
+BigGameSunday exists to provide a calmer alternative:
+
+- **Education over predictions:** We explain how sports betting works and how betting markets behave.
+- **Process over outcomes:** We focus on repeatable decision-making, not one-off results.
+- **Risk awareness:** We treat variance as a core feature of betting, not a surprise.
+- **Clarity in a noisy space:** We aim to make complex concepts understandable and usable.
+
+Whether you’re new to sports betting or experienced but looking for a more disciplined approach, our goal is the same: help you engage with betting markets thoughtfully and responsibly.
+
+## Our Editorial Philosophy and Standards
+
+BigGameSunday is grounded in the idea that good betting decisions come from clear thinking, not certainty.
+
+### What you can expect from our content
+
+- **Market-first thinking:** We discuss sports betting through the lens of betting markets—how prices move, what lines imply, and what information is already “baked in.”
+- **Scenario-based analysis:** When we talk about games, teams, or matchups, we frame them as **scenarios and considerations**, not predictions.
+- **Balanced reasoning:** We highlight both sides of an argument where it matters, including why a bet might be attractive and why it might be overpriced.
+- **Evergreen education:** We avoid time-sensitive odds or “today only” angles. The focus is on concepts that remain useful.
+- **Plain-language explanations:** We reduce jargon where possible and define it where necessary.
+
+### Sportsbooks and market context (how we cover it)
+
+Sportsbooks are part of the ecosystem. Understanding how they price markets, build in margin (**vig**), and respond to information is essential to understanding sports betting.
+
+When we reference sportsbooks, it’s typically to explain:
+
+- How lines are constructed and why they move
+- Why different books can show different prices
+- How market liquidity and timing can affect what bettors see
+
+If we ever include links to sportsbooks or related services, we aim to label them clearly and keep the focus on education—not urgency.
+
+### What we avoid
+
+- **No picks-for-sale model:** We are not a tout service.
+- **No guarantees:** We do not use “lock,” “sure thing,” or “guaranteed” language.
+- **No emotional pressure:** We don’t encourage betting because it’s “must-win,” “free money,” or “too easy.”
+- **No outcome-based storytelling:** A bet winning doesn’t prove it was smart; a bet losing doesn’t prove it was wrong. We focus on decision quality.
+
+### Our approach to sources and claims
+
+Because betting content can easily drift into overconfidence, we apply a simple rule: **if a claim can’t be supported in a stable, general way, we don’t present it as a fact.** We prioritize concepts that are broadly true across sports and seasons (like bankroll management, implied probability, and the role of vig).
+
+If you’re looking to build fundamentals, start here:
+
+## Our Team
+
+BigGameSunday is run by a small editorial team focused on clear explanations and practical decision-making.
+
+We keep the emphasis on method over personality. That said, we’re not anonymous about accountability: if you spot an error, unclear phrasing, or a claim that needs tightening, we want to hear about it.
+
+## How BigGameSunday Makes Money
+
+Transparency matters in the betting space because incentives can shape what gets emphasized.
+
+BigGameSunday can be supported through a mix of:
+
+- **Advertising**
+- **Affiliate links** (for example, if we reference a sportsbook or betting product)
+- **Reader support products** (such as a newsletter or educational resources, if offered)
+
+If affiliate links are used, we aim to:
+
+- Disclose them clearly
+- Keep educational content usable regardless of whether you click
+- Avoid framing betting as a shortcut to income
+
+## How We Use AI (With Human Oversight)
+
+We use AI tools to support drafting, outlining, editing, and quality checks. AI can help us organize information and improve clarity—but it is not a substitute for editorial judgment.
+
+Our standards for AI-assisted content:
+
+- **Human review is required:** Content is reviewed and refined to match our educational mission and tone.
+- **No fabricated specifics:** We avoid presenting unverified statistics, quotes, or “reported” details.
+- **Conceptual accuracy first:** We focus on correct explanations of sports betting concepts and responsible decision-making.
+- **Consistency and clarity:** AI is used to improve structure and readability, not to introduce hype or speculation.
+
+If something can’t be responsibly stated without up-to-date verification, we frame it as a general principle rather than a specific claim.
+
+## Commitment to Transparency
+
+Trust matters in sports betting education. We aim to be clear about what our content is—and what it isn’t.
+
+### What we’re transparent about
+
+- **Our purpose:** Education and analysis, not selling picks.
+- **Our uncertainty:** Betting is probabilistic. Good analysis can still lose.
+- **Our incentives:** If we earn revenue from ads or affiliate links, we aim to disclose that clearly and keep the educational intent intact.
+
+## Responsible Betting Commitment
+
+BigGameSunday supports responsible betting. Sports betting is best treated as risk-taking entertainment—not a financial plan.
+
+### Our responsible betting principles (and why they matter)
+
+- **Bet within your means:** If losing the stake would change your month, the stake is too big.
+- **Size bets consistently:** Consistent sizing reduces the temptation to “make it back” with one oversized wager.
+- **Avoid chasing:** Chasing often turns a manageable loss into a decision spiral. The goal is to protect decision quality.
+- **Take breaks:** If betting stops feeling controlled or intentional, pausing is a skill—not a failure.
+
+### If betting stops feeling manageable
+
+If you feel pressure to bet, find yourself chasing losses, or betting is affecting your finances, relationships, or mental health, consider seeking support.
+
+A practical first step is to:
+
+- Set deposit/time limits (many sportsbooks offer these tools)
+- Self-exclude if needed
+- Talk to someone you trust or a qualified professional
+
+You can also contact reputable, independent support organizations:
+
+- National Council on Problem Gambling (NCPG): https://www.ncpgambling.org/
+- Gamblers Anonymous: https://www.gamblersanonymous.org/
+
+BigGameSunday’s content is designed to encourage discipline and awareness—not frequency and volume.
+
+## Contact BigGameSunday
+
+We welcome feedback, corrections, and questions—especially if something is unclear or you think we can explain a concept more precisely.
+
+**Contact:** contact@biggamesunday.com
+
+## Start Here
+
+If you want a calmer, more analytical approach to sports betting—focused on betting markets, decision frameworks, and responsible betting—start with our core guides:
+
