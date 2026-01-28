@@ -28,6 +28,7 @@ interface Props {
   introText: string;
   topics?: RelatedTopic[];
   articles?: RelatedArticle[];
+  image?: string;
 }
 
 const {
@@ -38,6 +39,7 @@ const {
   introText,
   topics = [],
   articles = [],
+  image,
 } = Astro.props;
 ---
 
@@ -46,6 +48,7 @@ const {
     title={title}
     subtitle={subtitle}
     size="medium"
+    image={image}
   />
 
   <div class="container content-container">

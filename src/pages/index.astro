@@ -5,12 +5,17 @@ import LinkCard from '../components/LinkCard.astro';
 import ArticleCard from '../components/ArticleCard.astro';
 
 const sportsHubs = [
-  { title: 'NFL Betting', href: '/nfl-betting', description: 'Pro football analysis, trends, and betting strategies', icon: 'F' },
-  { title: 'NBA Betting', href: '/nba-betting', description: 'Basketball betting insights and market analysis', icon: 'B' },
-  { title: 'College Football', href: '/college-football-betting', description: 'CFB betting guides and conference breakdowns', icon: 'C' },
-  { title: 'College Basketball', href: '/college-basketball-betting', description: 'March Madness and regular season coverage', icon: 'M' },
-  { title: 'MLB Betting', href: '/mlb-betting', description: 'Baseball betting strategy and statistical analysis', icon: 'M' },
+  { title: 'NFL Betting', href: '/nfl-betting', description: 'Point spreads, moneylines, totals, and market dynamics', icon: 'F' },
+  { title: 'NBA Betting', href: '/nba-betting', description: 'Market efficiency, totals, props, and live betting', icon: 'B' },
+  { title: 'College Football', href: '/college-football-betting', description: 'Volatile markets, big spreads, and bowl games', icon: 'C' },
+  { title: 'College Basketball', href: '/college-basketball-betting', description: 'Pace, efficiency, and March Madness', icon: 'M' },
+  { title: 'MLB Betting', href: '/mlb-betting', description: 'Pitching, line movement, and season-long discipline', icon: 'M' },
   { title: 'Big Games', href: '/big-games-tournaments', description: 'Super Bowl, playoffs, and championship events', icon: 'T' },
+];
+
+const foundationalGuides = [
+  { title: 'Betting Strategy', href: '/betting-strategy', description: 'Expected value, bankroll management, and decision frameworks' },
+  { title: 'Sportsbooks & Odds', href: '/sportsbooks-odds', description: 'How to evaluate books and shop for better prices' },
 ];
 
 const featuredArticles = [
@@ -41,19 +46,70 @@ const featuredArticles = [
 ];
 ---
 
-<Layout title="BigGameSunday" description="Sports betting education and analysis for smarter, more disciplined decisions around major sporting events.">
+<Layout
+  title="BigGameSunday"
+  description="Sports betting education for serious sports fans who want to think more clearly about betting markets. Decision frameworks, risk awareness, and fundamentals that stay relevant."
+>
   <Hero
-    title="Smarter Sports Betting Starts Here"
-    subtitle="BigGameSunday provides in-depth analysis, proven strategies, and educational content to help you make more informed betting decisions."
+    title="Smarter Sports Betting Through Clear Thinking"
+    subtitle="BigGameSunday is sports betting education for serious sports fans who want to think more clearly about betting markets. We focus on decision-making frameworks, risk awareness, and fundamentals that stay relevant across seasons."
     size="large"
     align="left"
+    image="/images/welcome-to-biggamesunday.png"
   />
 
   <div class="container">
+    <section class="section intro-section">
+      <div class="intro-content">
+        <h2>Betting as a Decision Under Uncertainty</h2>
+        <p>
+          Sports betting is often presented as entertainment first and analysis second. BigGameSunday takes the opposite approach: we treat betting as a decision under uncertainty.
+        </p>
+        <div class="intro-points">
+          <div class="intro-point">
+            <h3>Understand Betting Markets</h3>
+            <p>What lines mean, why they move, and what information is reflected in the price.</p>
+          </div>
+          <div class="intro-point">
+            <h3>Make Better Decisions</h3>
+            <p>Using repeatable frameworks rather than gut feel or recency bias.</p>
+          </div>
+          <div class="intro-point">
+            <h3>Manage Risk</h3>
+            <p>Practical bankroll and staking concepts that protect your decision quality.</p>
+          </div>
+          <div class="intro-point">
+            <h3>Reduce Costly Habits</h3>
+            <p>Avoid chasing losses, overreacting to short-term results, or betting out of boredom.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="section">
       <div class="section-header">
-        <h2>Explore by Sport</h2>
-        <p class="section-subtitle">Dive into sport-specific analysis, trends, and betting strategies</p>
+        <div>
+          <h2>Foundational Strategy Guides</h2>
+          <p class="section-subtitle">Start with the core concepts: expected value, risk management, and how to evaluate a wager</p>
+        </div>
+      </div>
+      <div class="foundation-grid">
+        {foundationalGuides.map((guide) => (
+          <a href={guide.href} class="foundation-card">
+            <h3>{guide.title}</h3>
+            <p>{guide.description}</p>
+            <span class="foundation-link">Read the guide</span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>Sport-Specific Guides</h2>
+          <p class="section-subtitle">Different sports have different scoring structures, injury dynamics, and market behavior</p>
+        </div>
       </div>
       <div class="sports-grid">
         {sportsHubs.map((sport) => (
@@ -87,12 +143,53 @@ const featuredArticles = [
       </div>
     </section>
 
+    <section class="section glossary-section">
+      <h2>Common Sports Betting Terms</h2>
+      <p class="glossary-intro">If you're learning, terminology shouldn't be a barrier. Here are quick definitions we use throughout the site.</p>
+      <div class="glossary-grid">
+        <div class="glossary-item">
+          <dt>Implied Probability</dt>
+          <dd>The probability suggested by the odds, before accounting for sportsbook margin.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Vig (Juice)</dt>
+          <dd>The sportsbook's built-in margin on each bet.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Closing Line</dt>
+          <dd>The final price/odds right before the game starts.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Line Movement</dt>
+          <dd>Changes in the odds or point spread over time.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Spread</dt>
+          <dd>A handicap applied to even out two teams.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Moneyline</dt>
+          <dd>A bet on which team wins outright.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Total (Over/Under)</dt>
+          <dd>A bet on combined points, runs, or goals scored.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Parlay</dt>
+          <dd>Multiple bets linked together; all legs must win.</dd>
+        </div>
+      </div>
+    </section>
+
     <section class="section cta-section">
       <div class="cta-content">
-        <h2>Build a Better Betting Approach</h2>
-        <p>Whether you're new to sports betting or looking to refine your strategy, our educational resources can help you develop a more disciplined, analytical approach.</p>
+        <h2>Your Process Matters More Than Any Single Outcome</h2>
+        <p>
+          A smarter approach includes a clear reason for every bet, understanding implied probability, consistent staking that matches your risk tolerance, respect for variance, and a plan for when not to bet.
+        </p>
         <div class="cta-links">
-          <a href="/betting-strategy" class="cta-button">Explore Strategies</a>
+          <a href="/betting-strategy" class="cta-button">Start with Strategy</a>
           <a href="/about" class="cta-link">Learn about our approach</a>
         </div>
       </div>
@@ -103,6 +200,52 @@ const featuredArticles = [
 <style>
   .section {
     margin: var(--spacing-4xl) 0;
+  }
+
+  .intro-section {
+    background-color: var(--color-surface);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-3xl);
+    margin-top: var(--spacing-2xl);
+  }
+
+  .intro-content h2 {
+    margin-bottom: var(--spacing-md);
+    font-size: 1.75rem;
+  }
+
+  .intro-content > p {
+    color: var(--color-text-secondary);
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    max-width: 800px;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .intro-points {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+  }
+
+  .intro-point {
+    padding: var(--spacing-md);
+    border-left: 3px solid var(--color-accent-muted);
+  }
+
+  .intro-point h3 {
+    font-size: 1rem;
+    font-family: var(--font-body);
+    font-weight: 600;
+    margin-bottom: var(--spacing-xs);
+    color: var(--color-text);
+  }
+
+  .intro-point p {
+    font-size: 0.9375rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+    line-height: 1.5;
   }
 
   .section-header {
@@ -137,6 +280,46 @@ const featuredArticles = [
     text-decoration: underline;
   }
 
+  .foundation-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+  }
+
+  .foundation-card {
+    display: block;
+    padding: var(--spacing-xl);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-lg);
+    text-decoration: none;
+    transition: border-color var(--transition), background-color var(--transition);
+  }
+
+  .foundation-card:hover {
+    border-color: var(--color-accent-muted);
+    background-color: var(--color-surface-hover);
+  }
+
+  .foundation-card h3 {
+    font-size: 1.25rem;
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-text);
+  }
+
+  .foundation-card p {
+    color: var(--color-text-secondary);
+    font-size: 0.9375rem;
+    margin-bottom: var(--spacing-md);
+    line-height: 1.5;
+  }
+
+  .foundation-link {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-accent);
+  }
+
   .sports-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -149,6 +332,45 @@ const featuredArticles = [
     gap: var(--spacing-lg);
   }
 
+  .glossary-section {
+    background-color: var(--color-bg-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-3xl);
+  }
+
+  .glossary-section h2 {
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .glossary-intro {
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .glossary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md) var(--spacing-xl);
+  }
+
+  .glossary-item {
+    padding: var(--spacing-sm) 0;
+  }
+
+  .glossary-item dt {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--color-text);
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .glossary-item dd {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+    line-height: 1.5;
+  }
+
   .cta-section {
     background-color: var(--color-surface);
     border-radius: var(--border-radius-lg);
@@ -157,7 +379,7 @@ const featuredArticles = [
   }
 
   .cta-content {
-    max-width: 600px;
+    max-width: 650px;
     margin: 0 auto;
   }
 
@@ -209,11 +431,23 @@ const featuredArticles = [
   }
 
   @media (max-width: 900px) {
+    .intro-points {
+      grid-template-columns: 1fr;
+    }
+
+    .foundation-grid {
+      grid-template-columns: 1fr;
+    }
+
     .sports-grid {
       grid-template-columns: repeat(2, 1fr);
     }
 
     .articles-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .glossary-grid {
       grid-template-columns: 1fr;
     }
   }
@@ -223,6 +457,8 @@ const featuredArticles = [
       grid-template-columns: 1fr;
     }
 
+    .intro-section,
+    .glossary-section,
     .cta-section {
       padding: var(--spacing-2xl) var(--spacing-lg);
     }

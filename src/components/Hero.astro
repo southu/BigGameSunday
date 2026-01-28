@@ -5,6 +5,7 @@ interface Props {
   size?: 'large' | 'medium' | 'small';
   align?: 'left' | 'center';
   backgroundImage?: string;
+  image?: string;
 }
 
 const {
@@ -13,11 +14,14 @@ const {
   size = 'large',
   align = 'left',
   backgroundImage,
+  image,
 } = Astro.props;
+
+const bgImage = backgroundImage || image;
 ---
 
-<section class={`hero hero--${size} hero--${align}`} style={backgroundImage ? `--bg-image: url(${backgroundImage})` : undefined}>
-  {backgroundImage && <div class="hero-overlay"></div>}
+<section class={`hero hero--${size} hero--${align}`} style={bgImage ? `--bg-image: url(${bgImage})` : undefined}>
+  {bgImage && <div class="hero-overlay"></div>}
   <div class="hero-content container">
     <h1 class="hero-title">{title}</h1>
     {subtitle && <p class="hero-subtitle">{subtitle}</p>}
