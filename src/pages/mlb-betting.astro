@@ -1,6 +1,7 @@
 ---
 import SportLayout from '../layouts/SportLayout.astro';
 import ContentSection from '../components/ContentSection.astro';
+import FeaturedImage from '../components/FeaturedImage.astro';
 
 const topics = [
   { title: 'Moneylines', href: '/blog/category/mlb-moneylines', description: 'Navigating MLB favorites and underdogs' },
@@ -54,6 +55,13 @@ const articles = [
       MLB totals are influenced by a complex mix of factors: starting pitchers, bullpen quality, lineup construction, ballpark dimensions, and weather. Successfully betting totals requires synthesizing all these elements into a coherent projection.
     </p>
   </ContentSection>
+
+  <FeaturedImage
+    src="https://images.pexels.com/photos/209977/pexels-photo-209977.jpeg?auto=compress&cs=tinysrgb&w=1200"
+    alt="Baseball pitcher preparing to throw"
+    caption="Starting pitching is the most important factor in MLB betting"
+    position="center"
+  />
 
   <ContentSection title="Key Factors" id="factors">
     <h3>Starting Pitching</h3>

@@ -2,6 +2,7 @@
 import SportLayout from '../layouts/SportLayout.astro';
 import ContentSection from '../components/ContentSection.astro';
 import Callout from '../components/Callout.astro';
+import FeaturedImage from '../components/FeaturedImage.astro';
 
 const topics = [
   { title: 'Spreads', href: '/blog/category/nba-spreads', description: 'Point spread betting and market efficiency' },
@@ -49,6 +50,12 @@ const articles = [
       <li><strong>Efficient markets:</strong> NBA lines are among the most efficient in sports betting.</li>
     </ul>
   </ContentSection>
+
+  <FeaturedImage
+    src="https://images.pexels.com/photos/2891884/pexels-photo-2891884.jpeg?auto=compress&cs=tinysrgb&w=1200"
+    alt="Basketball court during game"
+    caption="NBA's daily schedule creates one of the most active betting markets in sports"
+  />
 
   <ContentSection title="NBA Betting Markets Explained" id="markets">
     <h3>Point spreads</h3>

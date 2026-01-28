@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Hero from '../components/Hero.astro';
 import LinkCard from '../components/LinkCard.astro';
 import ArticleCard from '../components/ArticleCard.astro';
+import FeaturedImage from '../components/FeaturedImage.astro';
 
 const sportsHubs = [
   { title: 'NFL Betting', href: '/nfl-betting', description: 'Point spreads, moneylines, totals, and market dynamics', icon: 'F' },
@@ -142,6 +143,13 @@ const featuredArticles = [
         ))}
       </div>
     </section>
+
+    <FeaturedImage
+      src="https://images.pexels.com/photos/159745/football-american-football-team-sport-game-159745.jpeg?auto=compress&cs=tinysrgb&w=1200"
+      alt="Football game action"
+      caption="From NFL to March Madness, BigGameSunday covers all major sports betting markets"
+      position="center"
+    />
 
     <section class="section glossary-section">
       <h2>Common Sports Betting Terms</h2>

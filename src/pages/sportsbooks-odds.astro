@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Hero from '../components/Hero.astro';
 import ContentSection from '../components/ContentSection.astro';
 import Callout from '../components/Callout.astro';
+import FeaturedImage from '../components/FeaturedImage.astro';
 ---
 
 <Layout
@@ -44,6 +45,13 @@ import Callout from '../components/Callout.astro';
       <Callout type="info" title="The Juice">
         <p>Sportsbooks build their profit margin into the odds, known as the "juice" or "vig." On a standard -110/-110 line, the true probability of each side is close to 50%, but the odds imply about 52.4% for each side—the difference is the book's edge.</p>
       </Callout>
+
+      <FeaturedImage
+        src="https://images.pexels.com/photos/3760067/pexels-photo-3760067.jpeg?auto=compress&cs=tinysrgb&w=1200"
+        alt="Person comparing betting odds on multiple devices"
+        caption="Line shopping across multiple sportsbooks can significantly impact long-term results"
+        position="center"
+      />
 
       <ContentSection title="Line Shopping" id="line-shopping">
         <h3>Why It Matters</h3>

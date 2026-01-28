@@ -1,6 +1,7 @@
 ---
 import SportLayout from '../layouts/SportLayout.astro';
 import ContentSection from '../components/ContentSection.astro';
+import FeaturedImage from '../components/FeaturedImage.astro';
 
 const topics = [
   { title: 'Super Bowl', href: '/blog/category/super-bowl', description: 'The biggest betting event of the year' },
@@ -54,6 +55,13 @@ const articles = [
       Effort and focus are maximized in elimination games and championship settings. The motivational advantages that some teams hold during the regular season largely disappear when everything is on the line.
     </p>
   </ContentSection>
+
+  <FeaturedImage
+    src="https://images.pexels.com/photos/159745/football-american-football-team-sport-game-159745.jpeg?auto=compress&cs=tinysrgb&w=1200"
+    alt="Football game action shot"
+    caption="Major sporting events draw massive betting volume and public interest"
+    position="center"
+  />
 
   <ContentSection title="Event-Specific Strategies" id="strategies">
     <h3>Super Bowl</h3>

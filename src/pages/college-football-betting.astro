@@ -1,6 +1,7 @@
 ---
 import SportLayout from '../layouts/SportLayout.astro';
 import ContentSection from '../components/ContentSection.astro';
+import FeaturedImage from '../components/FeaturedImage.astro';
 
 const topics = [
   { title: 'Conference Analysis', href: '/blog/category/cfb-conferences', description: 'Breaking down betting angles by conference' },
@@ -54,6 +55,13 @@ const articles = [
       With so many teams and games, the college football betting market has more inefficiencies than the NFL. Dedicated research into smaller programs, coaching changes, and roster turnover can uncover value that more casual bettors miss.
     </p>
   </ContentSection>
+
+  <FeaturedImage
+    src="https://images.pexels.com/photos/1618269/pexels-photo-1618269.jpeg?auto=compress&cs=tinysrgb&w=1200"
+    alt="College football stadium packed with fans"
+    caption="College football's passionate fanbases create unique market dynamics"
+    position="center"
+  />
 
   <ContentSection title="Seasonal Considerations" id="seasonal">
     <h3>Early Season</h3>

@@ -1,6 +1,7 @@
 ---
 import SportLayout from '../layouts/SportLayout.astro';
 import ContentSection from '../components/ContentSection.astro';
+import FeaturedImage from '../components/FeaturedImage.astro';
 
 const topics = [
   { title: 'March Madness', href: '/blog/category/march-madness', description: 'Tournament betting strategies and bracket analysis' },
@@ -54,6 +55,13 @@ const articles = [
       The NCAA Tournament is the most bet-upon event outside the Super Bowl. Single-elimination creates variance, but the massive public interest also creates market inefficiencies that analytical bettors can exploit.
     </p>
   </ContentSection>
+
+  <FeaturedImage
+    src="https://images.pexels.com/photos/2277981/pexels-photo-2277981.jpeg?auto=compress&cs=tinysrgb&w=1200"
+    alt="College basketball game in progress"
+    caption="March Madness creates unique betting opportunities in college basketball"
+    position="center"
+  />
 
   <ContentSection title="Key Factors" id="factors">
     <h3>Pace and Efficiency</h3>

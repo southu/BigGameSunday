@@ -2,6 +2,7 @@
 import SportLayout from '../layouts/SportLayout.astro';
 import ContentSection from '../components/ContentSection.astro';
 import Callout from '../components/Callout.astro';
+import FeaturedImage from '../components/FeaturedImage.astro';
 
 const topics = [
   { title: 'Point Spreads', href: '/blog/category/nfl-spreads', description: 'Key numbers, line movement, and spread strategy' },
@@ -50,6 +51,12 @@ const articles = [
       <li><strong>High public interest:</strong> The NFL attracts more casual betting action than most sports, which can influence line movement.</li>
     </ul>
   </ContentSection>
+
+  <FeaturedImage
+    src="https://images.pexels.com/photos/2570139/pexels-photo-2570139.jpeg?auto=compress&cs=tinysrgb&w=1200"
+    alt="NFL football on field"
+    caption="The NFL's unique scoring structure creates distinct betting dynamics"
+  />
 
   <ContentSection title="NFL Betting Markets Explained" id="markets">
     <h3>Point spreads</h3>
@@ -145,6 +152,12 @@ const articles = [
       Divisional matchups often produce closer games than the spread suggests. Familiarity can reduce advantages and increase variance.
     </p>
   </ContentSection>
+
+  <FeaturedImage
+    src="https://images.pexels.com/photos/61135/pexels-photo-61135.jpeg?auto=compress&cs=tinysrgb&w=1200"
+    alt="Football stadium under lights"
+    caption="Weather conditions can significantly impact NFL totals and game scripts"
+  />
 
   <ContentSection title="Weather and Totals" id="weather">
     <h3>Wind</h3>
