@@ -5,6 +5,7 @@ pubDate: 2025-01-05
 category: "sportsbooks"
 tags: ["line-shopping", "odds", "sportsbooks", "strategy"]
 image: "https://images.pexels.com/photos/3760067/pexels-photo-3760067.jpeg?auto=compress&cs=tinysrgb&w=800"
+imageAlt: "Person comparing sports betting odds across multiple sportsbook apps"
 ---
 
 Line shopping—comparing odds across multiple sportsbooks to find the best price—is one of the simplest yet most effective strategies available to bettors. It requires no handicapping skill, just a few extra minutes and accounts at multiple books.

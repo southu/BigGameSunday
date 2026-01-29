@@ -5,6 +5,7 @@ pubDate: 2025-01-10
 category: "strategy"
 tags: ["bankroll", "fundamentals", "risk-management"]
 image: "https://images.pexels.com/photos/6693661/pexels-photo-6693661.jpeg?auto=compress&cs=tinysrgb&w=800"
+imageAlt: "Calculator and notebook for tracking sports betting bankroll management"
 featured: true
 ---
 

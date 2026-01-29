@@ -51,6 +51,7 @@ const { posts, tag } = Astro.props;
             category={post.data.category}
             categoryHref={`/blog/category/${post.data.category}`}
             image={post.data.image}
+            imageAlt={post.data.imageAlt}
           />
         ))}
       </div>

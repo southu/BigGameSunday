@@ -5,6 +5,7 @@ pubDate: 2025-01-15
 category: "strategy"
 tags: ["basics", "odds", "education"]
 image: "https://images.pexels.com/photos/46798/the-ball-stadion-football-the-pitch-46798.jpeg?auto=compress&cs=tinysrgb&w=800"
+imageAlt: "Football game representing sports betting odds and probability calculations"
 featured: true
 ---
 

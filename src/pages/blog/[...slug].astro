@@ -45,7 +45,7 @@ const tags = post.data.tags.map(tag => ({
   <article class="article">
     {post.data.image && (
       <div class="article-hero">
-        <img src={post.data.image} alt="" class="article-hero-image" />
+        <img src={post.data.image} alt={post.data.imageAlt || post.data.title} class="article-hero-image" />
         <div class="article-hero-overlay"></div>
       </div>
     )}
@@ -82,6 +82,7 @@ const tags = post.data.tags.map(tag => ({
                 category={relatedPost.data.category}
                 categoryHref={`/blog/category/${relatedPost.data.category}`}
                 image={relatedPost.data.image}
+                imageAlt={relatedPost.data.imageAlt}
               />
             ))}
           </div>

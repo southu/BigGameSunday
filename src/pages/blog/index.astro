@@ -39,6 +39,7 @@ const categories = [...new Set(sortedPosts.map(post => post.data.category))];
                   category={post.data.category}
                   categoryHref={`/blog/category/${post.data.category}`}
                   image={post.data.image}
+                  imageAlt={post.data.imageAlt}
                   featured={true}
                 />
               ))}
@@ -58,6 +59,7 @@ const categories = [...new Set(sortedPosts.map(post => post.data.category))];
                 category={post.data.category}
                 categoryHref={`/blog/category/${post.data.category}`}
                 image={post.data.image}
+                imageAlt={post.data.imageAlt}
               />
             ))}
           </div>

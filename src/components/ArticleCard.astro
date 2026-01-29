@@ -7,6 +7,7 @@ interface Props {
   category?: string;
   categoryHref?: string;
   image?: string;
+  imageAlt?: string;
   featured?: boolean;
 }
 
@@ -18,8 +19,11 @@ const {
   category,
   categoryHref,
   image,
+  imageAlt,
   featured = false,
 } = Astro.props;
+
+const altText = imageAlt || title;
 
 const formattedDate = date ? date.toLocaleDateString('en-US', {
   year: 'numeric',
@@ -31,7 +35,7 @@ const formattedDate = date ? date.toLocaleDateString('en-US', {
 <article class={`article-card ${featured ? 'article-card--featured' : ''}`}>
   {image && (
     <a href={href} class="article-card-image">
-      <img src={image} alt="" loading="lazy" />
+      <img src={image} alt={altText} loading="lazy" />
     </a>
   )}
   <div class="article-card-content">
