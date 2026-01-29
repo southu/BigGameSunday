@@ -14,10 +14,21 @@ const sportsPages = [
   { href: '/big-games-tournaments', label: 'Big Games & Tournaments' },
 ];
 
+const learnPages = [
+  { href: '/how-betting-odds-work', label: 'How Odds Work' },
+  { href: '/understanding-line-movement', label: 'Line Movement' },
+  { href: '/public-vs-sharp-money', label: 'Public vs Sharp Money' },
+  { href: '/common-betting-mistakes', label: 'Common Mistakes' },
+  { href: '/responsible-betting', label: 'Responsible Betting' },
+  { href: '/glossary', label: 'Glossary' },
+  { href: '/tools', label: 'Betting Tools' },
+];
+
 const navItems = [
   { href: '/', label: 'Home' },
   { href: '/betting-strategy', label: 'Strategy' },
   { href: '#', label: 'Sports', dropdown: sportsPages },
+  { href: '#', label: 'Learn', dropdown: learnPages },
   { href: '/sportsbooks-odds', label: 'Sportsbooks' },
   { href: '/blog', label: 'Blog' },
   { href: '/about', label: 'About' },
@@ -30,6 +41,10 @@ function isActive(href: string): boolean {
 
 function isSportsActive(): boolean {
   return sportsPages.some(page => currentPath.startsWith(page.href));
+}
+
+function isLearnActive(): boolean {
+  return learnPages.some(page => currentPath.startsWith(page.href));
 }
 ---
 
@@ -50,7 +65,7 @@ function isSportsActive(): boolean {
             {item.dropdown ? (
               <>
                 <button
-                  class={`nav-link dropdown-trigger ${isSportsActive() ? 'active' : ''}`}
+                  class={`nav-link dropdown-trigger ${item.label === 'Sports' && isSportsActive() ? 'active' : ''} ${item.label === 'Learn' && isLearnActive() ? 'active' : ''}`}
                   aria-expanded="false"
                   aria-haspopup="true"
                 >

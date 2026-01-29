@@ -1,0 +1,236 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import ContentSection from '../components/ContentSection.astro';
+import Callout from '../components/Callout.astro';
+import LinkCard from '../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'How Odds Work', href: '/how-betting-odds-work', description: 'Fundamentals of betting odds' },
+  { title: 'Public vs Sharp Money', href: '/public-vs-sharp-money', description: 'Who moves the lines' },
+  { title: 'Betting Strategy', href: '/betting-strategy', description: 'Framework for disciplined betting' },
+];
+---
+
+<Layout
+  title="Understanding Line Movement"
+  description="Learn why betting lines move, what line movement indicates, common misinterpretations, and how to use line movement in your betting decisions."
+>
+  <Hero
+    title="Understanding Line Movement"
+    subtitle="Why Lines Change and What It Actually Means"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            Lines move because of new information, betting action, or sportsbook risk management. While line movement contains signal, it's frequently misinterpreted. Movement doesn't tell you which side is "right"—it tells you where the market price is settling. Understanding what line movement does and doesn't indicate helps you avoid common errors and use it appropriately in your process.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="What Is Line Movement?" id="definition">
+        <p>
+          Line movement refers to changes in betting odds between when they're first posted (the opening line) and when the event begins (the closing line). Spreads can move from -3 to -4.5. Totals can move from 47.5 to 45. Moneylines can shift from -150 to -180.
+        </p>
+        <p>
+          The opening line represents the sportsbook's initial assessment. The closing line represents where the market settled after all available information and betting action has been incorporated.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Why Do Lines Move?" id="why-move">
+        <h3>New information</h3>
+        <p>
+          Injury reports, weather changes, lineup announcements, and other news cause lines to adjust. A starting quarterback being ruled out might move a spread by 3-5 points. Significant weather changes can move totals significantly.
+        </p>
+
+        <h3>Betting action</h3>
+        <p>
+          When money comes in heavily on one side, sportsbooks may move the line to attract bets on the other side or reduce their exposure. Not all money moves lines equally—large bets from respected accounts move lines more than small recreational bets.
+        </p>
+
+        <h3>Market correction</h3>
+        <p>
+          Sometimes books adjust lines because they believe their initial number was wrong. They might see where other books have moved or reassess the matchup based on new analysis.
+        </p>
+
+        <h3>Steam moves</h3>
+        <p>
+          Rapid, coordinated betting across multiple sportsbooks causes "steam" moves. When sharp bettors hit a number simultaneously across the market, lines move quickly in the same direction everywhere.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What Does Line Movement Tell You?" id="what-tells">
+        <h3>Where the market is settling</h3>
+        <p>
+          The closing line represents the market's consensus price after incorporating all available information and betting action. Over time, closing lines tend to be efficient—they're hard to beat consistently.
+        </p>
+
+        <h3>That something changed</h3>
+        <p>
+          Movement indicates the market received new information or adjusted its assessment. It doesn't tell you whether the new price is more or less accurate than the old one for your specific analysis.
+        </p>
+
+        <h3>Potential betting patterns</h3>
+        <p>
+          Large moves often indicate sharp action. But you can't know for certain from movement alone whether the action is truly informed or just large.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What Does Line Movement NOT Tell You?" id="what-not-tells">
+        <Callout type="warning" title="Line Movement Has Limits">
+          <p>
+            Line movement is often overinterpreted. It doesn't give you an edge by itself, and following moves blindly is a recipe for mediocre results.
+          </p>
+        </Callout>
+
+        <h3>Which side will win</h3>
+        <p>
+          Movement reflects market activity, not game outcomes. A line moving from -3 to -5 doesn't mean the favorite is more likely to cover. It means more money came in on the favorite or new information emerged favoring them.
+        </p>
+
+        <h3>Whether you should follow the move</h3>
+        <p>
+          By the time you see a move, the value may already be captured. If the line moved from +3 to +1 because sharp money hit the underdog at +3, betting +1 doesn't give you the same edge—you're betting a worse number.
+        </p>
+
+        <h3>That the new line is "correct"</h3>
+        <p>
+          Markets are efficient but not perfect. Lines can overcorrect. Sharp action can be wrong. The closing line is a good benchmark, but it's not truth.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="How Do Bettors Misinterpret Line Movement?" id="misinterpretations">
+        <h3>Assuming movement equals information</h3>
+        <p>
+          Not all line moves reflect superior analysis. Large recreational bets, sportsbook risk management, and market noise all cause movement. Don't assume every move is "sharp."
+        </p>
+
+        <h3>Chasing steam</h3>
+        <p>
+          By the time you see steam and react, you're betting a worse number than those who caused the move. You're paying for information that's already priced in.
+        </p>
+
+        <h3>Betting against movement</h3>
+        <p>
+          Conversely, automatically fading line movement is also flawed. "The line moved toward the favorite, so I'll bet the underdog" ignores that the move may be correct.
+        </p>
+
+        <h3>Ignoring the reason for movement</h3>
+        <p>
+          A line moving due to injury news is different from a line moving due to sharp action. Understanding why a line moved matters more than knowing that it moved.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <p>
+          Line movement is information, but it requires interpretation:
+        </p>
+        <ul>
+          <li><strong>Have your own opinion first:</strong> If you decide a bet has value at a certain price, line movement toward that price doesn't make it better—it makes it worse. Movement away from your price might create more value.</li>
+          <li><strong>Consider the source:</strong> Try to understand why a line moved. News-driven moves are different from action-driven moves.</li>
+          <li><strong>Don't chase:</strong> Getting the worst of a number because you followed a move defeats the purpose. If you missed a move, you missed it.</li>
+          <li><strong>Use CLV as a measure:</strong> Track whether your bets beat the closing line. Consistently beating the close suggests you're finding value; consistently being on the wrong side of moves suggests your timing or analysis needs work.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Common Misconceptions" id="misconceptions">
+        <h3>"Reverse line movement means sharp action"</h3>
+        <p>
+          Reverse line movement (RLM) occurs when a line moves opposite to where public bet percentages suggest. It's often cited as evidence of sharp action. But RLM data from public sources is imprecise, and the relationship between bet counts, money, and line movement is more complex than this heuristic suggests.
+        </p>
+
+        <h3>"I should wait for the line to move before betting"</h3>
+        <p>
+          If you think a bet has value now, waiting for line movement risks the line moving against you. Bet when you believe you have an edge, not when you're hoping for external validation.
+        </p>
+
+        <h3>"The opening line is the 'true' line"</h3>
+        <p>
+          Opening lines are the book's first estimate, often posted with lower limits and more uncertainty. Closing lines typically incorporate more information and are generally more accurate.
+        </p>
+
+        <h3>"Following line movement is a strategy"</h3>
+        <p>
+          Following moves is not a sustainable edge. The bettors who move lines capture value by getting better numbers than the market settles on. Following them means getting worse numbers.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="When This Matters Most" id="when-matters">
+        <ul>
+          <li><strong>Early in the week:</strong> Lines are more volatile and opportunities exist to beat the closing line.</li>
+          <li><strong>Around injury news:</strong> Lines adjust quickly to significant injury information. Speed matters.</li>
+          <li><strong>Close to game time:</strong> Late moves often reflect final injury confirmations or large late action.</li>
+          <li><strong>During high-profile games:</strong> Heavy public betting can create value on the opposite side, but this is often overstated.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Lines move due to new information, betting action, and market correction</li>
+          <li>Movement tells you where the market is settling, not which side is correct</li>
+          <li>Chasing line movement means betting worse numbers than those who moved the line</li>
+          <li>Have your own analysis before looking at line movement</li>
+          <li>Closing line value (CLV) is a better measure of skill than following moves</li>
+          <li>Understanding why a line moved matters more than knowing it moved</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard
+              title={page.title}
+              href={page.href}
+              description={page.description}
+            />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .quick-take {
+    background-color: var(--color-surface);
+    border-left: 4px solid var(--color-accent);
+    padding: var(--spacing-lg);
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .quick-take h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .quick-take p {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+  }
+
+  @media (max-width: 768px) {
+    .related-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

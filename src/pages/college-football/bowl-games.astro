@@ -1,0 +1,107 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import ContentSection from '../../components/ContentSection.astro';
+import Callout from '../../components/Callout.astro';
+import LinkCard from '../../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'College Football Hub', href: '/college-football-betting', description: 'Complete CFB guide' },
+  { title: 'Conference Championships', href: '/college-football/conference-championships', description: 'Championship games' },
+  { title: 'Rivalry Games', href: '/college-football/rivalry-games', description: 'Rivalry dynamics' },
+];
+---
+
+<Layout
+  title="Bowl Game Betting Guide"
+  description="How bowl game betting differs from regular season, motivation factors, opt-outs, and market dynamics during the postseason."
+>
+  <Hero
+    title="Bowl Game Betting Guide"
+    subtitle="Postseason College Football Betting Considerations"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            Bowl games feature unique dynamics: extended preparation time, neutral sites, motivation mismatches, and player opt-outs. Unlike regular season games, bowl games often see star players skip to protect NFL draft stock, coaching changes disrupt preparation, and teams with vastly different motivation levels compete. Understanding these factors is essential for bowl season betting.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="What Makes Bowl Games Different?" id="differences">
+        <h3>Player opt-outs</h3>
+        <p>
+          NFL prospects increasingly skip bowl games to avoid injury before the draft. Losing a team's best player (or multiple players) dramatically affects competitive balance. Lines adjust, but opt-out announcements can come late.
+        </p>
+
+        <h3>Motivation mismatches</h3>
+        <p>
+          A team that missed the playoff might view a consolation bowl as meaningless. A team playing in its first bowl in years might be highly motivated. These motivation gaps can be substantial.
+        </p>
+
+        <h3>Extended preparation time</h3>
+        <p>
+          Bowl games have 3-4 weeks of preparation. Coaching quality matters more with extra time. First-year coaches face unfamiliar schemes with more prep.
+        </p>
+
+        <h3>Coaching changes</h3>
+        <p>
+          Many coaching changes occur between the regular season and bowl games. Interim coaches may or may not prepare teams effectively.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <ul>
+          <li><strong>Monitor opt-outs:</strong> Lines move significantly when star players sit out.</li>
+          <li><strong>Assess motivation:</strong> Which team actually cares about winning this game?</li>
+          <li><strong>Consider coaching situations:</strong> New coaches, interim coaches, and coaching carryovers all matter.</li>
+          <li><strong>Wait for line clarity:</strong> Early bowl lines can move dramatically; patience may be rewarded.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Common Misconceptions" id="misconceptions">
+        <h3>"Better records win bowls"</h3>
+        <p>
+          Records don't account for opt-outs, motivation, or preparation quality. An 8-4 team can beat a 10-2 team if circumstances favor them.
+        </p>
+
+        <h3>"SEC dominates bowls"</h3>
+        <p>
+          Conference bowl records vary year to year. Historical dominance doesn't predict current matchups.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Opt-outs dramatically change competitive balance</li>
+          <li>Motivation mismatches are common in non-playoff bowls</li>
+          <li>Extended prep time benefits good coaching staffs</li>
+          <li>Coaching changes create uncertainty</li>
+          <li>Monitor news closely before betting bowl games</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard title={page.title} href={page.href} description={page.description} />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content { padding: var(--spacing-3xl) 0; }
+  .quick-take { background-color: var(--color-surface); border-left: 4px solid var(--color-accent); padding: var(--spacing-lg); border-radius: 0 var(--border-radius) var(--border-radius) 0; margin-bottom: var(--spacing-xl); }
+  .quick-take h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-accent); margin-bottom: var(--spacing-sm); }
+  .quick-take p { margin: 0; color: var(--color-text-secondary); }
+  .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-top: var(--spacing-lg); }
+  @media (max-width: 768px) { .related-grid { grid-template-columns: 1fr; } }
+</style>

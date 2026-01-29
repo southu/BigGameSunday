@@ -1,0 +1,195 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import ContentSection from '../../components/ContentSection.astro';
+import Callout from '../../components/Callout.astro';
+import LinkCard from '../../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'College Basketball Hub', href: '/college-basketball-betting', description: 'Complete CBB betting guide' },
+  { title: 'March Madness', href: '/college-basketball/march-madness-betting', description: 'NCAA Tournament wagering' },
+  { title: 'Live Betting', href: '/college-basketball/live-betting', description: 'In-game wagering' },
+];
+---
+
+<Layout
+  title="Conference Tournament Betting Guide"
+  description="How to approach conference tournament betting, motivation factors, bubble dynamics, and what makes these events different from regular season games."
+>
+  <Hero
+    title="Conference Tournament Betting"
+    subtitle="Pre-March Madness Tournament Betting Considerations"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            Conference tournaments occur in early March before the NCAA Tournament. They determine automatic bids and affect bubble teams' tournament chances. Motivation varies wildly—some teams are playing for their season while others are resting for March Madness. Understanding which teams care about winning is essential for conference tournament betting.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="What Makes Conference Tournaments Different?" id="differences">
+        <h3>Wildly uneven motivation</h3>
+        <p>
+          A team locked into a 2-seed in March Madness might not care about winning their conference tournament. A bubble team needs every win to secure an at-large bid. A team that can only make the NCAA Tournament by winning their conference tournament is desperate. These motivation gaps are enormous.
+        </p>
+
+        <h3>Compressed schedules</h3>
+        <p>
+          Teams might play 3-4 games in 4-5 days. Depth, fatigue, and injury risk become major factors. Teams with shorter rotations struggle in back-to-back scenarios.
+        </p>
+
+        <h3>Neutral sites with varying fan bases</h3>
+        <p>
+          Conference tournaments are played at predetermined neutral sites. Higher seeds often have more fans due to proximity or program popularity. The "neutral" designation can be misleading.
+        </p>
+
+        <h3>Familiarity</h3>
+        <p>
+          Conference opponents have played each other at least twice during the season. Coaches know each other's tendencies. Adjustments from regular season games matter.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="How Does Motivation Affect Betting?" id="motivation">
+        <Callout type="info" title="Motivation Is the Key Variable">
+          <p>
+            More than any other college basketball event, conference tournaments require assessing which teams actually want to win versus which teams are just going through the motions.
+          </p>
+        </Callout>
+
+        <h3>Locked NCAA teams</h3>
+        <p>
+          Teams certain of their NCAA Tournament position may rest starters, limit minutes, or simply not compete with full intensity. A 1-seed in March Madness might not care about winning the ACC Tournament.
+        </p>
+
+        <h3>Bubble teams</h3>
+        <p>
+          Teams on the NCAA Tournament bubble are highly motivated. Every win improves their resume. They'll play hard even in early rounds against inferior opponents.
+        </p>
+
+        <h3>Automatic bid hunters</h3>
+        <p>
+          Teams from mid-major conferences that can only reach March Madness by winning their conference tournament are maximally motivated. This is their season.
+        </p>
+
+        <h3>Already eliminated teams</h3>
+        <p>
+          Teams with no NCAA Tournament hope and no NIT aspirations might simply be playing out the string. Senior nights can provide temporary motivation, but the season is effectively over.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <ul>
+          <li><strong>Research tournament positioning:</strong> Know which teams are locked, bubbles, or auto-bid dependent before betting.</li>
+          <li><strong>Fade resting teams:</strong> A top-10 team that's locked might be a bad bet against a hungry lower seed.</li>
+          <li><strong>Back desperate teams:</strong> Bubble teams and auto-bid hunters play with intensity that locked teams often lack.</li>
+          <li><strong>Consider fatigue:</strong> Who played yesterday? Who has the deeper bench? Late-tournament games favor depth.</li>
+          <li><strong>Watch for revenge games:</strong> Conference opponents who lost earlier in the season may be particularly motivated for redemption.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Common Misconceptions" id="misconceptions">
+        <h3>"All games matter equally"</h3>
+        <p>
+          Conference tournament games matter very differently depending on team positioning. Don't treat a championship game and a first-round game the same way.
+        </p>
+
+        <h3>"The better team always wins"</h3>
+        <p>
+          Motivation mismatches can overcome talent gaps. A motivated mid-seed can beat a better but disinterested top seed.
+        </p>
+
+        <h3>"Conference tournaments predict March Madness success"</h3>
+        <p>
+          Teams that win conference tournaments while resting starters often perform better in March. Teams that burn energy winning conference tournaments may be fatigued. Causation is complex.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="When This Matters Most" id="when-matters">
+        <ul>
+          <li><strong>Early rounds:</strong> Motivation mismatches are largest when top seeds face bottom seeds</li>
+          <li><strong>Bubble watch games:</strong> Teams fighting for at-large bids play with maximum intensity</li>
+          <li><strong>Mid-major championships:</strong> Only one bid available; desperation is highest</li>
+          <li><strong>Power conference late rounds:</strong> Most teams remaining are motivated; talent dominates</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Decision Checklist" id="checklist">
+        <ul>
+          <li>Is this team locked into their NCAA Tournament position?</li>
+          <li>Is this team on the bubble and desperate for wins?</li>
+          <li>Does this team need to win the tournament to reach March Madness?</li>
+          <li>Who played yesterday and might be fatigued?</li>
+          <li>Are there any revenge or rivalry dynamics at play?</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Motivation varies wildly based on tournament positioning</li>
+          <li>Locked NCAA teams may not compete with full intensity</li>
+          <li>Bubble teams and auto-bid hunters are highly motivated</li>
+          <li>Fatigue accumulates quickly in compressed schedules</li>
+          <li>Assess motivation before assuming the better team will win</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard
+              title={page.title}
+              href={page.href}
+              description={page.description}
+            />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .quick-take {
+    background-color: var(--color-surface);
+    border-left: 4px solid var(--color-accent);
+    padding: var(--spacing-lg);
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .quick-take h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .quick-take p {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+  }
+
+  @media (max-width: 768px) {
+    .related-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

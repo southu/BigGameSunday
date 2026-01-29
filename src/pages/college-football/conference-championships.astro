@@ -1,0 +1,87 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import ContentSection from '../../components/ContentSection.astro';
+import LinkCard from '../../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'College Football Hub', href: '/college-football-betting', description: 'Complete CFB guide' },
+  { title: 'Bowl Games', href: '/college-football/bowl-games', description: 'Postseason betting' },
+  { title: 'Rivalry Games', href: '/college-football/rivalry-games', description: 'Rivalry dynamics' },
+];
+---
+
+<Layout
+  title="Conference Championship Betting Guide"
+  description="Betting considerations for college football conference championship games, playoff implications, rematch dynamics, and market factors."
+>
+  <Hero
+    title="Conference Championship Betting"
+    subtitle="High-Stakes Title Game Considerations"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            Conference championship games determine playoff bids and feature teams that often played earlier in the season. Rematch dynamics, playoff implications, and high public interest create unique market conditions. These games draw significant betting volume, making lines generally sharp, but narrative-driven betting and recency bias can still create opportunities.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="What Makes Championship Games Unique?" id="unique">
+        <h3>Rematch dynamics</h3>
+        <p>
+          Many championship games are rematches from the regular season. Coaches adjust schemes based on previous matchups. The result of the first game influences market perception, sometimes incorrectly.
+        </p>
+
+        <h3>Playoff implications</h3>
+        <p>
+          Some teams need to win for playoff contention; others are already locked in. Motivation levels vary based on broader stakes.
+        </p>
+
+        <h3>Neutral sites</h3>
+        <p>
+          Most conference championships are at neutral sites, though proximity often favors one team's fan base.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <ul>
+          <li><strong>Don't overweight the first game:</strong> Both teams make adjustments. Expect a different game.</li>
+          <li><strong>Consider motivation:</strong> Is winning necessary for playoff access, or just seeding?</li>
+          <li><strong>Respect line efficiency:</strong> High-profile games draw sharp action; lines are generally accurate.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Rematch dynamics mean the first game doesn't predict the second</li>
+          <li>Playoff implications affect motivation levels</li>
+          <li>High betting volume creates efficient lines</li>
+          <li>Neutral sites reduce home field effects</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard title={page.title} href={page.href} description={page.description} />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content { padding: var(--spacing-3xl) 0; }
+  .quick-take { background-color: var(--color-surface); border-left: 4px solid var(--color-accent); padding: var(--spacing-lg); border-radius: 0 var(--border-radius) var(--border-radius) 0; margin-bottom: var(--spacing-xl); }
+  .quick-take h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-accent); margin-bottom: var(--spacing-sm); }
+  .quick-take p { margin: 0; color: var(--color-text-secondary); }
+  .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-top: var(--spacing-lg); }
+  @media (max-width: 768px) { .related-grid { grid-template-columns: 1fr; } }
+</style>

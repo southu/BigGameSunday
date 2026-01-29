@@ -1,0 +1,214 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import ContentSection from '../../components/ContentSection.astro';
+import Callout from '../../components/Callout.astro';
+import LinkCard from '../../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'All Tools', href: '/tools', description: 'Betting calculators hub' },
+  { title: 'How Odds Work', href: '/how-betting-odds-work', description: 'Understanding odds formats' },
+  { title: 'Glossary', href: '/glossary', description: 'Betting terminology' },
+];
+---
+
+<Layout
+  title="Odds Converter"
+  description="Convert between American, decimal, and fractional odds formats. Understand implied probability and how different odds represent the same thing."
+>
+  <Hero
+    title="Odds Converter"
+    subtitle="Converting Between American, Decimal, and Fractional Odds"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            An odds converter translates between different odds formats: American (e.g., -110, +150), decimal (e.g., 1.91, 2.50), and fractional (e.g., 10/11, 3/2). All three formats express the same information—potential payout and implied probability—just in different ways. This tool helps you compare odds across sportsbooks that use different formats and calculate implied probability quickly.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="What Does This Tool Do?" id="what-does">
+        <p>
+          An odds converter takes odds in one format and displays the equivalent in all formats plus the implied probability. Enter -150 American and see:
+        </p>
+        <ul>
+          <li>Decimal: 1.67</li>
+          <li>Fractional: 2/3</li>
+          <li>Implied probability: 60%</li>
+        </ul>
+        <p>
+          The tool handles the conversion formulas automatically, eliminating manual calculation errors.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="When Should I Use an Odds Converter?" id="when-use">
+        <h3>When line shopping across international books</h3>
+        <p>
+          US sportsbooks use American odds. European books often use decimal. UK books use fractional. To compare prices across markets, you need to convert to a common format.
+        </p>
+
+        <h3>When calculating implied probability</h3>
+        <p>
+          Knowing that -200 implies a 66.7% probability helps you evaluate whether your own assessment differs enough to warrant a bet. The converter does this calculation instantly.
+        </p>
+
+        <h3>When learning to read odds</h3>
+        <p>
+          Seeing the same line in multiple formats builds intuition. Over time, you'll read -110 and immediately think "52.4% implied, 1.91 decimal" without needing the tool.
+        </p>
+
+        <h3>When explaining bets to others</h3>
+        <p>
+          Different people are comfortable with different formats. Converting allows you to communicate in whatever format your audience understands.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="When Should I NOT Use an Odds Converter?" id="when-not-use">
+        <Callout type="info" title="Conversion Is Mechanical, Not Analytical">
+          <p>
+            Converting odds doesn't help you find value. It just changes the representation. Don't confuse being able to read odds in multiple formats with having an edge.
+          </p>
+        </Callout>
+
+        <h3>As a substitute for understanding odds</h3>
+        <p>
+          If you always rely on the converter, you're not building the intuition needed for quick decision-making. Learn the relationships between formats so the tool becomes a convenience, not a crutch.
+        </p>
+
+        <h3>To make bad odds look better</h3>
+        <p>
+          -150 doesn't become more attractive just because you can express it as 1.67 or 2/3. The payout structure is identical.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Example Scenarios" id="examples">
+        <h3>Comparing two sportsbooks</h3>
+        <p>
+          Book A offers +145 American. Book B offers 2.40 decimal. Which is better? The converter shows +145 = 2.45 decimal. Book A offers the better price by 0.05, which translates to a meaningful edge over time.
+        </p>
+
+        <h3>Evaluating your probability estimate</h3>
+        <p>
+          You think Team X has a 55% chance to cover. The line is -130 American. The converter shows -130 implies 56.5% probability. Your estimate suggests the bet is slightly -EV. Without conversion, this analysis is harder to do quickly.
+        </p>
+
+        <h3>Understanding promotional odds</h3>
+        <p>
+          A sportsbook advertises "boosted odds: 3/1 on Team Y." The converter shows this is +300 American, implying a 25% probability. You can now compare this to the standard line and your own assessment.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <p>
+          Odds conversion is a foundational skill that supports better betting:
+        </p>
+        <ul>
+          <li><strong>Enables effective line shopping:</strong> Can't compare what you can't read</li>
+          <li><strong>Reveals implied probability:</strong> The key metric for evaluating value</li>
+          <li><strong>Builds market literacy:</strong> Understanding multiple formats helps you navigate the global betting market</li>
+          <li><strong>Removes calculation errors:</strong> Manual conversions are error-prone under pressure</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Common Misconceptions" id="misconceptions">
+        <h3>"Decimal odds are more accurate"</h3>
+        <p>
+          All formats express the same information with identical precision. Decimal odds are simpler for calculating total return (stake x odds = total payout), but they're not inherently more accurate.
+        </p>
+
+        <h3>"Fractional odds are outdated"</h3>
+        <p>
+          Fractional odds remain standard in UK horse racing and traditional betting. Understanding them is still useful, especially for international markets.
+        </p>
+
+        <h3>"Converting odds helps me win more"</h3>
+        <p>
+          Conversion is a prerequisite for analysis, not a source of edge. It helps you understand the market; it doesn't tell you what to bet.
+        </p>
+
+        <h3>"All -110 lines are the same"</h3>
+        <p>
+          Sportsbooks may offer -110 but with different vig structures on the other side. A -110/-110 market is different from -108/-112. The converter handles individual lines; comparing full markets requires additional analysis.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="When This Matters Most" id="when-matters">
+        <ul>
+          <li><strong>International betting:</strong> Comparing odds across US and European books</li>
+          <li><strong>Promotions and boosts:</strong> Understanding what boosted odds actually represent</li>
+          <li><strong>Learning phase:</strong> Building intuition about odds relationships</li>
+          <li><strong>Quick calculations:</strong> Implied probability for value assessment</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>American, decimal, and fractional odds express the same information differently</li>
+          <li>Conversion enables line shopping across international sportsbooks</li>
+          <li>Implied probability is the most important output—it enables value assessment</li>
+          <li>Learn to recognize common conversions intuitively</li>
+          <li>Conversion is mechanical; finding value requires analysis</li>
+          <li>Use the tool to support your process, not replace understanding</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard
+              title={page.title}
+              href={page.href}
+              description={page.description}
+            />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .quick-take {
+    background-color: var(--color-surface);
+    border-left: 4px solid var(--color-accent);
+    padding: var(--spacing-lg);
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .quick-take h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .quick-take p {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+  }
+
+  @media (max-width: 768px) {
+    .related-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

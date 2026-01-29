@@ -1,0 +1,118 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import ContentSection from '../components/ContentSection.astro';
+import Callout from '../components/Callout.astro';
+import LinkCard from '../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'Big Games & Tournaments', href: '/big-games-tournaments', description: 'Event dynamics' },
+  { title: 'Common Mistakes', href: '/common-betting-mistakes', description: 'Avoiding errors' },
+  { title: 'Responsible Betting', href: '/responsible-betting', description: 'Staying in control' },
+];
+---
+
+<Layout
+  title="Why Big Games Attract Bad Bets"
+  description="The psychology behind why major sporting events like the Super Bowl lead to poor betting decisions and how to protect yourself."
+>
+  <Hero
+    title="Why Big Games Attract Bad Bets"
+    subtitle="The Psychology of High-Profile Event Betting"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            Major events like the Super Bowl, March Madness finals, and championship games draw massive casual betting participation. The combination of social pressure, FOMO, narrative saturation, and unusual bet types creates an environment optimized for poor decisions. Understanding why big games specifically encourage bad betting helps you resist the pressure and maintain discipline when it matters most.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="What Makes Big Games Different?" id="difference">
+        <h3>Social pressure to participate</h3>
+        <p>
+          When everyone at the party has a bet on the game, not betting feels like missing out. This social pressure encourages betting for participation rather than edge—the worst reason to bet.
+        </p>
+
+        <h3>Media narrative saturation</h3>
+        <p>
+          Major events receive weeks of analysis, storylines, and takes. By game time, you've absorbed so many narratives that separating signal from noise becomes nearly impossible.
+        </p>
+
+        <h3>Unusual bet types proliferate</h3>
+        <p>
+          Prop bets, exotic parlays, and novelty wagers expand dramatically for big games. These high-margin bets target casual participation, not informed wagering.
+        </p>
+
+        <h3>Casual money floods the market</h3>
+        <p>
+          People who never bet suddenly have opinions on the Super Bowl. This influx can move lines and create noise that doesn't reflect informed analysis.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Why Does This Lead to Bad Decisions?" id="bad-decisions">
+        <Callout type="warning" title="Big Games Optimize for Entertainment, Not Profit">
+          <p>
+            Sportsbooks know big events bring inexperienced bettors. The products they offer and promotions they run are designed to maximize engagement, not bettor success.
+          </p>
+        </Callout>
+
+        <h3>Betting becomes social rather than analytical</h3>
+        <p>
+          When you're betting to have action with friends, you're not betting based on edge. The criteria for the bet shifts from "is this +EV?" to "will this be fun to sweat?"
+        </p>
+
+        <h3>Narrative thinking replaces probabilistic thinking</h3>
+        <p>
+          Stories about "destiny" and "legacy" feel compelling but have no predictive value. Narratives are entertainment, not analysis.
+        </p>
+
+        <h3>Prop bets exploit entertainment seeking</h3>
+        <p>
+          Super Bowl prop bets carry enormous vig. Betting on coin flips, anthem length, or first score type is gambling, not betting.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <ul>
+          <li><strong>Recognize the environment:</strong> Big games are designed to extract money from casual participants.</li>
+          <li><strong>Maintain your normal process:</strong> If you wouldn't bet this way on a random Tuesday, don't bet this way for the Super Bowl.</li>
+          <li><strong>It's okay to not bet:</strong> Not having action on the big game is perfectly acceptable.</li>
+          <li><strong>If you bet for fun, acknowledge it:</strong> Entertainment betting has different rules than serious betting. Set a limit and accept the cost.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Social pressure drives betting participation regardless of edge</li>
+          <li>Media narratives replace analytical thinking</li>
+          <li>Prop bets and exotic wagers target casual money with high vig</li>
+          <li>Your normal process should apply to big games too</li>
+          <li>Not betting is always an option</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard title={page.title} href={page.href} description={page.description} />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content { padding: var(--spacing-3xl) 0; }
+  .quick-take { background-color: var(--color-surface); border-left: 4px solid var(--color-accent); padding: var(--spacing-lg); border-radius: 0 var(--border-radius) var(--border-radius) 0; margin-bottom: var(--spacing-xl); }
+  .quick-take h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-accent); margin-bottom: var(--spacing-sm); }
+  .quick-take p { margin: 0; color: var(--color-text-secondary); }
+  .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-top: var(--spacing-lg); }
+  @media (max-width: 768px) { .related-grid { grid-template-columns: 1fr; } }
+</style>

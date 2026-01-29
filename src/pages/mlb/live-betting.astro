@@ -1,0 +1,88 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import ContentSection from '../../components/ContentSection.astro';
+import LinkCard from '../../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'MLB Betting Hub', href: '/mlb-betting', description: 'Complete MLB guide' },
+  { title: 'Pitching Strategy', href: '/mlb/pitching-strategy', description: 'Pitcher analysis' },
+  { title: 'Season Discipline', href: '/mlb/season-discipline', description: 'Long season approach' },
+];
+---
+
+<Layout
+  title="MLB Live Betting Guide"
+  description="In-game betting for baseball, pitching changes, leverage situations, and when live wagering might offer opportunities in MLB."
+>
+  <Hero
+    title="MLB Live Betting Guide"
+    subtitle="In-Game Baseball Wagering Considerations"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            Baseball's discrete play structure—pitch by pitch, at-bat by at-bat—makes live betting granular and data-rich. Pitching changes, bullpen usage, and leverage situations create meaningful in-game price movements. However, MLB live markets are sophisticated, and the perceived opportunity of a struggling starter often arrives too late. Selectivity and pre-planned scenarios are essential.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="What Makes MLB Live Betting Unique?" id="unique">
+        <h3>Pitching changes dramatically shift lines</h3>
+        <p>
+          When a starter exits, the game's complexion changes entirely. Bullpen quality, matchup advantages, and remaining innings all factor into new pricing.
+        </p>
+
+        <h3>Discrete play structure</h3>
+        <p>
+          Unlike continuous sports, baseball stops between every pitch. Live betting can target specific situations, innings, or matchups.
+        </p>
+
+        <h3>Long games with many betting windows</h3>
+        <p>
+          Nine innings (or more) provide numerous opportunities—and numerous chances to make mistakes.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <ul>
+          <li><strong>Plan scenarios before the game:</strong> Know which bullpen matchups you want to target.</li>
+          <li><strong>Watch pitch counts:</strong> Anticipate starter exits before they happen.</li>
+          <li><strong>Respect market speed:</strong> Algorithms price pitching changes almost instantly.</li>
+          <li><strong>Consider totals:</strong> Inning-by-inning totals offer specific targeting.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Pitching changes are the primary line-moving events</li>
+          <li>Discrete play structure allows specific situation targeting</li>
+          <li>Long games provide many opportunities (and pitfalls)</li>
+          <li>Pre-plan scenarios rather than betting reactively</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard title={page.title} href={page.href} description={page.description} />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content { padding: var(--spacing-3xl) 0; }
+  .quick-take { background-color: var(--color-surface); border-left: 4px solid var(--color-accent); padding: var(--spacing-lg); border-radius: 0 var(--border-radius) var(--border-radius) 0; margin-bottom: var(--spacing-xl); }
+  .quick-take h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-accent); margin-bottom: var(--spacing-sm); }
+  .quick-take p { margin: 0; color: var(--color-text-secondary); }
+  .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-top: var(--spacing-lg); }
+  @media (max-width: 768px) { .related-grid { grid-template-columns: 1fr; } }
+</style>

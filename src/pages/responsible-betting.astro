@@ -1,0 +1,252 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import ContentSection from '../components/ContentSection.astro';
+import Callout from '../components/Callout.astro';
+import LinkCard from '../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'Betting Strategy', href: '/betting-strategy', description: 'Framework for disciplined betting decisions' },
+  { title: 'Common Mistakes', href: '/common-betting-mistakes', description: 'Behavioral errors to avoid' },
+  { title: 'Bankroll Calculator', href: '/tools/bankroll-calculator', description: 'Size your bets appropriately' },
+];
+---
+
+<Layout
+  title="Responsible Betting Guide"
+  description="A comprehensive guide to responsible sports betting covering bankroll management, psychological bias, emotional discipline, and knowing when not to bet."
+>
+  <Hero
+    title="Responsible Betting Guide"
+    subtitle="Protecting Your Bankroll, Your Time, and Your Well-Being"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            Responsible betting is about treating sports wagering as entertainment with a defined budget, not as a path to income. This guide covers the mental frameworks, practical habits, and warning signs that separate sustainable betting from harmful behavior. The most important skill in betting is knowing when not to bet at all.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="What Is Responsible Betting?" id="definition">
+        <p>
+          Responsible betting means wagering within your financial and emotional limits. It treats betting as a form of entertainment with a cost, not as a way to make money or solve financial problems.
+        </p>
+        <p>
+          The defining characteristic of responsible betting is control: you decide how much to risk, when to stop, and whether to bet at all. When you lose that control, betting stops being entertainment and becomes a problem.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Why Does This Matter?" id="why-matters">
+        <p>
+          Sports betting is designed to be engaging. The combination of sports knowledge, real-time action, and the possibility of winning creates a compelling experience. That same design makes it easy to bet more than intended, chase losses, or let outcomes affect your mood.
+        </p>
+        <p>
+          Responsible betting practices protect you from the psychological traps built into gambling products. They're not about being overly cautious—they're about staying in control so you can enjoy betting long-term without negative consequences.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="How Do I Set a Betting Budget?" id="budget">
+        <h3>What is a betting bankroll?</h3>
+        <p>
+          Your bankroll is money set aside specifically for betting—money you can lose entirely without affecting your rent, bills, savings, or quality of life. It's not your checking account. It's not money earmarked for other purposes.
+        </p>
+
+        <h3>How much should my bankroll be?</h3>
+        <p>
+          There's no universal answer. A responsible bankroll is whatever amount you could lose completely and feel no financial stress. For many people, that's a few hundred dollars. For others, it might be more or less.
+        </p>
+        <p>
+          The key test: if you lost your entire bankroll this weekend, would you need to change anything about your life? If yes, your bankroll is too large.
+        </p>
+
+        <h3>How do I size individual bets?</h3>
+        <p>
+          Flat betting—wagering the same amount on every bet—is the simplest responsible approach. Most disciplined bettors risk 1-3% of their bankroll per bet. This protects against losing streaks and keeps any single bet from mattering too much.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What Are the Psychological Traps in Betting?" id="psychology">
+        <h3>Chasing losses</h3>
+        <p>
+          After losing, the urge to place larger bets to "get even" is one of the most common and destructive patterns. Chasing losses leads to oversized bets, poor decisions, and accelerated bankroll depletion.
+        </p>
+        <p>
+          The antidote is accepting that losses are part of betting. A flat betting approach with consistent unit sizes prevents chase behavior by design.
+        </p>
+
+        <h3>Overconfidence after wins</h3>
+        <p>
+          Winning streaks create a false sense of skill. In reality, short-term results are heavily influenced by variance. Overconfidence leads to larger bets, less rigorous analysis, and eventually, bigger losses.
+        </p>
+
+        <h3>The sunk cost fallacy</h3>
+        <p>
+          Feeling like you need to keep betting to justify previous losses is irrational but common. Past losses are gone. Each new bet should be evaluated on its own merits, not as a way to recover what's already lost.
+        </p>
+
+        <h3>Emotional betting</h3>
+        <p>
+          Betting while angry, frustrated, drunk, or desperate leads to poor decisions. If you're not in a calm, analytical state, you shouldn't be placing bets.
+        </p>
+      </ContentSection>
+
+      <Callout type="info" title="The Best Bet Is Often No Bet">
+        <p>
+          Disciplined bettors pass on far more bets than they take. Having the patience to wait for genuine opportunities—rather than betting to cure boredom or satisfy the urge to have action—is a defining characteristic of responsible betting.
+        </p>
+      </Callout>
+
+      <ContentSection title="When Should I Not Bet?" id="when-not-bet">
+        <p>Not every day is a betting day. Responsible bettors recognize situations where the right decision is to sit out entirely:</p>
+        <ul>
+          <li><strong>When you're chasing:</strong> If your motivation is recovering losses, stop.</li>
+          <li><strong>When you're emotional:</strong> Anger, frustration, excitement, or intoxication impair judgment.</li>
+          <li><strong>When you haven't done the work:</strong> Betting without analysis is gambling on gut feeling.</li>
+          <li><strong>When the edge isn't clear:</strong> If you can't articulate why a bet is +EV, it probably isn't.</li>
+          <li><strong>When it affects other priorities:</strong> If betting time is taking from work, relationships, or health.</li>
+          <li><strong>When you're betting with needed money:</strong> Bill money or savings should never be at risk.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="What Are the Warning Signs of Problem Gambling?" id="warning-signs">
+        <p>Problem gambling develops gradually. Recognizing early warning signs allows intervention before serious harm occurs:</p>
+        <ul>
+          <li>Betting more than you intended or can afford</li>
+          <li>Lying about betting activity to family or friends</li>
+          <li>Borrowing money or selling possessions to fund betting</li>
+          <li>Feeling restless or irritable when trying to cut back</li>
+          <li>Using betting to escape problems or relieve negative moods</li>
+          <li>Returning to bet more after losing (chasing)</li>
+          <li>Neglecting work, relationships, or responsibilities due to betting</li>
+          <li>Failed attempts to control, cut back, or stop betting</li>
+        </ul>
+        <p>
+          If several of these apply to you, it's time to seek help. Problem gambling is treatable, and support is available.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <p>
+          Responsible betting isn't about being timid or avoiding risk. It's about ensuring that betting remains a choice rather than a compulsion. The practical implications:
+        </p>
+        <ul>
+          <li>Define your bankroll before you start, not after losses</li>
+          <li>Use flat betting with 1-3% unit sizes</li>
+          <li>Never chase losses with larger bets</li>
+          <li>Take breaks after losing streaks</li>
+          <li>Don't bet when emotional or impaired</li>
+          <li>Track your bets honestly, including losses</li>
+          <li>Know the warning signs and take them seriously</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Common Misconceptions" id="misconceptions">
+        <h3>"I can win it back"</h3>
+        <p>
+          Past losses don't affect future probabilities. Each bet is independent. The belief that you're "due" for a win after losses is the gambler's fallacy.
+        </p>
+
+        <h3>"I only bet what I can afford to lose"</h3>
+        <p>
+          This phrase often masks poor bankroll management. If you're repeatedly funding your account or borrowing between paydays, you're not actually betting within your means.
+        </p>
+
+        <h3>"I'm in control—I can stop whenever I want"</h3>
+        <p>
+          The test isn't whether you believe you can stop. It's whether you actually do stop when you should. If you regularly exceed planned limits, control is already compromised.
+        </p>
+
+        <h3>"It's just entertainment"</h3>
+        <p>
+          True entertainment has a defined cost. If your betting "entertainment" regularly exceeds your budget or causes stress, it's no longer functioning as entertainment.
+        </p>
+      </ContentSection>
+
+      <Callout type="warning" title="Help Is Available">
+        <p>
+          If gambling is causing problems in your life, support is available. The National Council on Problem Gambling offers a confidential helpline at <strong>1-800-522-4700</strong> (available 24/7). You can also text or chat at <a href="https://www.ncpgambling.org/">ncpgambling.org</a>.
+        </p>
+      </Callout>
+
+      <ContentSection title="When This Matters Most" id="when-matters">
+        <p>Responsible betting practices are especially important during:</p>
+        <ul>
+          <li><strong>Major events:</strong> Super Bowl, March Madness, and playoffs create pressure to bet more</li>
+          <li><strong>Losing streaks:</strong> The urge to chase is strongest after consecutive losses</li>
+          <li><strong>Life stress:</strong> Financial problems, relationship issues, or work stress increase vulnerability</li>
+          <li><strong>Promotional pushes:</strong> "Free bets" and bonuses encourage higher volume</li>
+          <li><strong>After big wins:</strong> Overconfidence leads to careless betting</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Set a bankroll you can lose entirely without financial impact</li>
+          <li>Use flat betting with 1-3% unit sizes to survive variance</li>
+          <li>Recognize psychological traps: chasing, overconfidence, emotional betting</li>
+          <li>The best bet is often no bet—wait for genuine opportunities</li>
+          <li>Know the warning signs of problem gambling and take them seriously</li>
+          <li>Help is available if betting becomes harmful</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard
+              title={page.title}
+              href={page.href}
+              description={page.description}
+            />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .quick-take {
+    background-color: var(--color-surface);
+    border-left: 4px solid var(--color-accent);
+    padding: var(--spacing-lg);
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .quick-take h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .quick-take p {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+  }
+
+  @media (max-width: 768px) {
+    .related-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

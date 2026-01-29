@@ -1,0 +1,88 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import ContentSection from '../../components/ContentSection.astro';
+import LinkCard from '../../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'MLB Betting Hub', href: '/mlb-betting', description: 'Complete MLB guide' },
+  { title: 'MLB Live Betting', href: '/mlb/live-betting', description: 'In-game wagering' },
+  { title: 'Season Discipline', href: '/mlb/season-discipline', description: 'Long season approach' },
+];
+---
+
+<Layout
+  title="Starting Pitcher & Bullpen Strategy"
+  description="How pitching matchups affect MLB betting, evaluating starters, bullpen depth, and pitching-related factors for baseball wagering."
+>
+  <Hero
+    title="Starting Pitcher & Bullpen Strategy"
+    subtitle="Pitching Analysis for Baseball Betting"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            Pitching dominates MLB betting analysis. Starting pitchers can swing lines by 50+ cents on the moneyline. But starters only pitch 5-7 innings; bullpen quality completes the picture. Understanding how to evaluate pitching matchups—and when the market might misprice them—is fundamental to baseball betting.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="Why Does Pitching Matter So Much?" id="why">
+        <h3>Starting pitchers control early game flow</h3>
+        <p>
+          The difference between an ace and a fifth starter can be dramatic. Quality starters limit damage; struggling starters create deficits that teams must overcome.
+        </p>
+
+        <h3>Bullpens determine late-game outcomes</h3>
+        <p>
+          Even with great starters, bullpen quality matters for holding leads or keeping games close. Overused or weak bullpens can undo early advantages.
+        </p>
+
+        <h3>Matchups within matchups</h3>
+        <p>
+          Pitcher vs lineup tendencies (handedness, pitch mix, recent performance) create layers of analysis beyond overall stats.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <ul>
+          <li><strong>Don't just look at ERA:</strong> FIP, xFIP, and underlying metrics reveal more about pitcher quality.</li>
+          <li><strong>Track rest patterns:</strong> Bullpen availability changes daily based on recent usage.</li>
+          <li><strong>Consider totals:</strong> Pitching matchups heavily influence run expectations.</li>
+          <li><strong>Watch for late scratches:</strong> Starting pitcher changes move lines significantly.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Starting pitchers dramatically influence line movement</li>
+          <li>Bullpen quality matters as much as starting pitching over 162 games</li>
+          <li>Look beyond ERA to advanced pitching metrics</li>
+          <li>Track daily bullpen availability and usage patterns</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard title={page.title} href={page.href} description={page.description} />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content { padding: var(--spacing-3xl) 0; }
+  .quick-take { background-color: var(--color-surface); border-left: 4px solid var(--color-accent); padding: var(--spacing-lg); border-radius: 0 var(--border-radius) var(--border-radius) 0; margin-bottom: var(--spacing-xl); }
+  .quick-take h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-accent); margin-bottom: var(--spacing-sm); }
+  .quick-take p { margin: 0; color: var(--color-text-secondary); }
+  .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-top: var(--spacing-lg); }
+  @media (max-width: 768px) { .related-grid { grid-template-columns: 1fr; } }
+</style>
