@@ -17,6 +17,7 @@
     "admin:create": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
+    "@astrojs/netlify": "^6.6.4",
     "@astrojs/node": "^9.5.2",
     "@supabase/supabase-js": "^2.93.3",
     "astro": "^5.2.5",

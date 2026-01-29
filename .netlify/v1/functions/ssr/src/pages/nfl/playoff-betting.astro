@@ -1,0 +1,202 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import ContentSection from '../../components/ContentSection.astro';
+import Callout from '../../components/Callout.astro';
+import LinkCard from '../../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'NFL Betting Hub', href: '/nfl-betting', description: 'Complete NFL betting guide' },
+  { title: 'NFL Live Betting', href: '/nfl/live-betting', description: 'In-game wagering' },
+  { title: 'Big Games & Tournaments', href: '/big-games-tournaments', description: 'High-profile event dynamics' },
+];
+---
+
+<Layout
+  title="NFL Playoff Betting Guide"
+  description="How NFL playoff betting differs from regular season, market dynamics in postseason games, and factors to consider when wagering on playoff matchups."
+>
+  <Hero
+    title="NFL Playoff Betting Guide"
+    subtitle="Postseason Market Dynamics and Betting Considerations"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            NFL playoff betting operates in a different environment than regular season wagering. Higher stakes, more public attention, and concentrated matchups create market dynamics worth understanding. Lines are generally sharper due to increased betting volume, but public bias toward popular teams and narrative-driven betting can still create inefficiencies. The key is recognizing what changes in the playoffs and what stays the same.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="How Do Playoffs Differ from Regular Season?" id="differences">
+        <h3>Reduced sample size, concentrated attention</h3>
+        <p>
+          Playoffs feature fewer games (11-13 total) with maximum attention on each. Every bettor, casual and professional, is analyzing the same small set of matchups. This tends to make lines more efficient—but also amplifies narrative-driven biases.
+        </p>
+
+        <h3>Different motivations and preparation</h3>
+        <p>
+          Regular season games involve rest management, travel fatigue, and motivation variance. Playoff games feature maximum preparation, full rosters, and complete focus. The team you evaluated in November may look different in January.
+        </p>
+
+        <h3>Home field matters differently</h3>
+        <p>
+          Playoff home field advantage is earned through seeding. Home teams are typically better teams. Regular season home field advantage (about 2-3 points) may not apply the same way when the home team is already significantly superior.
+        </p>
+
+        <h3>Weather and neutral-site games</h3>
+        <p>
+          Cold-weather playoff games and the Super Bowl (neutral site, warm location) create different conditions than regular season matchups. Weather impacts are concentrated in January games.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What Does the Market Get Wrong in Playoffs?" id="market-errors">
+        <Callout type="info" title="Playoff Markets Are Efficient, Not Perfect">
+          <p>
+            High volume and intense scrutiny make playoff lines sharp. But systematic biases can still exist—they're just smaller and require confident analysis to exploit.
+          </p>
+        </Callout>
+
+        <h3>Narrative overweighting</h3>
+        <p>
+          Storylines dominate playoff coverage: revenge games, legacy-defining moments, team-of-destiny narratives. These stories are entertaining but often have no predictive value. Markets sometimes price in narrative premium.
+        </p>
+
+        <h3>Recent performance extrapolation</h3>
+        <p>
+          A team that won its last three games by 20+ points gets overvalued. A team that struggled down the stretch gets undervalued. Playoff opponents are different from regular season opponents; recent results may not transfer.
+        </p>
+
+        <h3>Public bias toward favorites and stars</h3>
+        <p>
+          Casual bettors flood the market during playoffs, often backing familiar teams and star players. This can inflate lines on public favorites, potentially creating value on less popular sides.
+        </p>
+
+        <h3>Underrating coaching and scheme adjustments</h3>
+        <p>
+          Playoff series (though not in NFL format) and extra preparation time allow for scheme adjustments. Teams have two weeks to prepare for Super Bowl matchups. Coaching quality matters more when preparation time increases.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <ul>
+          <li><strong>Be selective:</strong> With only a handful of games, you don't need to bet them all. Wait for spots where your analysis gives confidence.</li>
+          <li><strong>Ignore narratives:</strong> Storylines are entertainment. Focus on matchups, not media angles.</li>
+          <li><strong>Re-evaluate teams:</strong> The team you know from regular season analysis may have changed. Injuries, rotations, and motivation are different now.</li>
+          <li><strong>Consider totals:</strong> Playoff games often feature better defenses and more conservative play-calling. Unders have historically had value, though the market is aware of this.</li>
+          <li><strong>Track line movement:</strong> Sharp money in playoff markets is particularly significant given the scrutiny these games receive.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Common Misconceptions" id="misconceptions">
+        <h3>"Playoff experience matters"</h3>
+        <p>
+          Playoff experience is cited constantly but has limited predictive value. Young quarterbacks win Super Bowls. Experienced teams lose early. The narrative appeal exceeds the analytical value.
+        </p>
+
+        <h3>"Defense wins championships"</h3>
+        <p>
+          This adage has some historical support but is overapplied. Offensive quality correlates with playoff success too. Don't discount offensive teams because of this cliche.
+        </p>
+
+        <h3>"The line moved toward my team, so I should feel good"</h3>
+        <p>
+          Line movement in playoff markets can reflect public money as much as sharp money. Heavy action on popular teams moves lines without indicating value.
+        </p>
+
+        <h3>"Bye weeks help teams"</h3>
+        <p>
+          First-round byes provide rest but can also cause rust. The evidence on whether byes help or hurt is mixed. Don't assume it's purely advantageous.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="When This Matters Most" id="when-matters">
+        <ul>
+          <li><strong>Wild Card weekend:</strong> More games, more betting opportunities, potentially softer lines</li>
+          <li><strong>Conference championships:</strong> Maximum public attention, maximum narrative betting</li>
+          <li><strong>Super Bowl:</strong> Most bet event globally, lines are extremely sharp but prop markets may offer opportunities</li>
+          <li><strong>Line release:</strong> Early playoff lines can move significantly; timing matters</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Decision Checklist" id="checklist">
+        <p>Before betting any NFL playoff game, ask yourself:</p>
+        <ul>
+          <li>Am I betting based on matchup analysis or narrative/storyline?</li>
+          <li>Have I accounted for how these teams may have changed since the regular season?</li>
+          <li>Am I overweighting recent performance?</li>
+          <li>Is the line influenced by public bias toward popular teams?</li>
+          <li>Do I have a genuine edge, or am I just betting because it's the playoffs?</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Playoff markets are more efficient due to concentrated attention</li>
+          <li>Narratives and recent performance are often overweighted</li>
+          <li>Public money flows toward favorites and star players</li>
+          <li>Re-evaluate teams based on current state, not regular season memory</li>
+          <li>Be selective—you don't need to bet every playoff game</li>
+          <li>Ignore "playoff experience" and "defense wins championships" cliches</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard
+              title={page.title}
+              href={page.href}
+              description={page.description}
+            />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .quick-take {
+    background-color: var(--color-surface);
+    border-left: 4px solid var(--color-accent);
+    padding: var(--spacing-lg);
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .quick-take h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .quick-take p {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+  }
+
+  @media (max-width: 768px) {
+    .related-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,220 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import ContentSection from '../../components/ContentSection.astro';
+import Callout from '../../components/Callout.astro';
+import LinkCard from '../../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'All Tools', href: '/tools', description: 'Betting calculators hub' },
+  { title: 'Responsible Betting', href: '/responsible-betting', description: 'Bankroll protection' },
+  { title: 'Betting Strategy', href: '/betting-strategy', description: 'Framework for disciplined betting' },
+];
+---
+
+<Layout
+  title="Bankroll Management Calculator"
+  description="Calculate appropriate bet sizes based on your bankroll and risk tolerance. Understand flat betting and unit sizing for sustainable sports betting."
+>
+  <Hero
+    title="Bankroll Management Calculator"
+    subtitle="Sizing Your Bets to Survive Variance and Protect Your Capital"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            A bankroll calculator helps you determine how much to bet on each wager based on your total betting capital. The goal isn't to maximize single-bet returns—it's to size bets so you can survive inevitable losing streaks while still capitalizing on winning periods. Most disciplined bettors use flat betting with 1-3% unit sizes. This tool helps you calculate what that means for your specific bankroll.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="What Does This Tool Do?" id="what-does">
+        <p>
+          A bankroll management calculator takes your total bankroll and risk tolerance to recommend:
+        </p>
+        <ul>
+          <li>Your unit size (the standard amount per bet)</li>
+          <li>How many bets you can lose before significant bankroll depletion</li>
+          <li>Suggested bet amounts for different confidence levels (if using variable sizing)</li>
+        </ul>
+        <p>
+          The simplest approach is flat betting: every bet is 1 unit. The calculator tells you what 1 unit should be.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="When Should I Use a Bankroll Calculator?" id="when-use">
+        <h3>When starting with a new bankroll</h3>
+        <p>
+          Before placing your first bet with a new bankroll, calculate your unit size. This sets the foundation for disciplined betting from the start.
+        </p>
+
+        <h3>After significant bankroll changes</h3>
+        <p>
+          If your bankroll doubles or gets cut in half, recalculate. Your unit size should reflect your current capital, not what you started with.
+        </p>
+
+        <h3>When tempted to bet larger</h3>
+        <p>
+          The calculator provides a reference point. When you want to bet 10% of your bankroll on a "sure thing," the calculator reminds you what disciplined sizing looks like.
+        </p>
+
+        <h3>When building a betting plan</h3>
+        <p>
+          Before a betting season or period, use the calculator to establish rules you'll follow regardless of short-term results.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="When Should I NOT Use a Bankroll Calculator?" id="when-not-use">
+        <Callout type="warning" title="The Calculator Isn't a Betting System">
+          <p>
+            Proper bet sizing protects you from ruin—it doesn't create an edge. Without good bet selection, perfect bankroll management still leads to losses (just more slowly).
+          </p>
+        </Callout>
+
+        <h3>As a substitute for discipline</h3>
+        <p>
+          Calculating the "right" bet size doesn't help if you don't follow it. The calculator provides information; discipline requires commitment.
+        </p>
+
+        <h3>To justify larger bets</h3>
+        <p>
+          Don't manipulate inputs to get the number you want. If you're looking for permission to bet bigger, you're using the tool wrong.
+        </p>
+
+        <h3>For money you can't afford to lose</h3>
+        <p>
+          If your "bankroll" includes rent money, a calculator can't make that safe. Bankroll management assumes you're betting discretionary funds you've already mentally written off.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Example Scenarios" id="examples">
+        <h3>The conservative recreational bettor</h3>
+        <p>
+          Bankroll: $500. Risk tolerance: Conservative (1% units). The calculator shows $5 units. This bettor can survive a 20-bet losing streak and still have 80% of their bankroll. They prioritize longevity over big swings.
+        </p>
+
+        <h3>The moderate bettor</h3>
+        <p>
+          Bankroll: $2,000. Risk tolerance: Moderate (2% units). The calculator shows $40 units. A 10-bet losing streak reduces the bankroll by 20%. Painful but survivable. The bettor accepts more volatility for potentially faster growth.
+        </p>
+
+        <h3>The aggressive approach (not recommended)</h3>
+        <p>
+          Bankroll: $1,000. Risk tolerance: Aggressive (5% units). The calculator shows $50 units. A 10-bet losing streak cuts the bankroll in half. This approach has high ruin risk and is generally not advisable, even for skilled bettors.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <p>
+          Bankroll management is risk management:
+        </p>
+        <ul>
+          <li><strong>Variance is real:</strong> Even +EV bettors experience extended losing streaks. Proper sizing ensures you survive them.</li>
+          <li><strong>Protect the process:</strong> Your edge (if you have one) only materializes over hundreds of bets. You need to stay in the game long enough for it to work.</li>
+          <li><strong>Remove emotion:</strong> Predefined unit sizes prevent emotional bet sizing after wins or losses.</li>
+          <li><strong>Measure in units:</strong> Tracking results in units rather than dollars makes performance comparable across different bankroll sizes.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Common Misconceptions" id="misconceptions">
+        <h3>"I should bet more when I'm confident"</h3>
+        <p>
+          Confidence isn't correlated with accuracy for most bettors. Variable sizing based on confidence often means betting more on the bets you're most likely to lose (because overconfidence). Flat betting removes this bias.
+        </p>
+
+        <h3>"Kelly Criterion is the optimal approach"</h3>
+        <p>
+          Kelly Criterion maximizes bankroll growth when you know your exact edge on each bet. In practice, bettors don't know their edge precisely. Full Kelly is too aggressive; fractional Kelly or flat betting is more robust.
+        </p>
+
+        <h3>"I can increase unit size after wins"</h3>
+        <p>
+          Periodic recalculation based on total bankroll is fine. Increasing units after a win streak (before the bankroll has actually grown significantly) is a form of letting it ride—risky behavior disguised as money management.
+        </p>
+
+        <h3>"Bankroll management guarantees I won't go broke"</h3>
+        <p>
+          No. Proper sizing reduces ruin risk but doesn't eliminate it. Extended losing streaks can still deplete a bankroll. The goal is survival long enough for edge to manifest, not immortality.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="When This Matters Most" id="when-matters">
+        <ul>
+          <li><strong>Before you start:</strong> Set unit size from day one, not after losses</li>
+          <li><strong>During losing streaks:</strong> The temptation to increase bet size is highest when down—exactly when you should maintain discipline</li>
+          <li><strong>After winning streaks:</strong> Don't let success lead to oversized bets that erase gains</li>
+          <li><strong>When the bankroll changes significantly:</strong> Recalculate to keep unit size appropriate</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Bankroll calculators determine appropriate bet sizes based on total capital</li>
+          <li>Most disciplined bettors use 1-3% unit sizes</li>
+          <li>Flat betting removes emotional and confidence-based biases</li>
+          <li>The goal is surviving variance, not maximizing single-bet returns</li>
+          <li>Recalculate units when your bankroll changes significantly</li>
+          <li>Proper sizing protects your process but doesn't create an edge</li>
+          <li>Never bet money you can't afford to lose, regardless of unit size</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard
+              title={page.title}
+              href={page.href}
+              description={page.description}
+            />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .quick-take {
+    background-color: var(--color-surface);
+    border-left: 4px solid var(--color-accent);
+    padding: var(--spacing-lg);
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .quick-take h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .quick-take p {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+  }
+
+  @media (max-width: 768px) {
+    .related-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

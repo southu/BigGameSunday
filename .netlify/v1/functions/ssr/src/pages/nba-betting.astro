@@ -1,0 +1,153 @@
+---
+import SportLayout from '../layouts/SportLayout.astro';
+import ContentSection from '../components/ContentSection.astro';
+import Callout from '../components/Callout.astro';
+import FeaturedImage from '../components/FeaturedImage.astro';
+
+const topics = [
+  { title: 'Betting Strategy', href: '/betting-strategy', description: 'Expected value and bankroll management' },
+  { title: 'Big Games', href: '/big-games-tournaments', description: 'Playoff and Finals betting dynamics' },
+  { title: 'College Basketball', href: '/college-basketball-betting', description: 'Compare with college markets' },
+  { title: 'Sportsbooks', href: '/sportsbooks-odds', description: 'Shopping for the best NBA lines' },
+];
+
+const articles = [
+  {
+    title: 'Understanding Betting Odds',
+    href: '/blog/understanding-betting-odds',
+    description: 'Learn to read odds and calculate implied probability.',
+    category: 'Strategy',
+    categoryHref: '/blog/category/strategy',
+    image: 'https://images.pexels.com/photos/2891884/pexels-photo-2891884.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    title: 'Bankroll Management Fundamentals',
+    href: '/blog/bankroll-management-fundamentals',
+    description: 'Protect your bankroll during the long NBA season.',
+    category: 'Strategy',
+    categoryHref: '/blog/category/strategy',
+    image: 'https://images.pexels.com/photos/6693661/pexels-photo-6693661.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+];
+---
+
+<SportLayout
+  title="NBA Betting Strategy"
+  description="Understand NBA betting markets: spreads, totals, props, live betting, market efficiency, and how to approach professional basketball betting with discipline."
+  subtitle="Market Dynamics, Totals, and Live Betting in Professional Basketball"
+  introText="The NBA's 82-game season and daily schedule create one of the most active betting markets in sports. Understanding how NBA markets behave—what drives line movement, how totals work in a pace-driven league, and where inefficiencies may exist—is essential for making informed decisions."
+  topics={topics}
+  articles={articles}
+  image="/images/nba-betting-strategy-market-dynamics-totals-live-betting.png"
+>
+  <ContentSection title="What Makes NBA Betting Different" id="unique">
+    <p>NBA betting differs from football and other major sports in several important ways:</p>
+    <ul>
+      <li><strong>Daily games:</strong> The NBA plays almost every day during the season, creating constant decision points.</li>
+      <li><strong>Star-driven outcomes:</strong> Individual players matter more in basketball than in football.</li>
+      <li><strong>High scoring and variance:</strong> NBA games are high-scoring, and late-game variance is common.</li>
+      <li><strong>Rest and scheduling:</strong> Back-to-backs, travel, and load management visibly affect performance.</li>
+      <li><strong>Efficient markets:</strong> NBA lines are among the most efficient in sports betting.</li>
+    </ul>
+  </ContentSection>
+
+  <FeaturedImage
+    src="https://images.pexels.com/photos/2891884/pexels-photo-2891884.jpeg?auto=compress&cs=tinysrgb&w=1200"
+    alt="Basketball court during game"
+    caption="NBA's daily schedule creates one of the most active betting markets in sports"
+  />
+
+  <ContentSection title="NBA Betting Markets Explained" id="markets">
+    <h3>Point spreads</h3>
+    <p>
+      NBA spreads reflect the expected margin of victory. Unlike football, NBA games don't have key numbers—every point matters roughly equally. Spreads can range from pick'em to double digits.
+    </p>
+
+    <h3>Totals (over/under)</h3>
+    <p>
+      NBA totals are typically in the 210-240 range. Totals are heavily influenced by pace (possessions per game), offensive and defensive efficiency, and recent trends.
+    </p>
+
+    <h3>Player props</h3>
+    <p>
+      NBA player props cover points, rebounds, assists, three-pointers, and combined stats. Props can offer value when you have a specific view on usage, matchup, or game script.
+    </p>
+
+    <h3>Live betting</h3>
+    <p>
+      NBA live betting is popular because games have natural momentum swings. Lines update constantly based on score, time, and game state.
+    </p>
+  </ContentSection>
+
+  <ContentSection title="How Pace and Efficiency Drive NBA Totals" id="pace-efficiency">
+    <p>NBA totals are fundamentally a function of two things:</p>
+    <ul>
+      <li><strong>Pace:</strong> How many possessions each team uses per game.</li>
+      <li><strong>Efficiency:</strong> Points scored per possession.</li>
+    </ul>
+    <p>
+      When two fast teams meet, totals tend to be higher. When two slow, defensive teams meet, totals tend to be lower.
+    </p>
+
+    <Callout type="info" title="Pace control">
+      <p>In most matchups, the slower team tends to control pace more than the faster team. A slow, grinding defensive team can often drag a run-and-gun opponent into a lower-scoring game.</p>
+    </Callout>
+  </ContentSection>
+
+  <ContentSection title="NBA Market Efficiency" id="efficiency">
+    <p>
+      NBA betting markets are highly efficient. Information is widely available, sophisticated models are common, and betting volume is high. Finding edges requires either speed (acting on news quickly) or depth (specialization in areas the market undervalues).
+    </p>
+  </ContentSection>
+
+  <ContentSection title="Rest, Scheduling, and Load Management" id="rest">
+    <h3>Back-to-backs</h3>
+    <p>
+      Teams playing the second game of a back-to-back typically show reduced efficiency, especially on the road.
+    </p>
+
+    <h3>Load management</h3>
+    <p>
+      Star players regularly sit out games for rest. Late scratches can move lines significantly. Monitoring injury reports and team patterns helps anticipate these situations.
+    </p>
+  </ContentSection>
+
+  <ContentSection title="Live Betting in the NBA" id="live-betting">
+    <h3>When live betting can offer value</h3>
+    <ul>
+      <li>When a team goes on an unsustainable hot streak.</li>
+      <li>When a key player gets into early foul trouble.</li>
+      <li>When garbage time is approaching and the line hasn't fully adjusted.</li>
+    </ul>
+
+    <h3>Risks of live betting</h3>
+    <ul>
+      <li>Speed: decisions happen fast, increasing the chance of emotional bets.</li>
+      <li>Vig: live betting often has higher juice than pregame markets.</li>
+      <li>Chasing: the temptation to "get even" during a game is counterproductive.</li>
+    </ul>
+
+    <Callout type="warning" title="Live betting discipline">
+      <p>If you live bet, set a plan before the game: what triggers a bet, how many live bets you'll make, and your maximum exposure.</p>
+    </Callout>
+  </ContentSection>
+
+  <ContentSection title="Regular Season vs. Playoffs" id="playoffs">
+    <ul>
+      <li><strong>Effort and intensity:</strong> Playoff games feature maximum effort.</li>
+      <li><strong>Rotations shorten:</strong> Coaches rely more heavily on their best 7-8 players.</li>
+      <li><strong>Adjustments compound:</strong> In a 7-game series, coaching adjustments build on each other.</li>
+      <li><strong>Totals often drop:</strong> Playoff defense is typically more intense.</li>
+    </ul>
+  </ContentSection>
+
+  <ContentSection title="A Disciplined Approach" id="discipline">
+    <ul>
+      <li><strong>Don't bet every game:</strong> Daily action doesn't mean daily edges.</li>
+      <li><strong>Track your bets:</strong> Record your reasoning and closing line value.</li>
+      <li><strong>Respect variance:</strong> Focus on process, not outcomes.</li>
+      <li><strong>Shop lines:</strong> Small line differences matter over hundreds of bets.</li>
+      <li><strong>Set limits:</strong> Define your bankroll and unit size before the season.</li>
+    </ul>
+  </ContentSection>
+</SportLayout>

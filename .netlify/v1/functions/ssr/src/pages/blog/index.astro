@@ -1,0 +1,221 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+
+const allPosts = await getCollection('blog', ({ data }) => !data.draft);
+const sortedPosts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const featuredPosts = sortedPosts.filter(post => post.data.featured);
+const regularPosts = sortedPosts.filter(post => !post.data.featured);
+
+const categories = [...new Set(sortedPosts.map(post => post.data.category))];
+---
+
+<Layout
+  title="Blog"
+  description="Sports betting education, analysis, and strategy articles to help you make smarter wagering decisions."
+>
+  <Hero
+    title="Blog"
+    subtitle="Educational articles, strategic insights, and analysis for the thinking sports bettor."
+    size="medium"
+  />
+
+  <div class="container">
+    <div class="blog-layout">
+      <main class="blog-main">
+        {featuredPosts.length > 0 && (
+          <section class="featured-section">
+            <h2 class="section-title">Featured</h2>
+            <div class="featured-grid">
+              {featuredPosts.slice(0, 2).map((post) => (
+                <ArticleCard
+                  title={post.data.title}
+                  href={`/blog/${post.id}`}
+                  description={post.data.description}
+                  date={post.data.pubDate}
+                  category={post.data.category}
+                  categoryHref={`/blog/category/${post.data.category}`}
+                  image={post.data.image}
+                  imageAlt={post.data.imageAlt}
+                  featured={true}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section class="all-posts">
+          <h2 class="section-title">All Articles</h2>
+          <div class="posts-grid">
+            {sortedPosts.map((post) => (
+              <ArticleCard
+                title={post.data.title}
+                href={`/blog/${post.id}`}
+                description={post.data.description}
+                date={post.data.pubDate}
+                category={post.data.category}
+                categoryHref={`/blog/category/${post.data.category}`}
+                image={post.data.image}
+                imageAlt={post.data.imageAlt}
+              />
+            ))}
+          </div>
+        </section>
+      </main>
+
+      <aside class="blog-sidebar">
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">Categories</h3>
+          <ul class="category-list">
+            {categories.map((category) => (
+              <li>
+                <a href={`/blog/category/${category}`} class="category-link">
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">Topics</h3>
+          <div class="topics-cloud">
+            <a href="/betting-strategy" class="topic-link">Betting Strategy</a>
+            <a href="/sportsbooks-odds" class="topic-link">Sportsbooks</a>
+            <a href="/nfl-betting" class="topic-link">NFL</a>
+            <a href="/nba-betting" class="topic-link">NBA</a>
+            <a href="/college-football-betting" class="topic-link">CFB</a>
+            <a href="/college-basketball-betting" class="topic-link">CBB</a>
+            <a href="/mlb-betting" class="topic-link">MLB</a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .blog-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: var(--spacing-3xl);
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .section-title {
+    font-size: 1.35rem;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .featured-section {
+    margin-bottom: var(--spacing-3xl);
+  }
+
+  .featured-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+  }
+
+  .posts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+  }
+
+  .blog-sidebar {
+    position: sticky;
+    top: calc(72px + var(--spacing-xl));
+    height: fit-content;
+  }
+
+  .sidebar-section {
+    background-color: var(--color-surface);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .sidebar-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    color: var(--color-text);
+  }
+
+  .category-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .category-list li {
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .category-link {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: 0.9375rem;
+    transition: color var(--transition);
+  }
+
+  .category-link:hover {
+    color: var(--color-accent);
+  }
+
+  .topics-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .topic-link {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background-color: var(--color-bg-tertiary);
+    border-radius: var(--border-radius);
+    color: var(--color-text-secondary);
+    font-size: 0.8125rem;
+    text-decoration: none;
+    transition: background-color var(--transition), color var(--transition);
+  }
+
+  .topic-link:hover {
+    background-color: var(--color-accent-muted);
+    color: var(--color-text);
+  }
+
+  @media (max-width: 900px) {
+    .blog-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .blog-sidebar {
+      position: static;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--spacing-lg);
+    }
+
+    .sidebar-section {
+      margin-bottom: 0;
+    }
+
+    .featured-grid,
+    .posts-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .blog-sidebar {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

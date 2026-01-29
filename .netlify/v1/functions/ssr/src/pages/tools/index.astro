@@ -1,0 +1,182 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import ContentSection from '../../components/ContentSection.astro';
+import LinkCard from '../../components/LinkCard.astro';
+import Callout from '../../components/Callout.astro';
+
+const tools = [
+  {
+    title: 'Parlay Calculator',
+    href: '/tools/parlay-calculator',
+    description: 'Calculate potential parlay payouts and understand the true cost of combining bets.',
+  },
+  {
+    title: 'Odds Converter',
+    href: '/tools/odds-converter',
+    description: 'Convert between American, decimal, and fractional odds formats.',
+  },
+  {
+    title: 'Bankroll Calculator',
+    href: '/tools/bankroll-calculator',
+    description: 'Determine appropriate bet sizing based on your bankroll and risk tolerance.',
+  },
+];
+---
+
+<Layout
+  title="Betting Calculators & Tools"
+  description="Sports betting calculators and tools to support better decision-making. Parlay calculator, odds converter, and bankroll management tools."
+>
+  <Hero
+    title="Betting Calculators & Tools"
+    subtitle="Practical Tools to Support Better Betting Decisions"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            Betting tools help you make calculations quickly and accurately, but they don't replace judgment. A parlay calculator tells you potential payouts—it doesn't tell you whether the parlay is a good bet. Use these tools to support your process, not as a substitute for analysis. The best tool is a disciplined approach to betting; calculators just handle the math.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="Why Use Betting Tools?" id="why-tools">
+        <p>
+          Betting involves math. Converting odds, calculating implied probability, determining appropriate bet sizes, and projecting parlay payouts all require arithmetic that's easy to get wrong under time pressure or emotional stress.
+        </p>
+        <p>
+          Tools remove calculation errors from the equation, letting you focus on the harder questions: Is this bet worth making? Does my analysis suggest value here? Am I betting the right amount?
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What Can Tools Do?" id="what-can-do">
+        <ul>
+          <li><strong>Save time:</strong> Instant calculations instead of manual math</li>
+          <li><strong>Prevent errors:</strong> Eliminate arithmetic mistakes that cost money</li>
+          <li><strong>Enable comparison:</strong> Quickly compare odds across different formats</li>
+          <li><strong>Enforce discipline:</strong> Bankroll calculators help maintain consistent bet sizing</li>
+          <li><strong>Reveal hidden costs:</strong> Parlay calculators show the compounding effect of the vig</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="What Can Tools NOT Do?" id="what-cannot-do">
+        <Callout type="warning" title="Tools Are Aids, Not Strategies">
+          <p>
+            No calculator tells you which bets to make. Tools handle arithmetic—they don't identify value, predict outcomes, or replace the analysis required for profitable betting.
+          </p>
+        </Callout>
+
+        <ul>
+          <li><strong>Identify good bets:</strong> Tools calculate; they don't analyze matchups or markets</li>
+          <li><strong>Guarantee profits:</strong> Accurate calculations don't make unprofitable strategies profitable</li>
+          <li><strong>Replace discipline:</strong> Knowing the right bet size doesn't help if you don't follow it</li>
+          <li><strong>Predict outcomes:</strong> Probability math describes likelihood, not what will happen</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Available Tools" id="tools">
+        <div class="tools-grid">
+          {tools.map((tool) => (
+            <LinkCard
+              title={tool.title}
+              href={tool.href}
+              description={tool.description}
+            />
+          ))}
+        </div>
+      </ContentSection>
+
+      <ContentSection title="How to Use Tools Effectively" id="effective-use">
+        <h3>Use them before betting, not after</h3>
+        <p>
+          Calculate potential outcomes and appropriate bet sizes before placing wagers. Post-hoc calculations don't help—they just show what you should have done.
+        </p>
+
+        <h3>Understand the underlying concepts</h3>
+        <p>
+          A parlay calculator is more useful if you understand why parlays are high-margin bets. An odds converter helps more if you understand implied probability. Tools should reinforce knowledge, not replace it.
+        </p>
+
+        <h3>Don't let tools encourage bad behavior</h3>
+        <p>
+          Seeing a big potential parlay payout can be exciting—that doesn't make the parlay a good bet. Use tools to evaluate, not to fantasize.
+        </p>
+
+        <h3>Combine with record-keeping</h3>
+        <p>
+          Track your bets honestly. Tools help with individual decisions; records help you see patterns over time.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <p>
+          Tools are one component of a disciplined betting process. They help with:
+        </p>
+        <ul>
+          <li>Quick, accurate odds conversions across formats</li>
+          <li>Understanding the true cost of parlays before placing them</li>
+          <li>Calculating appropriate bet sizes to survive variance</li>
+          <li>Removing mental math errors from your decision-making</li>
+        </ul>
+        <p>
+          But tools can't substitute for the hard work of analysis, bankroll discipline, and emotional control. They're useful additions to a sound process, not the process itself.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Tools handle math; they don't identify value or predict outcomes</li>
+          <li>Use calculators to support your process, not replace analysis</li>
+          <li>Understand the concepts behind the calculations</li>
+          <li>Don't let exciting potential payouts override disciplined decision-making</li>
+          <li>Combine tools with record-keeping for maximum benefit</li>
+        </ul>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .quick-take {
+    background-color: var(--color-surface);
+    border-left: 4px solid var(--color-accent);
+    padding: var(--spacing-lg);
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .quick-take h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .quick-take p {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+  }
+
+  @media (max-width: 768px) {
+    .tools-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

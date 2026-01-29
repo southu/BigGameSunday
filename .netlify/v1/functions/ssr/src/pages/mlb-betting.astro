@@ -1,0 +1,82 @@
+---
+import SportLayout from '../layouts/SportLayout.astro';
+import ContentSection from '../components/ContentSection.astro';
+import FeaturedImage from '../components/FeaturedImage.astro';
+
+const topics = [
+  { title: 'Betting Strategy', href: '/betting-strategy', description: 'Expected value and bankroll management basics' },
+  { title: 'Sportsbooks', href: '/sportsbooks-odds', description: 'Shopping for the best MLB lines' },
+  { title: 'Big Games', href: '/big-games-tournaments', description: 'World Series and playoff betting' },
+  { title: 'Understanding Odds', href: '/blog/understanding-betting-odds', description: 'Calculate implied probability from moneylines' },
+];
+
+const articles = [
+  {
+    title: 'Understanding Betting Odds',
+    href: '/blog/understanding-betting-odds',
+    description: 'Essential for MLB moneyline betting success.',
+    category: 'Strategy',
+    categoryHref: '/blog/category/strategy',
+    image: 'https://images.pexels.com/photos/209977/pexels-photo-209977.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    title: 'Bankroll Management Fundamentals',
+    href: '/blog/bankroll-management-fundamentals',
+    description: 'Protect your bankroll during the 162-game season.',
+    category: 'Strategy',
+    categoryHref: '/blog/category/strategy',
+    image: 'https://images.pexels.com/photos/6693661/pexels-photo-6693661.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+];
+---
+
+<SportLayout
+  title="MLB Betting Markets Guide"
+  description="Understand MLB betting: moneylines, run lines, totals, starting pitchers, bullpens, and how to approach baseball betting with discipline."
+  subtitle="Moneylines, Starting Pitchers, and the Long Season"
+  introText="Baseball's 162-game season and daily schedule create a unique betting market. Unlike other sports, MLB betting centers on moneylines rather than spreads. Starting pitching, bullpen usage, and ballpark factors all play significant roles. This guide covers how MLB betting works and where disciplined bettors may find value."
+  topics={topics}
+  articles={articles}
+  image="/images/mlb-betting-markets-guide.png"
+>
+  <ContentSection title="MLB Betting Markets" id="markets">
+    <h3>Moneylines</h3>
+    <p>
+      Unlike most sports, baseball betting centers on moneylines rather than point spreads. This creates a different calculus: taking underdogs at plus-money prices can be profitable even with a sub-50% win rate. Understanding how to assess value on both sides of the moneyline is fundamental.
+    </p>
+
+    <h3>Run Lines</h3>
+    <p>
+      The run line (+/- 1.5 runs) offers an alternative to straight moneyline betting. Run line favorites offer plus-money prices, while run line underdogs provide cushion at reduced returns. Knowing when to use run lines versus moneylines is a key strategic decision.
+    </p>
+
+    <h3>Totals</h3>
+    <p>
+      MLB totals are influenced by a complex mix of factors: starting pitchers, bullpen quality, lineup construction, ballpark dimensions, and weather. Successfully betting totals requires synthesizing all these elements into a coherent projection.
+    </p>
+  </ContentSection>
+
+  <FeaturedImage
+    src="https://images.pexels.com/photos/209977/pexels-photo-209977.jpeg?auto=compress&cs=tinysrgb&w=1200"
+    alt="Baseball pitcher preparing to throw"
+    caption="Starting pitching is the most important factor in MLB betting"
+    position="center"
+  />
+
+  <ContentSection title="Key Factors" id="factors">
+    <h3>Starting Pitching</h3>
+    <p>
+      The starting pitcher is the single most important factor in any MLB game. Ace pitchers can single-handedly suppress opposing offenses, while weak starters put their teams at immediate disadvantage. Evaluating pitcher matchups is the foundation of MLB handicapping.
+    </p>
+
+    <h3>Bullpen Usage</h3>
+    <p>
+      Modern baseball uses bullpens more heavily than ever, making reliever availability and effectiveness crucial. Understanding workload patterns, platoon advantages, and high-leverage usage helps assess late-game dynamics.
+    </p>
+
+    <h3>Ballpark and Weather</h3>
+    <p>
+      Baseball venues vary dramatically in their impact on scoring. Coors Field inflates offense; pitcher-friendly parks suppress it. Wind, humidity, and temperature add additional variables. Incorporating these factors into your analysis is essential.
+    </p>
+  </ContentSection>
+</SportLayout>

@@ -1,0 +1,87 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import ContentSection from '../components/ContentSection.astro';
+import LinkCard from '../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'Line Movement', href: '/understanding-line-movement', description: 'Why lines change' },
+  { title: 'Public vs Sharp', href: '/public-vs-sharp-money', description: 'Who moves markets' },
+  { title: 'Betting Strategy', href: '/betting-strategy', description: 'Framework for decisions' },
+];
+---
+
+<Layout
+  title="How Betting Markets React to Major Events"
+  description="Understanding how betting markets respond to injuries, news, weather, and other significant events that affect game outcomes."
+>
+  <Hero
+    title="How Markets React to Major Events"
+    subtitle="Understanding Market Response to News and Information"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            Betting markets react rapidly to significant events: injuries, weather changes, lineup announcements, and breaking news. Understanding how markets process information—and how quickly—helps you evaluate whether acting on news creates opportunity or just chases already-adjusted prices. Modern markets are efficient; by the time most bettors hear news, lines have already moved.
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="How Do Markets Process Information?" id="process">
+        <h3>Speed varies by source</h3>
+        <p>
+          Official announcements (injury reports, starting lineups) move markets instantly. Rumors and speculation move markets more gradually and inconsistently.
+        </p>
+
+        <h3>Magnitude depends on impact</h3>
+        <p>
+          A quarterback injury moves NFL lines more than a backup tight end injury. Market response scales with the news's expected effect on outcomes.
+        </p>
+
+        <h3>Algorithms lead, humans follow</h3>
+        <p>
+          Sportsbooks use automated systems to adjust lines based on news feeds. Human bettors reacting to the same news are typically betting worse numbers.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <ul>
+          <li><strong>Speed matters:</strong> If you don't have an information edge, you're betting adjusted prices.</li>
+          <li><strong>Overreaction creates opportunity:</strong> Sometimes markets overadjust to news, but identifying this requires confident contrary analysis.</li>
+          <li><strong>Price the news, don't react emotionally:</strong> Ask "what should the line be now?" not "should I bet because news broke?"</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Markets adjust to news faster than most bettors can react</li>
+          <li>Response magnitude scales with news significance</li>
+          <li>Overreactions can create opportunities for those with contrary analysis</li>
+          <li>Chasing news typically means betting worse numbers</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard title={page.title} href={page.href} description={page.description} />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content { padding: var(--spacing-3xl) 0; }
+  .quick-take { background-color: var(--color-surface); border-left: 4px solid var(--color-accent); padding: var(--spacing-lg); border-radius: 0 var(--border-radius) var(--border-radius) 0; margin-bottom: var(--spacing-xl); }
+  .quick-take h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-accent); margin-bottom: var(--spacing-sm); }
+  .quick-take p { margin: 0; color: var(--color-text-secondary); }
+  .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-top: var(--spacing-lg); }
+  @media (max-width: 768px) { .related-grid { grid-template-columns: 1fr; } }
+</style>

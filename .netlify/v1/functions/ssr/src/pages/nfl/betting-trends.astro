@@ -1,0 +1,217 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import ContentSection from '../../components/ContentSection.astro';
+import Callout from '../../components/Callout.astro';
+import LinkCard from '../../components/LinkCard.astro';
+
+const relatedPages = [
+  { title: 'NFL Betting Hub', href: '/nfl-betting', description: 'Complete NFL betting guide' },
+  { title: 'Line Movement', href: '/understanding-line-movement', description: 'Why lines change' },
+  { title: 'Common Mistakes', href: '/common-betting-mistakes', description: 'Avoiding betting errors' },
+];
+---
+
+<Layout
+  title="NFL Betting Trends Explained"
+  description="What NFL betting trends are, how to interpret them correctly, why most trend-based betting fails, and when historical patterns might actually matter."
+>
+  <Hero
+    title="NFL Betting Trends Explained"
+    subtitle="Understanding Historical Patterns and Their Limited Predictive Value"
+    size="medium"
+  />
+
+  <div class="container content-container">
+    <article class="page-content">
+      <ContentSection>
+        <div class="quick-take">
+          <h2>Quick Take</h2>
+          <p>
+            Betting trends are historical patterns showing how teams or situations have performed against the spread or totals over time. While trends are widely cited in betting content, most have little predictive value. Past results don't cause future outcomes—they're just correlations that often disappear when tested properly. Understanding why trends are usually misleading is more valuable than knowing which trends are "hot."
+          </p>
+        </div>
+      </ContentSection>
+
+      <ContentSection title="What Are Betting Trends?" id="definition">
+        <p>
+          Betting trends are historical statistics showing how often certain outcomes have occurred. Examples include:
+        </p>
+        <ul>
+          <li>"The Cowboys are 8-2 ATS in their last 10 home games"</li>
+          <li>"Teams coming off bye weeks are 15-7 ATS since 2020"</li>
+          <li>"The under has hit in 7 of the Packers' last 9 December games"</li>
+          <li>"Road underdogs of 7+ points are 12-4 ATS this season"</li>
+        </ul>
+        <p>
+          These statistics describe what happened. They do not explain why it happened or whether it will continue.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Why Do Most Trends Fail as Predictors?" id="why-fail">
+        <h3>Correlation is not causation</h3>
+        <p>
+          A team going 8-2 ATS in home games doesn't mean being at home caused them to cover. Maybe they played weak opponents. Maybe their starting QB was healthy for those games. The trend captures results without isolating causes.
+        </p>
+
+        <h3>Sample sizes are usually too small</h3>
+        <p>
+          Ten games is statistical noise. A team's "trend" over 10 games could easily be random variance. Meaningful patterns require hundreds of observations—far more than most cited trends provide.
+        </p>
+
+        <h3>Selection bias in trend creation</h3>
+        <p>
+          With enough variables, you can always find a trend that "works." Cherry-picking start and end dates, specific situations, or narrow criteria creates impressive-looking but meaningless patterns.
+        </p>
+
+        <h3>Markets adjust</h3>
+        <p>
+          If a trend had real predictive value, sportsbooks and sharp bettors would exploit it until the edge disappeared. Widely known trends are priced into the market.
+        </p>
+
+        <h3>Roster and context changes</h3>
+        <p>
+          NFL rosters change dramatically year to year. A team's performance in 2019 tells you little about 2024. Trends spanning multiple seasons ignore fundamental changes in personnel.
+        </p>
+      </ContentSection>
+
+      <Callout type="warning" title="Trends Are Descriptive, Not Predictive">
+        <p>
+          A trend tells you what happened. It doesn't tell you what will happen. Don't confuse historical description with future probability.
+        </p>
+      </Callout>
+
+      <ContentSection title="When Might Trends Have Some Value?" id="when-valuable">
+        <h3>Large sample, clear mechanism</h3>
+        <p>
+          If a trend spans thousands of observations AND has a clear causal mechanism that hasn't been eliminated, it might have some value. Example: Home field advantage exists because of crowd noise, travel, and familiarity. This trend has both sample size and explanation.
+        </p>
+
+        <h3>Identifying market inefficiencies</h3>
+        <p>
+          Trends can reveal systematic biases in how markets price certain situations. But proving this requires rigorous analysis, not just citing a 10-game sample.
+        </p>
+
+        <h3>As one input among many</h3>
+        <p>
+          Historical context can supplement fundamental analysis. If your matchup analysis suggests the under, and the under has hit in similar situations historically, that's mild confirmation—not proof, but consistent information.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="What This Means for Bettors" id="what-means">
+        <ul>
+          <li><strong>Be skeptical of all trends:</strong> Default position should be that any trend you encounter is meaningless until proven otherwise.</li>
+          <li><strong>Ask "why":</strong> If you can't explain the causal mechanism behind a trend, it's probably noise.</li>
+          <li><strong>Check sample sizes:</strong> Ten games means nothing. Even 100 games can be noisy. Meaningful trends require large samples.</li>
+          <li><strong>Consider what's changed:</strong> Rosters, coaches, and schemes change. Historical results may not apply to current teams.</li>
+          <li><strong>Don't bet trends blindly:</strong> If your only reason for betting is "the trend says so," you don't have a bet.</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Common Misconceptions" id="misconceptions">
+        <h3>"Trends show what's likely to happen"</h3>
+        <p>
+          Trends show what has happened, not what's likely. A team 8-2 ATS has no greater probability of covering their next game because of those previous results.
+        </p>
+
+        <h3>"Professional bettors use trends"</h3>
+        <p>
+          Professional bettors analyze matchups, track closing line value, and develop models. They don't bet because "the Steelers are 6-1 ATS on Monday nights." If trends were profitable, everyone would use them.
+        </p>
+
+        <h3>"This trend is too consistent to be random"</h3>
+        <p>
+          With enough data points and creative filtering, you can find any pattern. The question isn't whether a pattern exists—it's whether it has predictive power going forward.
+        </p>
+
+        <h3>"Regression to the mean means trends will reverse"</h3>
+        <p>
+          Regression to the mean is about future independent events, not about past streaks "needing" to end. A team 8-2 ATS isn't more likely to go under .500 next—each game is independent.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="When This Matters Most" id="when-matters">
+        <ul>
+          <li><strong>When encountering betting content:</strong> Most trend-based articles are click bait, not analysis</li>
+          <li><strong>When building your own analysis:</strong> Resist the temptation to cherry-pick supportive trends</li>
+          <li><strong>When evaluating touts:</strong> Trend-based picks are a red flag for superficial analysis</li>
+          <li><strong>When reviewing your own betting:</strong> Don't confuse your winning streak with skill—could be variance</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Decision Checklist" id="checklist">
+        <p>Before using any trend in your betting decision:</p>
+        <ul>
+          <li>What is the sample size? (Less than 100 = extremely skeptical)</li>
+          <li>What is the causal mechanism? (No explanation = probably noise)</li>
+          <li>Has the context changed? (Different roster/coach = trend may not apply)</li>
+          <li>Is this trend publicly known? (If yes, it's probably priced in)</li>
+          <li>Would I bet this without the trend? (If no, the trend isn't enough)</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Key Takeaways" id="takeaways">
+        <ul>
+          <li>Trends describe past results; they don't predict future outcomes</li>
+          <li>Most cited trends have sample sizes too small to be meaningful</li>
+          <li>Without a causal mechanism, a trend is likely just noise</li>
+          <li>Publicly known trends are already priced into the market</li>
+          <li>Roster and context changes make historical trends less relevant</li>
+          <li>Default to skepticism when you encounter any betting trend</li>
+        </ul>
+      </ContentSection>
+
+      <ContentSection title="Related Resources" id="related">
+        <div class="related-grid">
+          {relatedPages.map((page) => (
+            <LinkCard
+              title={page.title}
+              href={page.href}
+              description={page.description}
+            />
+          ))}
+        </div>
+      </ContentSection>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .page-content {
+    padding: var(--spacing-3xl) 0;
+  }
+
+  .quick-take {
+    background-color: var(--color-surface);
+    border-left: 4px solid var(--color-accent);
+    padding: var(--spacing-lg);
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .quick-take h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-accent);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .quick-take p {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+  }
+
+  @media (max-width: 768px) {
+    .related-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
