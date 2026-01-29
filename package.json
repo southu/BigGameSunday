@@ -5,11 +5,30 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "npm run generate:registry && astro build",
+    "build:full": "npm run generate:registry && npm run sync:supabase && astro build && npm run validate:links",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "generate:registry": "tsx scripts/generate-registry.ts",
+    "sync:supabase": "tsx scripts/sync-registry-to-supabase.ts",
+    "validate:links": "tsx scripts/validate-links.ts",
+    "admin:create": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
-    "astro": "^5.2.5"
+    "@astrojs/node": "^9.5.2",
+    "@supabase/supabase-js": "^2.93.3",
+    "astro": "^5.2.5",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@types/bcryptjs": "^2.4.6",
+    "jsdom": "^27.4.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

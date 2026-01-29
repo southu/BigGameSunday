@@ -1,0 +1,439 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getServerClient } from '../../../lib/supabase/server';
+
+const supabase = getServerClient();
+
+const url = new URL(Astro.request.url);
+const type = url.searchParams.get('type') || 'all';
+const status = url.searchParams.get('status') || 'all';
+const page = parseInt(url.searchParams.get('page') || '1');
+const perPage = 50;
+
+let internalLinks: any[] = [];
+let externalLinks: any[] = [];
+let internalCount = 0;
+let externalCount = 0;
+
+if (type === 'all' || type === 'internal') {
+  let query = supabase.from('internal_links').select('*', { count: 'exact' });
+
+  if (status === 'broken') {
+    query = query.eq('is_valid', false);
+  } else if (status === 'valid') {
+    query = query.eq('is_valid', true);
+  }
+
+  const { data, count } = await query.order('source_page').range((page - 1) * perPage, page * perPage - 1);
+  internalLinks = data || [];
+  internalCount = count || 0;
+}
+
+if (type === 'all' || type === 'external') {
+  let query = supabase.from('external_links').select('*', { count: 'exact' });
+
+  if (status === 'broken') {
+    query = query.eq('is_valid', false);
+  } else if (status === 'valid') {
+    query = query.eq('is_valid', true);
+  }
+
+  const { data, count } = await query.order('source_page').range((page - 1) * perPage, page * perPage - 1);
+  externalLinks = data || [];
+  externalCount = count || 0;
+}
+
+const totalCount = type === 'internal' ? internalCount : type === 'external' ? externalCount : internalCount + externalCount;
+const totalPages = Math.ceil(totalCount / perPage);
+
+const allLinks = type === 'internal' ? internalLinks : type === 'external' ? externalLinks : [...internalLinks, ...externalLinks];
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return 'Never';
+  return new Date(dateStr).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+---
+
+<AdminLayout title="Links" currentPath="/admin/health/links">
+  <div class="links-page">
+    <div class="filters">
+      <div class="filter-group">
+        <label>Type</label>
+        <select id="type-select" class="filter-select">
+          <option value="all" selected={type === 'all'}>All Links</option>
+          <option value="internal" selected={type === 'internal'}>Internal Only</option>
+          <option value="external" selected={type === 'external'}>External Only</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Status</label>
+        <select id="status-select" class="filter-select">
+          <option value="all" selected={status === 'all'}>All</option>
+          <option value="valid" selected={status === 'valid'}>Valid Only</option>
+          <option value="broken" selected={status === 'broken'}>Broken Only</option>
+        </select>
+      </div>
+      <button id="apply-filters" class="filter-btn">Apply Filters</button>
+    </div>
+
+    <div class="summary">
+      <div class="summary-stats">
+        <span>
+          <strong>{totalCount.toLocaleString()}</strong> links
+          {type !== 'internal' && type !== 'external' && (
+            <span class="stat-detail">({internalCount} internal, {externalCount} external)</span>
+          )}
+        </span>
+      </div>
+    </div>
+
+    <div class="links-table">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>URL / Target</th>
+            <th>Source Page</th>
+            <th>Status</th>
+            <th>Last Checked</th>
+            <th>Response</th>
+          </tr>
+        </thead>
+        <tbody>
+          {allLinks.length > 0 ? (
+            allLinks.map(link => {
+              const isInternal = 'target_page' in link;
+              return (
+                <tr class={!link.is_valid ? 'broken-row' : ''}>
+                  <td>
+                    <span class={`link-type ${isInternal ? 'internal' : 'external'}`}>
+                      {isInternal ? 'Internal' : 'External'}
+                    </span>
+                  </td>
+                  <td class="url-cell">
+                    {isInternal ? (
+                      <span class="link-url">{link.target_page}</span>
+                    ) : (
+                      <a href={link.url} target="_blank" rel="noopener noreferrer" class="link-url external-link">
+                        {link.url}
+                      </a>
+                    )}
+                    {link.link_text && (
+                      <span class="link-text">"{link.link_text}"</span>
+                    )}
+                  </td>
+                  <td class="source-cell">{link.source_page}</td>
+                  <td>
+                    <span class={`status-badge ${link.is_valid ? 'valid' : 'broken'}`}>
+                      {link.is_valid ? 'Valid' : 'Broken'}
+                    </span>
+                  </td>
+                  <td class="date-cell">
+                    {isInternal ? '-' : formatDate(link.last_checked)}
+                  </td>
+                  <td class="response-cell">
+                    {!isInternal && link.status_code ? (
+                      <span class={`status-code ${link.status_code >= 200 && link.status_code < 400 ? 'ok' : 'error'}`}>
+                        {link.status_code}
+                      </span>
+                    ) : !isInternal && link.error_message ? (
+                      <span class="error-message" title={link.error_message}>
+                        {link.error_message.length > 30 ? link.error_message.slice(0, 30) + '...' : link.error_message}
+                      </span>
+                    ) : '-'}
+                  </td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td colspan="6" class="empty-state">No links found for the selected filters</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+
+    {totalPages > 1 && (
+      <div class="pagination">
+        {page > 1 && (
+          <a href={`?type=${type}&status=${status}&page=${page - 1}`} class="page-btn">Previous</a>
+        )}
+        <span class="page-info">Page {page} of {totalPages}</span>
+        {page < totalPages && (
+          <a href={`?type=${type}&status=${status}&page=${page + 1}`} class="page-btn">Next</a>
+        )}
+      </div>
+    )}
+  </div>
+</AdminLayout>
+
+<script>
+  const typeSelect = document.getElementById('type-select') as HTMLSelectElement;
+  const statusSelect = document.getElementById('status-select') as HTMLSelectElement;
+  const applyBtn = document.getElementById('apply-filters');
+
+  applyBtn?.addEventListener('click', () => {
+    const params = new URLSearchParams();
+    params.set('type', typeSelect.value);
+    params.set('status', statusSelect.value);
+    window.location.href = `/admin/health/links?${params.toString()}`;
+  });
+</script>
+
+<style>
+  .links-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .filters {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    background: #16202a;
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid #2f3336;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .filter-group label {
+    font-size: 0.75rem;
+    color: #71767b;
+    text-transform: uppercase;
+  }
+
+  .filter-select {
+    background: #0f1419;
+    border: 1px solid #2f3336;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: #e7e9ea;
+    font-size: 0.875rem;
+    min-width: 150px;
+  }
+
+  .filter-btn {
+    background: #1d9bf0;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #71767b;
+    font-size: 0.875rem;
+  }
+
+  .summary strong {
+    color: #e7e9ea;
+  }
+
+  .stat-detail {
+    color: #71767b;
+    margin-left: 8px;
+  }
+
+  .links-table {
+    background: #16202a;
+    border: 1px solid #2f3336;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-table th,
+  .data-table td {
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 0.8125rem;
+    border-bottom: 1px solid #2f3336;
+  }
+
+  .data-table th {
+    background: #0f1419;
+    color: #71767b;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .data-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .data-table tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .broken-row {
+    background: rgba(244, 33, 46, 0.05);
+  }
+
+  .broken-row:hover {
+    background: rgba(244, 33, 46, 0.08);
+  }
+
+  .link-type {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .link-type.internal {
+    background: rgba(29, 155, 240, 0.1);
+    color: #1d9bf0;
+  }
+
+  .link-type.external {
+    background: rgba(255, 173, 31, 0.1);
+    color: #ffad1f;
+  }
+
+  .url-cell {
+    max-width: 300px;
+  }
+
+  .link-url {
+    display: block;
+    word-break: break-all;
+  }
+
+  .external-link {
+    color: #1d9bf0;
+    text-decoration: none;
+  }
+
+  .external-link:hover {
+    text-decoration: underline;
+  }
+
+  .link-text {
+    display: block;
+    font-size: 0.75rem;
+    color: #71767b;
+    margin-top: 2px;
+  }
+
+  .source-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .status-badge {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .status-badge.valid {
+    background: rgba(0, 186, 124, 0.1);
+    color: #00ba7c;
+  }
+
+  .status-badge.broken {
+    background: rgba(244, 33, 46, 0.1);
+    color: #f4212e;
+  }
+
+  .date-cell {
+    white-space: nowrap;
+    color: #71767b;
+  }
+
+  .response-cell {
+    white-space: nowrap;
+  }
+
+  .status-code {
+    font-family: monospace;
+    font-weight: 600;
+  }
+
+  .status-code.ok {
+    color: #00ba7c;
+  }
+
+  .status-code.error {
+    color: #f4212e;
+  }
+
+  .error-message {
+    color: #f4212e;
+    font-size: 0.75rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: #71767b;
+    padding: 40px;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .page-btn {
+    background: #16202a;
+    border: 1px solid #2f3336;
+    border-radius: 6px;
+    padding: 8px 16px;
+    color: #e7e9ea;
+    text-decoration: none;
+    font-size: 0.875rem;
+  }
+
+  .page-btn:hover {
+    background: rgba(29, 155, 240, 0.1);
+    border-color: #1d9bf0;
+    color: #1d9bf0;
+  }
+
+  .page-info {
+    color: #71767b;
+    font-size: 0.875rem;
+  }
+
+  @media (max-width: 1000px) {
+    .links-table {
+      overflow-x: auto;
+    }
+
+    .data-table {
+      min-width: 800px;
+    }
+  }
+</style>

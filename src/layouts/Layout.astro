@@ -1,6 +1,7 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import Analytics from '../components/Analytics.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -78,6 +79,7 @@ const canonical = canonicalUrl || Astro.url.href;
       <slot />
     </main>
     <Footer />
+    <Analytics />
   </body>
 </html>
 

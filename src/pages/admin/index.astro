@@ -1,0 +1,360 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { getServerClient } from '../../lib/supabase/server';
+
+const supabase = getServerClient();
+
+const now = new Date();
+const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+const { data: todayVisits } = await supabase
+  .from('page_visits')
+  .select('id', { count: 'exact' })
+  .gte('visited_at', todayStart);
+
+const { data: todaySessions } = await supabase
+  .from('sessions')
+  .select('id', { count: 'exact' })
+  .gte('started_at', todayStart);
+
+const { data: weekVisits } = await supabase
+  .from('page_visits')
+  .select('id', { count: 'exact' })
+  .gte('visited_at', weekAgo);
+
+const { data: recentSessions } = await supabase
+  .from('sessions')
+  .select('*')
+  .order('started_at', { ascending: false })
+  .limit(10);
+
+const { data: topPages } = await supabase
+  .from('page_visits')
+  .select('page_path')
+  .gte('visited_at', weekAgo);
+
+const pageVisitCounts: Record<string, number> = {};
+topPages?.forEach(visit => {
+  pageVisitCounts[visit.page_path] = (pageVisitCounts[visit.page_path] || 0) + 1;
+});
+
+const topPagesList = Object.entries(pageVisitCounts)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 10);
+
+const { data: pages } = await supabase
+  .from('pages')
+  .select('id', { count: 'exact' });
+
+const { data: brokenLinks } = await supabase
+  .from('external_links')
+  .select('id', { count: 'exact' })
+  .eq('is_valid', false);
+
+const { data: recentBuild } = await supabase
+  .from('build_logs')
+  .select('*')
+  .order('started_at', { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+const todayVisitCount = todayVisits?.length || 0;
+const todaySessionCount = todaySessions?.length || 0;
+const weekVisitCount = weekVisits?.length || 0;
+const pageCount = pages?.length || 0;
+const brokenLinkCount = brokenLinks?.length || 0;
+---
+
+<AdminLayout title="Dashboard" currentPath="/admin">
+  <div class="dashboard-grid">
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Today's Visits</div>
+        <div class="stat-value">{todayVisitCount.toLocaleString()}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Today's Sessions</div>
+        <div class="stat-value">{todaySessionCount.toLocaleString()}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Week's Visits</div>
+        <div class="stat-value">{weekVisitCount.toLocaleString()}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Pages</div>
+        <div class="stat-value">{pageCount.toLocaleString()}</div>
+      </div>
+    </div>
+
+    <div class="content-row">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Top Pages (7 days)</h2>
+          <a href="/admin/analytics" class="view-all">View all</a>
+        </div>
+        <div class="panel-content">
+          {topPagesList.length > 0 ? (
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Page</th>
+                  <th>Visits</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topPagesList.map(([path, count]) => (
+                  <tr>
+                    <td class="page-path">{path}</td>
+                    <td class="visit-count">{count.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div class="empty-state">No data yet</div>
+          )}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Recent Sessions</h2>
+          <a href="/admin/analytics/sessions" class="view-all">View all</a>
+        </div>
+        <div class="panel-content">
+          {recentSessions && recentSessions.length > 0 ? (
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Country</th>
+                  <th>Landing Page</th>
+                  <th>Pages</th>
+                  <th>Device</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentSessions.map(session => (
+                  <tr>
+                    <td>{session.country || 'Unknown'}</td>
+                    <td class="page-path">{session.landing_page || '-'}</td>
+                    <td>{session.page_count}</td>
+                    <td>{session.device_type || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div class="empty-state">No sessions yet</div>
+          )}
+        </div>
+      </div>
+    </div>
+
+    <div class="content-row">
+      <div class="panel status-panel">
+        <div class="panel-header">
+          <h2>Site Health</h2>
+          <a href="/admin/health" class="view-all">View details</a>
+        </div>
+        <div class="panel-content">
+          <div class="health-items">
+            <div class="health-item">
+              <span class="health-label">Pages Indexed</span>
+              <span class="health-value good">{pageCount}</span>
+            </div>
+            <div class="health-item">
+              <span class="health-label">Broken Links</span>
+              <span class={`health-value ${brokenLinkCount > 0 ? 'warning' : 'good'}`}>
+                {brokenLinkCount}
+              </span>
+            </div>
+            <div class="health-item">
+              <span class="health-label">Last Build</span>
+              <span class={`health-value ${recentBuild?.status === 'success' ? 'good' : recentBuild?.status === 'failed' ? 'error' : 'neutral'}`}>
+                {recentBuild ? recentBuild.status : 'No builds'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: #16202a;
+    border: 1px solid #2f3336;
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: #71767b;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #e7e9ea;
+  }
+
+  .content-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+  }
+
+  .panel {
+    background: #16202a;
+    border: 1px solid #2f3336;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #2f3336;
+  }
+
+  .panel-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .view-all {
+    color: #1d9bf0;
+    text-decoration: none;
+    font-size: 0.875rem;
+  }
+
+  .view-all:hover {
+    text-decoration: underline;
+  }
+
+  .panel-content {
+    padding: 16px 20px;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-table th,
+  .data-table td {
+    text-align: left;
+    padding: 10px 8px;
+    font-size: 0.875rem;
+  }
+
+  .data-table th {
+    color: #71767b;
+    font-weight: 500;
+    border-bottom: 1px solid #2f3336;
+  }
+
+  .data-table td {
+    border-bottom: 1px solid #2f3336;
+  }
+
+  .data-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .page-path {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .visit-count {
+    font-weight: 600;
+    color: #1d9bf0;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: #71767b;
+    padding: 40px 20px;
+  }
+
+  .status-panel {
+    max-width: 400px;
+  }
+
+  .health-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .health-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #2f3336;
+  }
+
+  .health-item:last-child {
+    border-bottom: none;
+  }
+
+  .health-label {
+    color: #71767b;
+    font-size: 0.875rem;
+  }
+
+  .health-value {
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .health-value.good {
+    color: #00ba7c;
+  }
+
+  .health-value.warning {
+    color: #ffad1f;
+  }
+
+  .health-value.error {
+    color: #f4212e;
+  }
+
+  .health-value.neutral {
+    color: #71767b;
+  }
+
+  @media (max-width: 900px) {
+    .content-row {
+      grid-template-columns: 1fr;
+    }
+
+    .status-panel {
+      max-width: none;
+    }
+  }
+</style>

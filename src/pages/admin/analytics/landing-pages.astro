@@ -1,0 +1,427 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getServerClient } from '../../../lib/supabase/server';
+
+const supabase = getServerClient();
+
+const url = new URL(Astro.request.url);
+const range = url.searchParams.get('range') || '7d';
+const country = url.searchParams.get('country') || 'US';
+
+const now = new Date();
+let startDate: Date;
+
+switch (range) {
+  case '1d':
+    startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    break;
+  case '30d':
+    startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    break;
+  case '90d':
+    startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    break;
+  default:
+    startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+}
+
+let sessionsQuery = supabase
+  .from('sessions')
+  .select('*')
+  .gte('started_at', startDate.toISOString())
+  .not('landing_page', 'is', null);
+
+if (country !== 'all') {
+  sessionsQuery = sessionsQuery.eq('country', country === 'US' ? 'United States' : country);
+}
+
+const { data: sessions } = await sessionsQuery;
+
+interface LandingPageMetrics {
+  path: string;
+  sessions: number;
+  bounces: number;
+  bounceRate: number;
+  avgDuration: number;
+  avgPages: number;
+  topReferrers: { domain: string; count: number }[];
+}
+
+const landingPageData: Record<string, LandingPageMetrics> = {};
+
+sessions?.forEach(session => {
+  const path = session.landing_page!;
+
+  if (!landingPageData[path]) {
+    landingPageData[path] = {
+      path,
+      sessions: 0,
+      bounces: 0,
+      bounceRate: 0,
+      avgDuration: 0,
+      avgPages: 0,
+      topReferrers: []
+    };
+  }
+
+  landingPageData[path].sessions++;
+
+  if (session.is_bounce) {
+    landingPageData[path].bounces++;
+  }
+
+  landingPageData[path].avgDuration += session.total_duration_seconds || 0;
+  landingPageData[path].avgPages += session.page_count || 0;
+});
+
+const referrersByPage: Record<string, Record<string, number>> = {};
+sessions?.forEach(session => {
+  const path = session.landing_page!;
+  const referrer = session.referrer_domain || 'Direct';
+
+  if (!referrersByPage[path]) {
+    referrersByPage[path] = {};
+  }
+
+  referrersByPage[path][referrer] = (referrersByPage[path][referrer] || 0) + 1;
+});
+
+Object.keys(landingPageData).forEach(path => {
+  const data = landingPageData[path];
+  data.bounceRate = data.sessions > 0 ? (data.bounces / data.sessions) * 100 : 0;
+  data.avgDuration = data.sessions > 0 ? data.avgDuration / data.sessions : 0;
+  data.avgPages = data.sessions > 0 ? data.avgPages / data.sessions : 0;
+
+  const refs = referrersByPage[path] || {};
+  data.topReferrers = Object.entries(refs)
+    .map(([domain, count]) => ({ domain, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+});
+
+const landingPages = Object.values(landingPageData)
+  .sort((a, b) => b.sessions - a.sessions);
+
+const totalSessions = landingPages.reduce((sum, lp) => sum + lp.sessions, 0);
+
+const { data: countries } = await supabase
+  .from('sessions')
+  .select('country')
+  .gte('started_at', startDate.toISOString());
+
+const countrySet = new Set(countries?.map(c => c.country).filter(Boolean));
+const availableCountries = Array.from(countrySet).sort();
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return `${mins}m ${secs}s`;
+}
+---
+
+<AdminLayout title="Landing Pages" currentPath="/admin/analytics/landing-pages">
+  <div class="landing-pages">
+    <div class="filters">
+      <div class="filter-group">
+        <label>Date Range</label>
+        <select id="range-select" class="filter-select">
+          <option value="1d" selected={range === '1d'}>Last 24 hours</option>
+          <option value="7d" selected={range === '7d'}>Last 7 days</option>
+          <option value="30d" selected={range === '30d'}>Last 30 days</option>
+          <option value="90d" selected={range === '90d'}>Last 90 days</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Country</label>
+        <select id="country-select" class="filter-select">
+          <option value="all" selected={country === 'all'}>All Countries</option>
+          <option value="US" selected={country === 'US'}>United States</option>
+          {availableCountries.filter(c => c !== 'United States').map(c => (
+            <option value={c} selected={country === c}>{c}</option>
+          ))}
+        </select>
+      </div>
+      <button id="apply-filters" class="filter-btn">Apply Filters</button>
+    </div>
+
+    <div class="summary">
+      <p>Showing <strong>{landingPages.length}</strong> landing pages with <strong>{totalSessions.toLocaleString()}</strong> total sessions</p>
+    </div>
+
+    <div class="landing-pages-list">
+      {landingPages.length > 0 ? (
+        landingPages.map((lp, index) => (
+          <div class="landing-page-card">
+            <div class="card-header">
+              <div class="rank">#{index + 1}</div>
+              <div class="page-info">
+                <h3 class="page-path">{lp.path}</h3>
+                <div class="page-stats">
+                  <span class="stat">
+                    <strong>{lp.sessions.toLocaleString()}</strong> sessions
+                    ({((lp.sessions / totalSessions) * 100).toFixed(1)}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-metrics">
+              <div class="metric">
+                <span class="metric-label">Bounce Rate</span>
+                <span class={`metric-value ${lp.bounceRate > 70 ? 'high' : lp.bounceRate > 50 ? 'medium' : 'low'}`}>
+                  {lp.bounceRate.toFixed(1)}%
+                </span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Avg. Duration</span>
+                <span class="metric-value">{formatDuration(lp.avgDuration)}</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Avg. Pages</span>
+                <span class="metric-value">{lp.avgPages.toFixed(1)}</span>
+              </div>
+            </div>
+
+            {lp.topReferrers.length > 0 && (
+              <div class="referrers">
+                <h4>Top Referrers</h4>
+                <div class="referrer-list">
+                  {lp.topReferrers.map(ref => (
+                    <div class="referrer-item">
+                      <span class="referrer-domain">{ref.domain}</span>
+                      <span class="referrer-count">{ref.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))
+      ) : (
+        <div class="empty-state">
+          <p>No landing page data for the selected filters</p>
+        </div>
+      )}
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  const rangeSelect = document.getElementById('range-select') as HTMLSelectElement;
+  const countrySelect = document.getElementById('country-select') as HTMLSelectElement;
+  const applyBtn = document.getElementById('apply-filters');
+
+  applyBtn?.addEventListener('click', () => {
+    const params = new URLSearchParams();
+    params.set('range', rangeSelect.value);
+    params.set('country', countrySelect.value);
+    window.location.href = `/admin/analytics/landing-pages?${params.toString()}`;
+  });
+</script>
+
+<style>
+  .landing-pages {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .filters {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    background: #16202a;
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid #2f3336;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .filter-group label {
+    font-size: 0.75rem;
+    color: #71767b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .filter-select {
+    background: #0f1419;
+    border: 1px solid #2f3336;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: #e7e9ea;
+    font-size: 0.875rem;
+    min-width: 150px;
+  }
+
+  .filter-btn {
+    background: #1d9bf0;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .filter-btn:hover {
+    background: #1a8cd8;
+  }
+
+  .summary {
+    color: #71767b;
+    font-size: 0.875rem;
+  }
+
+  .summary strong {
+    color: #e7e9ea;
+  }
+
+  .landing-pages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .landing-page-card {
+    background: #16202a;
+    border: 1px solid #2f3336;
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .card-header {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .rank {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1d9bf0;
+    min-width: 40px;
+  }
+
+  .page-info {
+    flex: 1;
+  }
+
+  .page-path {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    word-break: break-all;
+  }
+
+  .page-stats {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .page-stats .stat {
+    font-size: 0.875rem;
+    color: #71767b;
+  }
+
+  .page-stats .stat strong {
+    color: #e7e9ea;
+  }
+
+  .card-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 16px;
+    padding: 16px 0;
+    border-top: 1px solid #2f3336;
+    border-bottom: 1px solid #2f3336;
+  }
+
+  .metric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .metric-label {
+    font-size: 0.75rem;
+    color: #71767b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .metric-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #e7e9ea;
+  }
+
+  .metric-value.high {
+    color: #f4212e;
+  }
+
+  .metric-value.medium {
+    color: #ffad1f;
+  }
+
+  .metric-value.low {
+    color: #00ba7c;
+  }
+
+  .referrers {
+    margin-top: 16px;
+  }
+
+  .referrers h4 {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #71767b;
+    margin-bottom: 8px;
+  }
+
+  .referrer-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .referrer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #0f1419;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8125rem;
+  }
+
+  .referrer-domain {
+    color: #e7e9ea;
+  }
+
+  .referrer-count {
+    color: #1d9bf0;
+    font-weight: 600;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: #71767b;
+    padding: 60px 20px;
+    background: #16202a;
+    border: 1px solid #2f3336;
+    border-radius: 12px;
+  }
+</style>

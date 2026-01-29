@@ -1,0 +1,535 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { getServerClient } from '../../../lib/supabase/server';
+
+const supabase = getServerClient();
+
+const url = new URL(Astro.request.url);
+const range = url.searchParams.get('range') || '7d';
+const country = url.searchParams.get('country') || 'all';
+const page = parseInt(url.searchParams.get('page') || '1');
+const perPage = 20;
+
+const now = new Date();
+let startDate: Date;
+
+switch (range) {
+  case '1d':
+    startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    break;
+  case '30d':
+    startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    break;
+  case '90d':
+    startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    break;
+  default:
+    startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+}
+
+let sessionsQuery = supabase
+  .from('sessions')
+  .select('*', { count: 'exact' })
+  .gte('started_at', startDate.toISOString())
+  .order('started_at', { ascending: false })
+  .range((page - 1) * perPage, page * perPage - 1);
+
+if (country !== 'all') {
+  sessionsQuery = sessionsQuery.eq('country', country === 'US' ? 'United States' : country);
+}
+
+const { data: sessions, count: totalCount } = await sessionsQuery;
+
+const sessionIds = sessions?.map(s => s.session_id) || [];
+
+const { data: pageVisits } = await supabase
+  .from('page_visits')
+  .select('*')
+  .in('session_id', sessionIds)
+  .order('visited_at', { ascending: true });
+
+const visitsBySession: Record<string, typeof pageVisits> = {};
+pageVisits?.forEach(visit => {
+  if (!visitsBySession[visit.session_id]) {
+    visitsBySession[visit.session_id] = [];
+  }
+  visitsBySession[visit.session_id].push(visit);
+});
+
+const totalPages = Math.ceil((totalCount || 0) / perPage);
+
+const { data: countries } = await supabase
+  .from('sessions')
+  .select('country')
+  .gte('started_at', startDate.toISOString());
+
+const countrySet = new Set(countries?.map(c => c.country).filter(Boolean));
+const availableCountries = Array.from(countrySet).sort();
+
+function formatDuration(seconds: number): string {
+  if (!seconds) return '-';
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return `${mins}m ${secs}s`;
+}
+
+function formatTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+---
+
+<AdminLayout title="Sessions" currentPath="/admin/analytics/sessions">
+  <div class="sessions-page">
+    <div class="filters">
+      <div class="filter-group">
+        <label>Date Range</label>
+        <select id="range-select" class="filter-select">
+          <option value="1d" selected={range === '1d'}>Last 24 hours</option>
+          <option value="7d" selected={range === '7d'}>Last 7 days</option>
+          <option value="30d" selected={range === '30d'}>Last 30 days</option>
+          <option value="90d" selected={range === '90d'}>Last 90 days</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Country</label>
+        <select id="country-select" class="filter-select">
+          <option value="all" selected={country === 'all'}>All Countries</option>
+          <option value="US" selected={country === 'US'}>United States</option>
+          {availableCountries.filter(c => c !== 'United States').map(c => (
+            <option value={c} selected={country === c}>{c}</option>
+          ))}
+        </select>
+      </div>
+      <button id="apply-filters" class="filter-btn">Apply Filters</button>
+    </div>
+
+    <div class="summary">
+      <p>Showing <strong>{sessions?.length || 0}</strong> of <strong>{(totalCount || 0).toLocaleString()}</strong> sessions</p>
+    </div>
+
+    <div class="sessions-list">
+      {sessions && sessions.length > 0 ? (
+        sessions.map(session => (
+          <details class="session-card">
+            <summary class="session-summary">
+              <div class="session-meta">
+                <span class="session-time">{formatTime(session.started_at)}</span>
+                <span class="session-country">{session.country || 'Unknown'}</span>
+                <span class="session-device">{session.device_type || '-'}</span>
+              </div>
+              <div class="session-stats">
+                <span class="stat">
+                  <strong>{session.page_count || 0}</strong> pages
+                </span>
+                <span class="stat">
+                  <strong>{formatDuration(session.total_duration_seconds || 0)}</strong>
+                </span>
+                {session.is_bounce && (
+                  <span class="bounce-badge">Bounce</span>
+                )}
+              </div>
+              <div class="session-path">
+                <span class="path-label">Entry:</span>
+                <span class="path-value">{session.landing_page || '-'}</span>
+                {session.exit_page && session.exit_page !== session.landing_page && (
+                  <>
+                    <span class="path-arrow">→</span>
+                    <span class="path-label">Exit:</span>
+                    <span class="path-value">{session.exit_page}</span>
+                  </>
+                )}
+              </div>
+            </summary>
+            <div class="session-details">
+              <div class="detail-section">
+                <h4>Session Info</h4>
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <span class="detail-label">Session ID</span>
+                    <span class="detail-value mono">{session.session_id}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Visitor ID</span>
+                    <span class="detail-value mono">{session.visitor_id}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Browser</span>
+                    <span class="detail-value">{session.browser || '-'}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">OS</span>
+                    <span class="detail-value">{session.os || '-'}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Screen</span>
+                    <span class="detail-value">{session.screen_width && session.screen_height ? `${session.screen_width}x${session.screen_height}` : '-'}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Referrer</span>
+                    <span class="detail-value">{session.referrer_domain || 'Direct'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="detail-section">
+                <h4>Page Flow</h4>
+                <div class="page-flow">
+                  {visitsBySession[session.session_id]?.map((visit, idx) => (
+                    <div class="flow-item">
+                      <div class="flow-number">{idx + 1}</div>
+                      <div class="flow-content">
+                        <span class="flow-path">{visit.page_path}</span>
+                        <span class="flow-meta">
+                          {formatDuration(visit.time_on_page_seconds || 0)} · {visit.scroll_depth_percent || 0}% scrolled
+                        </span>
+                      </div>
+                    </div>
+                  )) || <p class="no-data">No page visits recorded</p>}
+                </div>
+              </div>
+            </div>
+          </details>
+        ))
+      ) : (
+        <div class="empty-state">
+          <p>No sessions found for the selected filters</p>
+        </div>
+      )}
+    </div>
+
+    {totalPages > 1 && (
+      <div class="pagination">
+        {page > 1 && (
+          <a href={`?range=${range}&country=${country}&page=${page - 1}`} class="page-btn">Previous</a>
+        )}
+        <span class="page-info">Page {page} of {totalPages}</span>
+        {page < totalPages && (
+          <a href={`?range=${range}&country=${country}&page=${page + 1}`} class="page-btn">Next</a>
+        )}
+      </div>
+    )}
+  </div>
+</AdminLayout>
+
+<script>
+  const rangeSelect = document.getElementById('range-select') as HTMLSelectElement;
+  const countrySelect = document.getElementById('country-select') as HTMLSelectElement;
+  const applyBtn = document.getElementById('apply-filters');
+
+  applyBtn?.addEventListener('click', () => {
+    const params = new URLSearchParams();
+    params.set('range', rangeSelect.value);
+    params.set('country', countrySelect.value);
+    window.location.href = `/admin/analytics/sessions?${params.toString()}`;
+  });
+</script>
+
+<style>
+  .sessions-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .filters {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    background: #16202a;
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid #2f3336;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .filter-group label {
+    font-size: 0.75rem;
+    color: #71767b;
+    text-transform: uppercase;
+  }
+
+  .filter-select {
+    background: #0f1419;
+    border: 1px solid #2f3336;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: #e7e9ea;
+    font-size: 0.875rem;
+    min-width: 150px;
+  }
+
+  .filter-btn {
+    background: #1d9bf0;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .summary {
+    color: #71767b;
+    font-size: 0.875rem;
+  }
+
+  .summary strong {
+    color: #e7e9ea;
+  }
+
+  .sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .session-card {
+    background: #16202a;
+    border: 1px solid #2f3336;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .session-summary {
+    padding: 16px 20px;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .session-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .session-summary::before {
+    content: '▶';
+    font-size: 0.625rem;
+    color: #71767b;
+    transition: transform 0.15s ease;
+  }
+
+  details[open] .session-summary::before {
+    transform: rotate(90deg);
+  }
+
+  .session-meta {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .session-time {
+    font-weight: 500;
+    color: #e7e9ea;
+  }
+
+  .session-country,
+  .session-device {
+    font-size: 0.875rem;
+    color: #71767b;
+  }
+
+  .session-stats {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .session-stats .stat {
+    font-size: 0.875rem;
+    color: #71767b;
+  }
+
+  .session-stats .stat strong {
+    color: #1d9bf0;
+  }
+
+  .bounce-badge {
+    background: rgba(244, 33, 46, 0.1);
+    color: #f4212e;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .session-path {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.875rem;
+    flex-wrap: wrap;
+  }
+
+  .path-label {
+    color: #71767b;
+  }
+
+  .path-value {
+    color: #e7e9ea;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .path-arrow {
+    color: #71767b;
+  }
+
+  .session-details {
+    padding: 20px;
+    border-top: 1px solid #2f3336;
+    background: #0f1419;
+  }
+
+  .detail-section {
+    margin-bottom: 24px;
+  }
+
+  .detail-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .detail-section h4 {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #71767b;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .detail-label {
+    font-size: 0.75rem;
+    color: #71767b;
+  }
+
+  .detail-value {
+    font-size: 0.875rem;
+    color: #e7e9ea;
+  }
+
+  .detail-value.mono {
+    font-family: monospace;
+    font-size: 0.75rem;
+    word-break: break-all;
+  }
+
+  .page-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .flow-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .flow-number {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #1d9bf0;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .flow-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .flow-path {
+    font-size: 0.875rem;
+    color: #e7e9ea;
+  }
+
+  .flow-meta {
+    font-size: 0.75rem;
+    color: #71767b;
+  }
+
+  .no-data {
+    color: #71767b;
+    font-size: 0.875rem;
+    font-style: italic;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: #71767b;
+    padding: 60px 20px;
+    background: #16202a;
+    border: 1px solid #2f3336;
+    border-radius: 12px;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .page-btn {
+    background: #16202a;
+    border: 1px solid #2f3336;
+    border-radius: 6px;
+    padding: 8px 16px;
+    color: #e7e9ea;
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: all 0.15s ease;
+  }
+
+  .page-btn:hover {
+    background: rgba(29, 155, 240, 0.1);
+    border-color: #1d9bf0;
+    color: #1d9bf0;
+  }
+
+  .page-info {
+    color: #71767b;
+    font-size: 0.875rem;
+  }
+</style>

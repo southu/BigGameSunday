@@ -1,0 +1,234 @@
+---
+import { validateSession, getTokenFromCookie } from '../lib/auth/session';
+
+export const prerender = false;
+
+interface Props {
+  title: string;
+  currentPath?: string;
+}
+
+const { title, currentPath = '' } = Astro.props;
+
+const token = getTokenFromCookie(Astro.request.headers.get('cookie'));
+const { valid, admin } = await validateSession(token || '');
+
+if (!valid && !Astro.url.pathname.includes('/admin/login')) {
+  return Astro.redirect('/admin/login');
+}
+
+const navItems = [
+  { path: '/admin', label: 'Dashboard', icon: 'home' },
+  { path: '/admin/analytics', label: 'Analytics', icon: 'chart' },
+  { path: '/admin/analytics/landing-pages', label: 'Landing Pages', icon: 'landing', indent: true },
+  { path: '/admin/analytics/geography', label: 'Geography', icon: 'globe', indent: true },
+  { path: '/admin/analytics/sessions', label: 'Sessions', icon: 'users', indent: true },
+  { path: '/admin/health', label: 'Site Health', icon: 'health' },
+  { path: '/admin/health/links', label: 'Links', icon: 'link', indent: true },
+  { path: '/admin/health/builds', label: 'Builds', icon: 'build', indent: true },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title} | Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="admin-layout">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <a href="/admin" class="logo">BGS Admin</a>
+        </div>
+        <nav class="sidebar-nav">
+          {navItems.map((item) => (
+            <a
+              href={item.path}
+              class:list={[
+                'nav-item',
+                { active: currentPath === item.path || (item.path !== '/admin' && currentPath.startsWith(item.path)) },
+                { indent: item.indent }
+              ]}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+        <div class="sidebar-footer">
+          {admin && (
+            <div class="user-info">
+              <span class="user-email">{admin.email}</span>
+              <form action="/api/admin/logout" method="POST">
+                <button type="submit" class="logout-btn">Logout</button>
+              </form>
+            </div>
+          )}
+        </div>
+      </aside>
+      <main class="main-content">
+        <header class="content-header">
+          <h1>{title}</h1>
+        </header>
+        <div class="content-body">
+          <slot />
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
+
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f1419;
+    color: #e7e9ea;
+    min-height: 100vh;
+  }
+
+  .admin-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 240px;
+    background: #16202a;
+    border-right: 1px solid #2f3336;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100vh;
+    left: 0;
+    top: 0;
+  }
+
+  .sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid #2f3336;
+  }
+
+  .logo {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1d9bf0;
+    text-decoration: none;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 12px 0;
+    overflow-y: auto;
+  }
+
+  .nav-item {
+    display: block;
+    padding: 10px 20px;
+    color: #71767b;
+    text-decoration: none;
+    font-size: 0.9375rem;
+    transition: all 0.15s ease;
+  }
+
+  .nav-item:hover {
+    background: rgba(29, 155, 240, 0.1);
+    color: #e7e9ea;
+  }
+
+  .nav-item.active {
+    background: rgba(29, 155, 240, 0.15);
+    color: #1d9bf0;
+    border-right: 3px solid #1d9bf0;
+  }
+
+  .nav-item.indent {
+    padding-left: 36px;
+    font-size: 0.875rem;
+  }
+
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #2f3336;
+  }
+
+  .user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .user-email {
+    font-size: 0.8125rem;
+    color: #71767b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .logout-btn {
+    background: transparent;
+    border: 1px solid #2f3336;
+    color: #71767b;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .logout-btn:hover {
+    background: rgba(244, 33, 46, 0.1);
+    border-color: #f4212e;
+    color: #f4212e;
+  }
+
+  .main-content {
+    flex: 1;
+    margin-left: 240px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .content-header {
+    padding: 20px 32px;
+    background: #16202a;
+    border-bottom: 1px solid #2f3336;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .content-header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  .content-body {
+    flex: 1;
+    padding: 24px 32px;
+  }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      width: 100%;
+      height: auto;
+      position: relative;
+    }
+
+    .main-content {
+      margin-left: 0;
+    }
+  }
+</style>
