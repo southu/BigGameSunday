@@ -286,26 +286,39 @@ class Analytics {
     if (!this.state.currentPageVisitId) return;
 
     const timeOnPage = Math.round((Date.now() - this.state.pageStartTime) / 1000);
+    const supabaseUrl = (window as unknown as { ENV_SUPABASE_URL?: string }).ENV_SUPABASE_URL || '';
+    const supabaseKey = (window as unknown as { ENV_SUPABASE_ANON_KEY?: string }).ENV_SUPABASE_ANON_KEY || '';
 
-    navigator.sendBeacon(
-      `${(window as unknown as { ENV_SUPABASE_URL?: string }).ENV_SUPABASE_URL}/rest/v1/page_visits?id=eq.${this.state.currentPageVisitId}`,
-      JSON.stringify({
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Prefer': 'return=minimal'
+    };
+
+    fetch(`${supabaseUrl}/rest/v1/page_visits?id=eq.${this.state.currentPageVisitId}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
         time_on_page_seconds: timeOnPage,
         scroll_depth_percent: this.state.maxScrollDepth,
         is_exit_page: true
-      })
-    );
+      }),
+      keepalive: true
+    }).catch(() => {});
 
     const sessionData = sessionStorage.getItem(STORAGE_KEY_SESSION);
     if (sessionData) {
       const data = JSON.parse(sessionData);
-      navigator.sendBeacon(
-        `${(window as unknown as { ENV_SUPABASE_URL?: string }).ENV_SUPABASE_URL}/rest/v1/sessions?session_id=eq.${this.state.sessionId}`,
-        JSON.stringify({
+      fetch(`${supabaseUrl}/rest/v1/sessions?session_id=eq.${this.state.sessionId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
           exit_page: window.location.pathname,
           is_bounce: data.pageCount === 1
-        })
-      );
+        }),
+        keepalive: true
+      }).catch(() => {});
     }
   }
 }
