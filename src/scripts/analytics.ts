@@ -230,7 +230,11 @@ class Analytics {
       });
     }
 
-    const { data } = await this.supabase.from('page_visits').insert({
+    const pageVisitId = crypto.randomUUID();
+    this.state.currentPageVisitId = pageVisitId;
+
+    await this.supabase.from('page_visits').insert({
+      id: pageVisitId,
       session_id: sessionId,
       visitor_id: visitorId,
       page_path: window.location.pathname,
@@ -246,11 +250,7 @@ class Analytics {
       os: deviceInfo?.os || null,
       screen_width: deviceInfo?.screenWidth || null,
       screen_height: deviceInfo?.screenHeight || null
-    }).select('id').single();
-
-    if (data) {
-      this.state.currentPageVisitId = data.id;
-    }
+    });
   }
 
   private setupScrollTracking(): void {
