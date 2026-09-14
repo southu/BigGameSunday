@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { computeWeekScores } from "./finalize";
 
 /** Run an autopilot pass for the caller's own household, right now. */
 export const runAutopilotNow = createServerFn({ method: "POST" })
@@ -31,7 +32,10 @@ export const recomputeWeek = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const db = context.supabase as unknown as { from: (t: string) => any };
-    const { computeWeekScores } = await import("./finalize");
     const out = await computeWeekScores(db, data.weekId, { finalize: !!data.finalize });
-    return { cards: out.rows.length, missedManual: out.missedManual };
+    return {
+      cards: out.rows.length,
+      missedManual: out.missedManual,
+      winnerCardId: out.winnerCardId,
+    };
   });
