@@ -317,8 +317,8 @@ describe("computeWeekScores", () => {
     assert.equal(byCard.early.lines, 1);
   });
 
-  it("still stores rank if live weekly_scores has not gained first_line_at yet", async () => {
-    const weekId = "week-missing-col";
+  it("inserts first_line_at with rank and does not strip the column", async () => {
+    const weekId = "week-persist-col";
     const state = {
       events: [] as any[],
       games: [] as any[],
@@ -326,25 +326,15 @@ describe("computeWeekScores", () => {
       weekly_scores: [] as any[],
       weeks: [{ id: weekId, status: "locked", finalized_at: null }],
     };
-    const db = memoryDb(state);
-    const origFrom = db.from.bind(db);
-    db.from = (table: string) => {
-      const q = origFrom(table);
-      if (table !== "weekly_scores") return q;
-      const origInsert = q.insert.bind(q);
-      q.insert = (rows: any[]) => {
-        if (rows.some((r) => r && "first_line_at" in r)) {
-          return { error: { code: "PGRST204", message: "Could not find the 'first_line_at' column of 'weekly_scores' in the schema cache" } };
-        }
-        return origInsert(rows);
-      };
-      return q;
-    };
-    const out = await computeWeekScores(db, weekId, { finalize: false });
+    const out = await computeWeekScores(memoryDb(state), weekId, { finalize: false });
     assert.equal(out.rows[0].rank, 1);
     assert.equal(state.weekly_scores.length, 1);
-    assert.equal("first_line_at" in state.weekly_scores[0], false);
+    assert.equal("first_line_at" in state.weekly_scores[0], true);
+    assert.equal(state.weekly_scores[0].first_line_at, null);
     assert.equal(state.weekly_scores[0].rank, 1);
+    const src = readFileSync(join(ROOT, "src/lib/finalize.ts"), "utf8");
+    assert.doesNotMatch(src, /stripped/);
+    assert.match(src, /insert\(ranked\)/);
   });
 
   it("recompute without finalize leaves in-progress auto_score unresolved and does not flip the week", async () => {

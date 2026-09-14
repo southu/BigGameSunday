@@ -147,13 +147,7 @@ export async function computeWeekScores(
     await db.from("weekly_scores").delete().in("card_id", cardIds);
   }
   if (ranked.length) {
-    let { error } = await db.from("weekly_scores").insert(ranked);
-    // Column ships in supabase/migrations/20260914140000_weekly_scores_first_line_at.sql.
-    // If live has not applied it yet, still store the four-key rank without 500ing.
-    if (error && /first_line_at|42703|PGRST204/i.test(`${error.code ?? ""} ${error.message ?? ""}`)) {
-      const stripped = ranked.map(({ first_line_at: _ignored, ...rest }) => rest);
-      ({ error } = await db.from("weekly_scores").insert(stripped));
-    }
+    const { error } = await db.from("weekly_scores").insert(ranked);
     if (error) throw error;
   }
 
