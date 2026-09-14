@@ -1,0 +1,66 @@
+# Big Game Sunday — Google OAuth ops note
+
+Date: 2026-09-14
+Live host: https://biggamesunday.com
+Live Supabase project ref: `vzsltdvinnqingujsnft`
+Supabase URL: `https://vzsltdvinnqingujsnft.supabase.co`
+`supabase/config.toml` `project_id` on the family-game tree (`/opt/projects/biggamesunday`): `vzsltdvinnqingujsnft` (matches live; not the stale snapshot `zigvsyxmliubaoyhogbu`).
+
+This is ops/docs only. It does not change live `/auth` chrome, scoring, cards, or `/ops`. This GitHub repo is not the Vercel production tree (Vercel git link is null); do not treat this commit as a live snapshot deploy.
+
+## 1. Confirm the live project
+
+- Live `/auth` HTML is HTTP 200 and contains `Continue with Google`.
+- Live client bundle (`/assets/client-DWWWLVPf.js`) talks to `vzsltdvinnqingujsnft.supabase.co`.
+- Live auth chunk (`/assets/auth-DPdP3OTZ.js`) calls `supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: origin or origin/auth?next=/ops } })`.
+- No `lovable.auth.signInWithOAuth` in the live `/auth` bundles. No `/auth/callback` route; `redirectTo` is `window.location.origin` (or `/auth?next=/ops` for ops).
+
+## 2. Provider toggle (live Auth settings)
+
+Read via Management API `GET https://api.supabase.com/v1/projects/vzsltdvinnqingujsnft/config/auth` (PAT leased, never committed):
+
+| Setting | Value |
+|---|---|
+| `external_google_enabled` | `true` |
+| Google client id present | yes (looks like a Google Cloud web client; value not printed) |
+| Google client secret present | yes (value not printed) |
+| `site_url` | `https://www.biggamesunday.com` |
+
+GoTrue `GET /auth/v1/settings` reports `external.google: true`.
+
+No dummy client id/secret was patched. No new GCP project was created.
+
+## 3. Redirect allowlist
+
+`uri_allow_list` (comma-separated):
+
+- `https://www.biggamesunday.com/**`
+- `https://biggamesunday.com/**`
+- `https://biggamesunday.vercel.app/**`
+
+No extra `/auth/callback` entry was required. The app redirects to origin, not a callback path.
+
+Google Cloud authorized redirect used by the start URL:
+
+- `https://vzsltdvinnqingujsnft.supabase.co/auth/v1/callback`
+
+## 4. Live start-URL checks
+
+`GET /auth/v1/authorize?provider=google&redirect_to=…` on the live project:
+
+- `redirect_to=https://biggamesunday.com/` → HTTP 302 to `accounts.google.com/o/oauth2/v2/auth` (no Unsupported provider / provider is not enabled / redirect-not-allowed).
+- `redirect_to=https://www.biggamesunday.com/` → same 302, no allowlist error.
+- Following the Google location yields HTTP 302 then HTTP 200 on `accounts.google.com/v3/signin/identifier` (Google sign-in / identifier), not `invalid_client` or `redirect_uri_mismatch`.
+
+## 5. Code
+
+No live product-code change. `/opt/projects/biggamesunday/src/routes/auth.tsx` already uses the native Supabase Google path. Email/password still renders (`Parent's email`, `New household` / sign-in). No gambling whole-words added to `/auth` copy.
+
+## 6. What was not done
+
+- Did not rewrite `/auth` chrome.
+- Did not add other identity providers or kid logins.
+- Did not commit `.env` or secrets.
+- Did not push the family-game tree over this GitHub snapshot.
+- Did not change a version endpoint contract.
+- Did not provision new infrastructure (`provision.enabled` is false).
