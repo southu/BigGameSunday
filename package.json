@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "node --experimental-strip-types --test tests/current-week.node.test.ts"
+    "test": "node --experimental-strip-types --test tests/*.node.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

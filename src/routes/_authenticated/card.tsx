@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, GripVertical, Trash2 } from "lucide-react";
 import { AppShell, EmptyWeek, PageTitle } from "@/components/bgs/AppShell";
 import { Confetti } from "@/components/bgs/Confetti";
+import { validateCardSave, weekCardsReadOnly } from "@/lib/card-constraints";
 import { db, useWeekCards, useWeekEvents, useWeekGames, type Game, type WeekEvent } from "@/lib/db";
+import { parseTimestamptz } from "@/lib/nfl";
 import { useProfile } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 import { formatKick } from "./week";
@@ -40,8 +42,8 @@ function CardBuilder() {
   const events = eventsQ.data ?? [];
   const games = gamesQ.data ?? [];
   const myCard = (cardsQ.data ?? []).find((c) => c.profile_id === activePlayer?.id) ?? null;
-  const locked = !!myCard?.locked_at;
 
+  const [now, setNow] = useState(() => Date.now());
   const [grid, setGrid] = useState<(string | null)[]>(Array(9).fill(null));
   const [upsets, setUpsets] = useState<string[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
@@ -49,6 +51,20 @@ function CardBuilder() {
   const [celebrate, setCelebrate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const lockMs = parseTimestamptz(week?.lock_at ?? null);
+  const locked =
+    !!myCard?.locked_at ||
+    week?.status === "locked" ||
+    week?.status === "final" ||
+    (lockMs != null && now >= lockMs) ||
+    weekCardsReadOnly(week, now);
+  const awaitingOpen = week?.status === "draft" && !locked;
 
   useEffect(() => {
     const next: (string | null)[] = Array(9).fill(null);
@@ -83,6 +99,11 @@ function CardBuilder() {
       const existing = next.indexOf(eventId);
       const target = slot ?? (existing >= 0 ? existing : next.findIndex((g) => g === null));
       if (target < 0) return prev;
+      const ev = eventById(eventId);
+      if (existing < 0 && ev?.game_id) {
+        const count = next.filter((id) => id && eventById(id)?.game_id === ev.game_id).length;
+        if (count >= 2) return prev;
+      }
       if (existing >= 0 && existing !== target) next[existing] = next[target] ?? null;
       next[target] = eventId;
       return next;
@@ -122,6 +143,20 @@ function CardBuilder() {
 
   async function save(lock: boolean) {
     if (!week || !activePlayer || !household) return;
+    const reason = validateCardSave({
+      weekStatus: week.status,
+      lockAt: week.lock_at,
+      cardLockedAt: myCard?.locked_at ?? null,
+      eventIds: grid,
+      events,
+      upsetGameIds: upsets,
+      lock,
+      now,
+    });
+    if (reason) {
+      setNotice(reason);
+      return;
+    }
     setSaving(true);
     setNotice(null);
     try {
@@ -192,7 +227,9 @@ function CardBuilder() {
         subtitle={
           locked
             ? "This card is locked — no more edits."
-            : "Pick 9 moments, arrange your grid, then choose 3 underdogs."
+            : awaitingOpen
+              ? "Waiting for the Commissioner to open cards."
+              : "Pick 9 moments, arrange your grid, then choose 3 underdogs."
         }
       />
 
@@ -294,6 +331,7 @@ function CardBuilder() {
                   <button
                     key={g.id}
                     onClick={() => toggleUpset(g)}
+                    disabled={locked}
                     className={cn(
                       "tap-target flex items-center justify-between gap-2 rounded-2xl border-2 px-4 py-3 text-left transition-all",
                       picked
@@ -320,20 +358,25 @@ function CardBuilder() {
             </div>
           </div>
 
+          {awaitingOpen && (
+            <p className="mt-4 text-sm font-bold text-muted-foreground">
+              Waiting for the Commissioner to open cards.
+            </p>
+          )}
           {notice && <p className="mt-4 text-sm font-bold text-berry">{notice}</p>}
 
           {!locked && (
             <div className="mt-6 flex flex-col gap-2 sm:flex-row">
               <button
                 onClick={() => save(false)}
-                disabled={saving}
+                disabled={saving || week.status === "draft"}
                 className="flex-1 rounded-full border-2 border-border bg-background px-6 py-4 font-display text-lg disabled:opacity-40"
               >
                 Save progress
               </button>
               <button
                 onClick={() => save(true)}
-                disabled={!complete || saving}
+                disabled={!complete || saving || week.status === "draft"}
                 className="flex-1 rounded-full bg-navy px-6 py-4 font-display text-lg text-cream shadow-pop disabled:opacity-40"
               >
                 {complete ? "Lock in my card 🔒" : "Finish your picks to lock in"}
@@ -366,6 +409,7 @@ function CardBuilder() {
                 <li key={ev.id}>
                   <button
                     draggable={!locked}
+                    disabled={locked}
                     onDragStart={(e) => e.dataTransfer.setData("text/plain", ev.id)}
                     onClick={() => toggleEvent(ev)}
                     className={cn(

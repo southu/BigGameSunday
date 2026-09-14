@@ -95,18 +95,46 @@ export function nextSundayKickoff(from = new Date()) {
   return new Date(base.getTime() + add * 86400000);
 }
 
-/** ISO string -> value for an <input type="datetime-local"> in the viewer's local time. */
+/**
+ * Absolute epoch ms for a timestamptz / ISO instant.
+ * Do not pass datetime-local strings through this and then fromLocalInput again.
+ */
+export function parseTimestamptz(iso: string | Date | null | undefined): number | null {
+  if (iso == null || iso === "") return null;
+  const ms = iso instanceof Date ? iso.getTime() : Date.parse(iso);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+/** timestamptz / ISO instant -> value for an <input type="datetime-local"> in the viewer's local time. */
 export function toLocalInput(iso: string | Date | null) {
-  if (!iso) return "";
-  const d = typeof iso === "string" ? new Date(iso) : iso;
+  const ms = parseTimestamptz(iso);
+  if (ms == null) return "";
+  const d = new Date(ms);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
     d.getMinutes(),
   )}`;
 }
 
+/** Naive datetime-local wall clock (no zone) -> ISO instant. Zoned strings keep their instant. */
 export function fromLocalInput(value: string) {
-  return value ? new Date(value).toISOString() : null;
+  if (!value) return null;
+  // datetime-local: YYYY-MM-DDTHH:mm[:ss] with no offset — interpret as local once.
+  const naive = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/.exec(value);
+  if (naive) {
+    const instant = new Date(
+      Number(naive[1]),
+      Number(naive[2]) - 1,
+      Number(naive[3]),
+      Number(naive[4]),
+      Number(naive[5]),
+      Number(naive[6] ?? 0),
+    );
+    return instant.toISOString();
+  }
+  // Already a timestamptz / ISO instant (Z or ±HH:MM) — do not re-parse as local.
+  const ms = parseTimestamptz(value);
+  return ms != null ? new Date(ms).toISOString() : null;
 }
 
 /** The three standard auto-scoring moments generated for every game. */
