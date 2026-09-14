@@ -2,6 +2,9 @@
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import type { OpsHousehold, OpsSnapshot, OpsUser } from "./ops.functions";
 
+export const OPS_RELINK_IDENTITIES_RPC = "ops_relink_auth_identities";
+const AUTH_REDIRECT = "https://biggamesunday.com/auth";
+
 export type CollapseUser = {
   id: string;
   email?: string | null;
@@ -20,14 +23,50 @@ export type IdentityCollapsePlan = {
 
 export type OpsAdminLike = {
   auth: {
+    resend: (params: {
+      type: "signup";
+      email: string;
+      options?: { emailRedirectTo?: string };
+    }) => Promise<{ error: { message?: string } | null }>;
     admin: {
+      getUserById: (id: string) => Promise<{
+        data: {
+          user: {
+            id?: string;
+            email?: string | null;
+            email_confirmed_at?: string | null;
+            confirmation_sent_at?: string | null;
+          } | null;
+        };
+        error: unknown;
+      }>;
       updateUserById: (
         id: string,
         attributes: {
+          email?: string;
           email_confirm?: boolean;
+          ban_duration?: string;
           app_metadata?: Record<string, unknown>;
         },
-      ) => Promise<unknown>;
+      ) => Promise<{ error?: unknown } | unknown>;
+      deleteUser: (id: string) => Promise<{ error?: unknown } | unknown>;
+    };
+  };
+  rpc: (
+    fn: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message?: string; code?: string } | null }>;
+  schema?: (name: string) => {
+    from: (table: string) => {
+      update: (values: { user_id: string }) => {
+        eq: (column: string, value: string) => {
+          not: (
+            column: string,
+            operator: string,
+            value: string,
+          ) => PromiseLike<{ error: { message?: string } | null }>;
+        };
+      };
     };
   };
 };
@@ -97,6 +136,25 @@ function providersOf(user: CollapseUser): string[] {
   return [...out];
 }
 
+function resultError(result: unknown): unknown {
+  if (result && typeof result === "object" && "error" in result) {
+    return (result as { error: unknown }).error;
+  }
+  return null;
+}
+
+export function confirmationSentAdvanced(
+  before: string | null | undefined,
+  after: string | null | undefined,
+): boolean {
+  if (!after) return false;
+  if (!before) return true;
+  const beforeMs = Date.parse(before);
+  const afterMs = Date.parse(after);
+  if (Number.isFinite(beforeMs) && Number.isFinite(afterMs)) return afterMs > beforeMs;
+  return after !== before;
+}
+
 /**
  * Plan a collapse of duplicate email/Google auth.users onto the household
  * owner_user_id. Does not invent a household or rewrite owner_user_id / RLS.
@@ -142,13 +200,68 @@ export function planIdentityCollapse(
 }
 
 /**
+ * Move OAuth identities (Google, etc.) from an extra auth.users row onto the
+ * household owner. Email/phone identities stay put so unique (provider,
+ * provider_id) does not collide; deleteUser then drops the extra row.
+ */
+export async function relinkAuthIdentitiesToOwner(
+  admin: OpsAdminLike,
+  fromUserId: string,
+  toUserId: string,
+): Promise<void> {
+  const rpcResult = await admin.rpc(OPS_RELINK_IDENTITIES_RPC, {
+    from_user_id: fromUserId,
+    to_user_id: toUserId,
+  });
+  if (!rpcResult?.error) return;
+
+  if (typeof admin.schema === "function") {
+    const moved = await admin
+      .schema("auth")
+      .from("identities")
+      .update({ user_id: toUserId })
+      .eq("user_id", fromUserId)
+      .not("provider", "in", "(email,phone)");
+    if (!moved.error) return;
+  }
+
+  throw new Error(
+    `Could not relink auth identities from ${fromUserId} to ${toUserId}`,
+  );
+}
+
+async function deleteOrDisableExtraUser(
+  admin: OpsAdminLike,
+  extraId: string,
+  ownerId: string,
+): Promise<void> {
+  try {
+    const deleted = await admin.auth.admin.deleteUser(extraId);
+    if (!resultError(deleted)) return;
+  } catch {
+    // Extra may still be referenced; scramble so Google/email cannot resolve to it.
+  }
+
+  const scrambled = await admin.auth.admin.updateUserById(extraId, {
+    email: `merged-${extraId.replace(/-/g, "")}@invalid.invalid`,
+    ban_duration: "876000h",
+    app_metadata: { merged_into: ownerId },
+  });
+  if (resultError(scrambled)) {
+    throw new Error(`Could not remove extra auth user ${extraId}`);
+  }
+}
+
+/**
  * Collapse extras onto households.owner_user_id:
+ * - relink extra OAuth identities (Google) onto the owner via
+ *   ops_relink_auth_identities (auth.identities.user_id)
  * - copy extra providers onto the owner app_metadata.providers
  * - confirm the owner email when an extra is already confirmed
- * - stamp extras with app_metadata.merged_into = owner id
+ * - delete the extra auth.users row so Google sign-in cannot resolve to it
  *
- * Does not delete extra auth.users rows (that would drop an identity we
- * cannot reattach). Does not rewrite household RLS or owner_user_id.
+ * Does not rewrite household RLS or owner_user_id. Does not succeed on
+ * app_metadata-only stamps that leave the extra identity in place.
  */
 export async function collapseDuplicateIdentitiesToHouseholdOwner(
   users: CollapseUser[],
@@ -158,12 +271,16 @@ export async function collapseDuplicateIdentitiesToHouseholdOwner(
   const plans = planIdentityCollapse(users, households);
   if (plans.length === 0) return plans;
 
-  const client = admin ?? getOpsAdmin();
+  const client = admin ?? (getOpsAdmin() as unknown as OpsAdminLike);
   const byId = new Map(users.map((user) => [user.id, user]));
 
   for (const plan of plans) {
     const owner = byId.get(plan.ownerId);
     if (!owner) continue;
+
+    for (const extraId of plan.extraIds) {
+      await relinkAuthIdentitiesToOwner(client, extraId, plan.ownerId);
+    }
 
     const ownerProviders = [...new Set([...providersOf(owner), ...plan.extraProviders])];
     const ownerMeta: Record<string, unknown> = { ...(owner.app_metadata ?? {}) };
@@ -175,12 +292,7 @@ export async function collapseDuplicateIdentitiesToHouseholdOwner(
     });
 
     for (const extraId of plan.extraIds) {
-      const extra = byId.get(extraId);
-      const extraMeta: Record<string, unknown> = { ...(extra?.app_metadata ?? {}) };
-      extraMeta["merged_into"] = plan.ownerId;
-      await client.auth.admin.updateUserById(extraId, {
-        app_metadata: extraMeta,
-      });
+      await deleteOrDisableExtraUser(client, extraId, plan.ownerId);
     }
   }
 
@@ -253,7 +365,11 @@ export async function loadOpsSnapshotHandler(claims: { email?: unknown }): Promi
       owner_user_id: row.owner_user_id as string,
       created_at: row.created_at as string,
     }));
-    await collapseDuplicateIdentitiesToHouseholdOwner(users, households, admin);
+    await collapseDuplicateIdentitiesToHouseholdOwner(
+      users,
+      households,
+      admin as unknown as OpsAdminLike,
+    );
     return { users: users.map(mapUser), households };
   } catch (error) {
     const missingEnv = missingEnvNames(error);
@@ -265,27 +381,28 @@ export async function loadOpsSnapshotHandler(claims: { email?: unknown }): Promi
 export async function resendOpsConfirmHandler(
   claims: { email?: unknown },
   userId: string,
+  admin?: OpsAdminLike,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   assertOps(claims);
   if (!userId) throw new Error("Not found");
   try {
-    const admin = getOpsAdmin();
-    const got = await admin.auth.admin.getUserById(userId);
+    const opsAdminClient = admin ?? (getOpsAdmin() as unknown as OpsAdminLike);
+    const got = await opsAdminClient.auth.admin.getUserById(userId);
     const user = got.data.user;
     if (got.error || !user) throw new Error("Not found");
     if (isOpsEmail(user.email)) return { ok: false, error: "Cannot resend" };
     if (user.email_confirmed_at) return { ok: false, error: "Cannot resend" };
     if (!user.email) throw new Error("Not found");
 
-    const link = await admin.auth.admin.generateLink({
-      type: "invite",
-      email: user.email,
-      options: { redirectTo: "https://biggamesunday.com/auth" },
-    });
-    if (!link.error) return { ok: true };
-
-    const sent = await admin.auth.resend({ type: "signup", email: user.email });
+    const before = user.confirmation_sent_at ?? null;
+    const sent = await opsAdminClient.auth.resend({ type: "signup", email: user.email, options: { emailRedirectTo: AUTH_REDIRECT } });
     if (sent.error) return { ok: false, error: "Could not send" };
+
+    const after = await opsAdminClient.auth.admin.getUserById(userId);
+    const sentAt = after.data.user?.confirmation_sent_at ?? null;
+    if (!confirmationSentAdvanced(before, sentAt)) {
+      return { ok: false, error: "Could not send" };
+    }
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message === "Not found") throw error;
