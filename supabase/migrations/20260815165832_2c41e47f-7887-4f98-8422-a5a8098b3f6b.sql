@@ -1,0 +1,1 @@
+ALTER TABLE public.weeks ADD COLUMN IF NOT EXISTS lock_at_override boolean NOT NULL DEFAULT false;

@@ -1,0 +1,13 @@
+{
+  "buildCommand": "bun run build",
+  "installCommand": "bun install",
+  "framework": null,
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.biggamesunday.com" }],
+      "destination": "https://biggamesunday.com/$1",
+      "permanent": true
+    }
+  ]
+}
