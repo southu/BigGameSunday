@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { pickViewWeek, selectActiveWeek, weekSwitcherLabel } from "../src/lib/current-week";
-import { WEEK_LONGSHOTS, weekLongshotRows } from "../src/lib/nfl";
+import { WEEK_LONGSHOTS, insertMissingWeekLongshots, weekLongshotRows } from "../src/lib/nfl";
 
 function w(week_number: number, status: string, season_year = 2026) {
   return { season_year, week_number, status };
@@ -147,9 +147,41 @@ describe("week longshot set", () => {
     expect(weekLongshotRows({ id: "w", household_id: "h" }, WEEK_LONGSHOTS)).toHaveLength(0);
   });
 
+  it("backfills longshots onto a week that already has only score moments", async () => {
+    const inserted: Array<Record<string, unknown>> = [];
+    const db = {
+      from() {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  data: [{ description: "Chiefs win by MORE than 3?" }],
+                  error: null,
+                };
+              },
+            };
+          },
+          insert(rows: Record<string, unknown>[]) {
+            inserted.push(...rows);
+            return { error: null };
+          },
+        };
+      },
+    };
+    const n = await insertMissingWeekLongshots(db, { id: "w", household_id: "h" });
+    expect(n).toBe(WEEK_LONGSHOTS.length);
+    expect(inserted).toHaveLength(WEEK_LONGSHOTS.length);
+    for (const row of inserted) {
+      expect(row.is_longshot).toBe(true);
+      expect(row.resolution_source).toBe("manual");
+      expect(row.game_id).toBeNull();
+      expect(String(row.description)).not.toMatch(GAMBLE);
+    }
+  });
+
   it("autofill and addGame insert the documented longshot set", () => {
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
-    expect(autofill).toMatch(/weekLongshotRows/);
     expect(autofill).toMatch(/insertMissingWeekLongshots/);
     const fillFn = autofill.slice(autofill.indexOf("export async function fillWeekFromEspn"));
     expect(fillFn).toMatch(/insertMissingWeekLongshots/);
@@ -163,6 +195,7 @@ describe("week longshot set", () => {
     expect(commish).toMatch(/weekLongshotRows/);
     expect(commish).not.toMatch(GAMBLE);
     const nfl = readFileSync(join(process.cwd(), "src/lib/nfl.ts"), "utf8");
+    expect(nfl).toMatch(/export async function insertMissingWeekLongshots/);
     expect(nfl).not.toMatch(GAMBLE);
   });
 });

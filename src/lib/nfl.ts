@@ -151,3 +151,23 @@ export function weekLongshotRows(
     resolution_source: "manual" as const,
   }));
 }
+
+/** Commissioner-called longshots so a player can lock a card without hand-flagging stars. */
+export async function insertMissingWeekLongshots(
+  db: { from: (table: string) => any },
+  week: { id: string; household_id: string },
+): Promise<number> {
+  const { data: existingEvents, error } = await db
+    .from("events")
+    .select("description")
+    .eq("week_id", week.id);
+  if (error) throw error;
+  const rows = weekLongshotRows(
+    week,
+    ((existingEvents ?? []) as { description: string }[]).map((e) => e.description),
+  );
+  if (!rows.length) return 0;
+  const { error: insErr } = await db.from("events").insert(rows);
+  if (insErr) throw insErr;
+  return rows.length;
+}

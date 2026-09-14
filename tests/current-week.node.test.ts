@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import { pickViewWeek, selectActiveWeek, weekSwitcherLabel } from "../src/lib/current-week.ts";
-import { WEEK_LONGSHOTS, weekLongshotRows } from "../src/lib/nfl.ts";
+import { WEEK_LONGSHOTS, insertMissingWeekLongshots, weekLongshotRows } from "../src/lib/nfl.ts";
 
 function w(week_number: number, status: string, season_year = 2026) {
   return { season_year, week_number, status };
@@ -148,9 +148,41 @@ describe("week longshot set", () => {
     assert.equal(weekLongshotRows({ id: "w", household_id: "h" }, WEEK_LONGSHOTS).length, 0);
   });
 
+  it("backfills longshots onto a week that already has only score moments", async () => {
+    const inserted: Array<Record<string, unknown>> = [];
+    const db = {
+      from() {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  data: [{ description: "Chiefs win by MORE than 3?" }],
+                  error: null,
+                };
+              },
+            };
+          },
+          insert(rows: Record<string, unknown>[]) {
+            inserted.push(...rows);
+            return { error: null };
+          },
+        };
+      },
+    };
+    const n = await insertMissingWeekLongshots(db, { id: "w", household_id: "h" });
+    assert.equal(n, WEEK_LONGSHOTS.length);
+    assert.equal(inserted.length, WEEK_LONGSHOTS.length);
+    for (const row of inserted) {
+      assert.equal(row.is_longshot, true);
+      assert.equal(row.resolution_source, "manual");
+      assert.equal(row.game_id, null);
+      assert.doesNotMatch(String(row.description), GAMBLE);
+    }
+  });
+
   it("autofill and addGame insert the documented longshot set", () => {
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
-    assert.match(autofill, /weekLongshotRows/);
     assert.match(autofill, /insertMissingWeekLongshots/);
     const fillFn = autofill.slice(autofill.indexOf("export async function fillWeekFromEspn"));
     assert.match(fillFn, /insertMissingWeekLongshots/);
@@ -165,6 +197,7 @@ describe("week longshot set", () => {
     assert.match(commish, /weekLongshotRows/);
     assert.doesNotMatch(commish, GAMBLE);
     const nfl = readFileSync(join(process.cwd(), "src/lib/nfl.ts"), "utf8");
+    assert.match(nfl, /export async function insertMissingWeekLongshots/);
     assert.doesNotMatch(nfl, GAMBLE);
   });
 });

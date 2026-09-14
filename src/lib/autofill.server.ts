@@ -1,6 +1,6 @@
 /** Auto-fill helpers: build a week's games + standard moments from the ESPN scoreboard. */
 import { fetchEspnWeek } from "./espn.server";
-import { standardEvents, weekLongshotRows } from "./nfl";
+import { insertMissingWeekLongshots, standardEvents } from "./nfl";
 
 type Db = { from: (table: string) => any };
 
@@ -93,26 +93,6 @@ export async function fillWeekFromEspn(
   result.momentsAdded += await insertMissingWeekLongshots(db, week);
 
   return result;
-}
-
-/** Commissioner-called longshots so a player can lock a card without hand-flagging stars. */
-async function insertMissingWeekLongshots(
-  db: Db,
-  week: { id: string; household_id: string },
-): Promise<number> {
-  const { data: existingEvents, error } = await db
-    .from("events")
-    .select("description")
-    .eq("week_id", week.id);
-  if (error) throw error;
-  const rows = weekLongshotRows(
-    week,
-    ((existingEvents ?? []) as { description: string }[]).map((e) => e.description),
-  );
-  if (!rows.length) return 0;
-  const { error: insErr } = await db.from("events").insert(rows);
-  if (insErr) throw insErr;
-  return rows.length;
 }
 
 const FOUR_DAYS_MS = 4 * 86400000;
