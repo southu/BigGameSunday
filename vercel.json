@@ -2,6 +2,12 @@
   "buildCommand": "bun run build",
   "installCommand": "bun install",
   "framework": null,
+  "crons": [
+    {
+      "path": "/api/public/hooks/autopilot",
+      "schedule": "*/10 * * * *"
+    }
+  ],
   "redirects": [
     {
       "source": "/(.*)",

@@ -741,8 +741,8 @@ function Commissioner() {
               </p>
               {autopilotWarning && (
                 <p className="mt-2 rounded-xl bg-gold/20 px-3 py-2 text-sm font-bold">
-                  ⚠️ {autopilotWarning.detail} It retries every hour — you can always call results by
-                  hand below.
+                  ⚠️ {autopilotWarning.detail} It retries every 10 minutes — you can always call
+                  results by hand below.
                 </p>
               )}
             </div>
