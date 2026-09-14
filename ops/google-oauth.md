@@ -128,3 +128,18 @@ This commit is the GitHub tip SHA. Production is updated with Vercel CLI from `/
 - `--meta githubCommitRepo=BigGameSunday`
 
 Live `GET /version` is this SHA. Commissioner auto-fill notices say the underdog is unset. `useCurrentWeek` / `selectActiveWeek` stay open/locked > draft > final. `auto_create_weeks`, scoring, Google OAuth, `/auth` chrome, and `/ops` are unchanged.
+
+## 11. Production cutover (card lock gates)
+
+GitHub `ee6549f84e5e6ab388d06669c63f4521d8190f69` (card lock/status/save constraints) never reached live project `biggamesunday` (`prj_y29rXz03xn0ybuW46QvlFM6nwB5F`). That project still has **no GitHub integration**. Live stayed on `49c2003a1e0b327f2b7ade94dd57d1cc07fcc5c5`.
+
+This commit is the GitHub tip SHA. Production is updated with Vercel CLI from `/opt/projects/biggamesunday` (family-game tree that already serves `/auth` and `/ops`):
+
+- `vercel deploy --prod --yes --non-interactive`
+- `--build-env VERCEL_GIT_COMMIT_SHA=<this commit>` (and `DEPLOY_SHA`) so `public/version` is this SHA
+- `--meta githubCommitSha=<this commit>`
+- `--meta githubCommitRef=main`
+- `--meta githubOrg=southu`
+- `--meta githubCommitRepo=BigGameSunday`
+
+`/card` uses `weekCardsReadOnly` + `parseTimestamptz` (timestamptz, no double local re-parse) and `validateCardSave` before writes. Commissioner datetime-local lock_at/kickoff uses `fromLocalInput`/`toLocalInput`. Commish **Lock the cards now** still sets `weeks.status=locked` and `cards.locked_at`. Scoring, Google OAuth, `/auth` chrome, and `/ops` are unchanged.

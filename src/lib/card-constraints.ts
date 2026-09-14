@@ -1,3 +1,5 @@
+import { parseTimestamptz } from "./nfl.ts";
+
 export type CardEventInfo = {
   id: string;
   game_id: string | null;
@@ -11,9 +13,8 @@ export function weekCardsReadOnly(
 ): boolean {
   if (!week) return false;
   if (week.status === "locked" || week.status === "final") return true;
-  if (!week.lock_at) return false;
-  const lockMs = Date.parse(week.lock_at);
-  return !Number.isNaN(lockMs) && now >= lockMs;
+  const lockMs = parseTimestamptz(week.lock_at);
+  return lockMs != null && now >= lockMs;
 }
 
 export function perGameCounts(

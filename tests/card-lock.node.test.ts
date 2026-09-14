@@ -187,7 +187,9 @@ describe("card lock production wiring", () => {
     const src = readFileSync(join(ROOT, "src/lib/card-constraints.ts"), "utf8");
     assert.doesNotMatch(src, GAMBLE);
     assert.match(src, /week\.status === "locked" \|\| week\.status === "final"/);
+    assert.match(src, /parseTimestamptz/);
     assert.match(src, /now >= lockMs/);
+    assert.doesNotMatch(src, /Date\.parse\(week\.lock_at\)/);
     assert.match(src, /count > 2/);
     assert.match(src, /is_longshot/);
     assert.match(src, /count >= 3/);
