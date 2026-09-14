@@ -2,10 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { selectActiveWeek } from "../src/lib/current-week.ts";
+import { pickViewWeek, selectActiveWeek, weekSwitcherLabel } from "../src/lib/current-week.ts";
 
 function w(week_number: number, status: string, season_year = 2026) {
   return { season_year, week_number, status };
+}
+
+function wr(id: string, week_number: number, status: string, season_year = 2026) {
+  return { id, season_year, week_number, status };
 }
 
 describe("selectActiveWeek", () => {
@@ -50,6 +54,28 @@ describe("selectActiveWeek", () => {
   });
 });
 
+describe("weekSwitcherLabel and pickViewWeek", () => {
+  const locked = wr("w1", 1, "locked");
+  const draft = wr("w2", 2, "draft");
+  const older = wr("w0", 18, "final", 2025);
+  const weeks = [older, locked, draft];
+
+  it("labels This Sunday and Next week without hiding the locked week", () => {
+    assert.equal(weekSwitcherLabel(locked, locked), "This Sunday");
+    assert.equal(weekSwitcherLabel(draft, locked), "Next week");
+    assert.equal(weekSwitcherLabel(older, locked), "Week 18");
+  });
+
+  it("defaults to the active week; next or an id reaches the newer draft", () => {
+    const active = selectActiveWeek(weeks);
+    assert.equal(active?.id, "w1");
+    assert.equal(pickViewWeek(weeks, active, null)?.id, "w1");
+    assert.equal(pickViewWeek(weeks, active, "next")?.id, "w2");
+    assert.equal(pickViewWeek(weeks, active, "w2")?.id, "w2");
+    assert.equal(selectActiveWeek(weeks)?.status, "locked");
+  });
+});
+
 describe("useCurrentWeek production wiring", () => {
   it("db.ts selects the active week through selectActiveWeek, not LIMIT 1", () => {
     const src = readFileSync(join(process.cwd(), "src/lib/db.ts"), "utf8");
@@ -76,6 +102,8 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(src, /Next week/);
     assert.match(src, /useHouseholdWeeks/);
     assert.match(src, /setViewWeekId/);
+    assert.match(src, /pickViewWeek/);
+    assert.match(src, /week:\s*"next"/);
   });
 
   it("commissioner copy does not use gambling vocabulary", () => {

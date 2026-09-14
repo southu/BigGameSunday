@@ -50,7 +50,7 @@ function LiveBoards() {
       <PageTitle
         emoji="📡"
         title="Live Boards"
-        subtitle={`${decided} of ${events.length} moments called so far`}
+        subtitle={`Week ${week.week_number} · ${decided} of ${events.length} moments called so far`}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

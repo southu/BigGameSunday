@@ -1,10 +1,14 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { selectActiveWeek } from "../src/lib/current-week";
+import { pickViewWeek, selectActiveWeek, weekSwitcherLabel } from "../src/lib/current-week";
 
 function w(week_number: number, status: string, season_year = 2026) {
   return { season_year, week_number, status };
+}
+
+function wr(id: string, week_number: number, status: string, season_year = 2026) {
+  return { id, season_year, week_number, status };
 }
 
 describe("selectActiveWeek", () => {
@@ -49,6 +53,28 @@ describe("selectActiveWeek", () => {
   });
 });
 
+describe("weekSwitcherLabel and pickViewWeek", () => {
+  const locked = wr("w1", 1, "locked");
+  const draft = wr("w2", 2, "draft");
+  const older = wr("w0", 18, "final", 2025);
+  const weeks = [older, locked, draft];
+
+  it("labels This Sunday and Next week without hiding the locked week", () => {
+    expect(weekSwitcherLabel(locked, locked)).toBe("This Sunday");
+    expect(weekSwitcherLabel(draft, locked)).toBe("Next week");
+    expect(weekSwitcherLabel(older, locked)).toBe("Week 18");
+  });
+
+  it("defaults to the active week; next or an id reaches the newer draft", () => {
+    const active = selectActiveWeek(weeks);
+    expect(active?.id).toBe("w1");
+    expect(pickViewWeek(weeks, active, null)?.id).toBe("w1");
+    expect(pickViewWeek(weeks, active, "next")?.id).toBe("w2");
+    expect(pickViewWeek(weeks, active, "w2")?.id).toBe("w2");
+    expect(selectActiveWeek(weeks)?.status).toBe("locked");
+  });
+});
+
 describe("useCurrentWeek production wiring", () => {
   it("db.ts selects the active week through selectActiveWeek, not LIMIT 1", () => {
     const src = readFileSync(join(process.cwd(), "src/lib/db.ts"), "utf8");
@@ -75,6 +101,8 @@ describe("useCurrentWeek production wiring", () => {
     expect(src).toMatch(/Next week/);
     expect(src).toMatch(/useHouseholdWeeks/);
     expect(src).toMatch(/setViewWeekId/);
+    expect(src).toMatch(/pickViewWeek/);
+    expect(src).toMatch(/week:\s*"next"/);
   });
 
   it("commissioner copy does not use gambling vocabulary", () => {

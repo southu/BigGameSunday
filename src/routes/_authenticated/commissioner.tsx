@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -7,6 +7,7 @@ import { AppShell, PageTitle } from "@/components/bgs/AppShell";
 import { autoFillWeek, ensureAutoWeek } from "@/lib/autofill.functions";
 import { recomputeWeek, runAutopilotNow } from "@/lib/autopilot.functions";
 import { nextStepFor } from "@/lib/autopilot-schedule";
+import { pickViewWeek, weekSwitcherLabel } from "@/lib/current-week";
 import { db, useAutopilotLog, useHouseholdWeeks, useWeekCards, useWeekEvents, useWeekGames } from "@/lib/db";
 import { useProfile } from "@/lib/profile";
 import {
@@ -20,6 +21,9 @@ import { cn } from "@/lib/utils";
 import { formatKick } from "./week";
 
 export const Route = createFileRoute("/_authenticated/commissioner")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    week: typeof search.week === "string" && search.week.length > 0 ? search.week : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Commissioner Panel — Big Game Sunday" },
@@ -57,42 +61,45 @@ const NEXT_LABEL: Record<string, string> = {
   locked: "Finalize the week 🏆",
 };
 
-function weekSwitcherLabel(
-  w: { id: string; week_number: number; season_year: number; status: string },
-  active: { id: string; week_number: number; season_year: number; status: string } | null,
-): string {
-  if (!active) return `Week ${w.week_number}`;
-  const inPlay = active.status === "open" || active.status === "locked";
-  if (inPlay && w.id === active.id) return "This Sunday";
-  if (
-    inPlay &&
-    w.status === "draft" &&
-    (w.season_year > active.season_year ||
-      (w.season_year === active.season_year && w.week_number > active.week_number))
-  ) {
-    return "Next week";
-  }
-  return `Week ${w.week_number}`;
-}
-
 function Commissioner() {
   const { household, week: activeWeek, profiles, activePlayer } = useProfile();
+  const { week: requestedWeek } = Route.useSearch();
+  const navigate = useNavigate();
   const weeksQ = useHouseholdWeeks(household?.id);
   const weeks = weeksQ.data ?? [];
-  const [viewWeekId, setViewWeekId] = useState<string | null>(null);
-  const week = useMemo(() => {
-    if (viewWeekId) {
-      const found = weeks.find((w) => w.id === viewWeekId);
-      if (found) return found;
-      if (activeWeek?.id === viewWeekId) return activeWeek;
+  const [viewWeekId, setViewWeekIdState] = useState<string | null>(null);
+
+  function setViewWeekId(id: string | null) {
+    setViewWeekIdState(id);
+    const w = id
+      ? (weeks.find((x) => x.id === id) ?? (activeWeek?.id === id ? activeWeek : null))
+      : null;
+    const label = w && activeWeek ? weekSwitcherLabel(w, activeWeek) : "";
+    const search =
+      !id || id === activeWeek?.id || label === "This Sunday"
+        ? {}
+        : label === "Next week"
+          ? { week: "next" }
+          : { week: id };
+    void navigate({ to: "/commissioner", search, replace: true });
+  }
+
+  const requested = useMemo(() => {
+    if (viewWeekId && (!weeksQ.isSuccess || weeks.some((w) => w.id === viewWeekId))) {
+      return viewWeekId;
     }
-    return activeWeek ?? null;
-  }, [viewWeekId, weeks, activeWeek]);
+    return requestedWeek ?? null;
+  }, [viewWeekId, weeks, weeksQ.isSuccess, requestedWeek]);
+
+  const week = useMemo(
+    () => pickViewWeek(weeks, activeWeek ?? null, requested),
+    [weeks, activeWeek, requested],
+  );
 
   useEffect(() => {
     if (!viewWeekId) return;
     if (weeksQ.isSuccess && !weeks.some((w) => w.id === viewWeekId)) {
-      setViewWeekId(null);
+      setViewWeekIdState(null);
     }
   }, [viewWeekId, weeks, weeksQ.isSuccess]);
 

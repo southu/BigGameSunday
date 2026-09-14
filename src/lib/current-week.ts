@@ -11,6 +11,8 @@ export type WeekLike = {
   status: string;
 };
 
+export type WeekRef = WeekLike & { id: string };
+
 function recency(a: WeekLike, b: WeekLike): number {
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
@@ -18,6 +20,14 @@ function recency(a: WeekLike, b: WeekLike): number {
 
 function isInPlay(status: string): boolean {
   return status === "open" || status === "locked";
+}
+
+export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
+  return (
+    w.status === "draft" &&
+    (w.season_year > active.season_year ||
+      (w.season_year === active.season_year && w.week_number > active.week_number))
+  );
 }
 
 export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | null {
@@ -28,4 +38,33 @@ export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | n
   const draft = ranked.find((w) => w.status === "draft");
   if (draft) return draft;
   return ranked.find((w) => w.status === "final") ?? ranked[0] ?? null;
+}
+
+/** This Sunday = in-play active week; Next week = newer draft the commish can open. */
+export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
+  if (!active) return `Week ${w.week_number}`;
+  if (isInPlay(active.status) && w.id === active.id) return "This Sunday";
+  if (isInPlay(active.status) && isNewerDraft(w, active)) return "Next week";
+  return `Week ${w.week_number}`;
+}
+
+/**
+ * Commissioner view: default is the active (open/locked) week.
+ * `next` or a week id reaches the auto-created draft without changing selectActiveWeek.
+ */
+export function pickViewWeek<T extends WeekRef>(
+  weeks: readonly T[],
+  active: T | null,
+  requested?: string | null,
+): T | null {
+  if (requested === "next" && active) {
+    const ranked = [...weeks].sort(recency);
+    const next = ranked.find((w) => isNewerDraft(w, active));
+    if (next) return next;
+  }
+  if (requested && requested !== "next") {
+    const found = weeks.find((w) => w.id === requested);
+    if (found) return found;
+  }
+  return active ?? null;
 }

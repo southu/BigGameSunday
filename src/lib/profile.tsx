@@ -63,13 +63,27 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       profiles,
       week: weekQ.data ?? null,
       activePlayer: active,
-      loading: !ready || householdQ.isLoading || profilesQ.isLoading,
+      loading:
+        !ready ||
+        householdQ.isLoading ||
+        profilesQ.isLoading ||
+        (!!household && weekQ.isLoading),
       setActivePlayerId: (id: string) => {
         setActiveId(id);
         if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, id);
       },
     };
-  }, [session, household, profiles, activeId, weekQ.data, ready, householdQ.isLoading, profilesQ.isLoading]);
+  }, [
+    session,
+    household,
+    profiles,
+    activeId,
+    weekQ.data,
+    weekQ.isLoading,
+    ready,
+    householdQ.isLoading,
+    profilesQ.isLoading,
+  ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

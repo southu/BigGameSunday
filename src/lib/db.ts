@@ -114,7 +114,12 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
     .order("season_year", { ascending: false })
     .order("week_number", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as Week[];
+  // Recency is applied here so useCurrentWeek never depends on PostgREST LIMIT 1.
+  // selectActiveWeek still ranks open/locked above a newer draft.
+  const weeks = (data ?? []) as Week[];
+  return [...weeks].sort((a, b) =>
+    a.season_year !== b.season_year ? b.season_year - a.season_year : b.week_number - a.week_number,
+  );
 }
 
 /** Every week for the household (same cache as useCurrentWeek). */
