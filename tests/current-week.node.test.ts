@@ -78,6 +78,11 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(src, /setViewWeekId/);
   });
 
+  it("commissioner copy does not use gambling vocabulary", () => {
+    const src = readFileSync(join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"), "utf8");
+    assert.doesNotMatch(src, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+  });
+
   it("autopilot still advances every non-final week and can create the next draft", () => {
     const src = readFileSync(join(process.cwd(), "src/lib/autopilot.server.ts"), "utf8");
     assert.match(src, /ensureNextWeek/);

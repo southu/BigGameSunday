@@ -193,7 +193,7 @@ function Commissioner() {
         ["current-week", household!.id],
       ]);
       return `Auto-filled ${res.gamesAdded} games and ${res.momentsAdded} moments${
-        res.needsReview ? ` · ${res.needsReview} need a quick review (no odds yet)` : ""
+        res.needsReview ? ` · ${res.needsReview} need a quick review (underdog not set yet)` : ""
       }.`;
     }, "Week auto-filled.");
 
@@ -209,7 +209,7 @@ function Commissioner() {
       return res.gamesAdded
         ? `Added ${res.gamesAdded} games and ${res.momentsAdded} moments${
             res.skipped ? ` · skipped ${res.skipped} already on the list` : ""
-          }${res.needsReview ? ` · ${res.needsReview} need a quick review (no odds yet)` : ""}.`
+          }${res.needsReview ? ` · ${res.needsReview} need a quick review (underdog not set yet)` : ""}.`
         : "Every game from that NFL week is already on your list.";
     }, "Auto-fill done.");
 
