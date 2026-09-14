@@ -102,8 +102,8 @@ export function isOpsEmail(email: string | null | undefined): boolean {
   return Boolean(normalized) && opsAllowlist().has(normalized);
 }
 
-function missingEnvNames(error: unknown): string[] | undefined {
-  const msg = error instanceof Error ? error.message : "";
+export function missingEnvNames(error: unknown): string[] | undefined {
+  const msg = error instanceof Error ? error.message : String(error ?? "");
   if (!msg.includes("Missing Supabase environment variable")) return undefined;
   const names = ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_URL"].filter((name) => msg.includes(name));
   return names.length > 0 ? names : ["SUPABASE_SERVICE_ROLE_KEY"];
@@ -300,6 +300,10 @@ export async function collapseDuplicateIdentitiesToHouseholdOwner(
 }
 
 let opsAdmin: SupabaseClient | null = null;
+
+export function resetOpsAdminForTests() {
+  opsAdmin = null;
+}
 
 export function getOpsAdmin(): SupabaseClient {
   if (opsAdmin) return opsAdmin;

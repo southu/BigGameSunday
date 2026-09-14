@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { loadOpsSnapshot } from "../../../lib/ops.functions";
-import { getOpsClaimsFromBearer } from "../../../lib/ops.server";
+import { getOpsClaimsFromBearer, missingEnvNames } from "../../../lib/ops.server";
 
 export const prerender = false;
 
@@ -23,6 +23,13 @@ export const GET: APIRoute = async ({ request }) => {
     const snapshot = await loadOpsSnapshot(claims);
     return new Response(JSON.stringify(snapshot), { status: 200, headers: json });
   } catch (error) {
+    const missingEnv = missingEnvNames(error);
+    if (missingEnv) {
+      return new Response(JSON.stringify({ users: [], households: [], missingEnv }), {
+        status: 200,
+        headers: json,
+      });
+    }
     return opsErrorResponse(error);
   }
 };

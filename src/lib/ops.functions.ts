@@ -20,8 +20,9 @@ export type OpsSnapshot = {
 };
 
 /**
- * Server-to-client boundary. Route UI never imports the allowlist;
- * handlers live in ops.server.ts and are loaded only from server modules.
+ * Server-to-client boundary (Astro equivalent of createServerFn).
+ * Route UI never imports the allowlist or service role; handlers live in
+ * ops.server.ts and are loaded only from server modules / API routes.
  */
 export async function loadOpsSnapshot(claims: { email?: unknown }): Promise<OpsSnapshot> {
   const { loadOpsSnapshotHandler } = await import("./ops.server");

@@ -14,6 +14,7 @@ export const prerender = false;
     <main class="wrap">
       <h1>ops</h1>
       <p id="notice" hidden></p>
+      <p id="missingEnv" hidden></p>
 
       <h2>users</h2>
       <div class="scroll">
@@ -65,12 +66,23 @@ export const prerender = false;
       };
 
       const notice = document.getElementById("notice") as HTMLParagraphElement;
+      const missingEnvEl = document.getElementById("missingEnv") as HTMLParagraphElement;
       const usersBody = document.getElementById("users-body") as HTMLTableSectionElement;
       const householdsBody = document.getElementById("households-body") as HTMLTableSectionElement;
 
       function showNotice(text: string) {
         notice.hidden = !text;
         notice.textContent = text;
+      }
+
+      function showMissingEnv(names: string[] | undefined) {
+        if (names && names.length > 0) {
+          missingEnvEl.hidden = false;
+          missingEnvEl.textContent = `missingEnv: ${names.join(", ")}`;
+        } else {
+          missingEnvEl.hidden = true;
+          missingEnvEl.textContent = "";
+        }
       }
 
       function cell(text: string): HTMLTableCellElement {
@@ -119,9 +131,7 @@ export const prerender = false;
           missingEnv?: string[];
         };
 
-        if (snapshot.missingEnv && snapshot.missingEnv.length > 0) {
-          showNotice(snapshot.missingEnv.join(", "));
-        }
+        showMissingEnv(snapshot.missingEnv);
 
         usersBody.replaceChildren();
         for (const user of snapshot.users) {
@@ -249,7 +259,8 @@ export const prerender = false;
   button:disabled {
     opacity: 0.5;
   }
-  #notice {
+  #notice,
+  #missingEnv {
     margin-top: 0.75rem;
     font-weight: 700;
   }

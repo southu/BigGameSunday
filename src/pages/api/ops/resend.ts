@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { resendOpsConfirm } from "../../../lib/ops.functions";
-import { getOpsClaimsFromBearer } from "../../../lib/ops.server";
+import { getOpsClaimsFromBearer, missingEnvNames } from "../../../lib/ops.server";
 
 export const prerender = false;
 
@@ -26,6 +26,13 @@ export const POST: APIRoute = async ({ request }) => {
     const result = await resendOpsConfirm(claims, userId);
     return new Response(JSON.stringify(result), { status: 200, headers: json });
   } catch (error) {
+    const missingEnv = missingEnvNames(error);
+    if (missingEnv) {
+      return new Response(JSON.stringify({ ok: false, error: missingEnv.join(", ") }), {
+        status: 200,
+        headers: json,
+      });
+    }
     return opsErrorResponse(error);
   }
 };

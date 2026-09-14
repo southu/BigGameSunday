@@ -5,11 +5,14 @@ import {
   assertOps,
   collapseDuplicateIdentitiesToHouseholdOwner,
   confirmationSentAdvanced,
+  loadOpsSnapshotHandler,
+  missingEnvNames,
   OPS_RELINK_IDENTITIES_RPC,
   opsAllowlist,
   parseOpsAllowlist,
   planIdentityCollapse,
   resendOpsConfirmHandler,
+  resetOpsAdminForTests,
   type CollapseUser,
   type OpsAdminLike,
 } from "../src/lib/ops.server";
@@ -44,6 +47,49 @@ describe("OPS_ALLOWLIST", () => {
   it("throws Not found for a non-allowlisted email", () => {
     process.env.OPS_ALLOWLIST = "ops@example.com";
     expect(() => assertOps({ email: "stranger@example.com" })).toThrow("Not found");
+  });
+});
+
+describe("missingEnv", () => {
+  const previousServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  afterEach(() => {
+    if (previousServiceRole === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = previousServiceRole;
+    resetOpsAdminForTests();
+  });
+
+  it("extracts service role and url names from the admin error", () => {
+    expect(
+      missingEnvNames(
+        new Error("Missing Supabase environment variable(s): SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL"),
+      ),
+    ).toEqual(["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_URL"]);
+  });
+
+  it("returns undefined for unrelated errors", () => {
+    expect(missingEnvNames(new Error("Not found"))).toBeUndefined();
+  });
+
+  it("loadOpsSnapshotHandler returns missingEnv when the service role key is absent", async () => {
+    process.env.OPS_ALLOWLIST = "ops@example.com";
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    resetOpsAdminForTests();
+
+    const snapshot = await loadOpsSnapshotHandler({ email: "ops@example.com" });
+    expect(snapshot.users).toEqual([]);
+    expect(snapshot.households).toEqual([]);
+    expect(snapshot.missingEnv).toEqual(expect.arrayContaining(["SUPABASE_SERVICE_ROLE_KEY"]));
+  });
+
+  it("still 404s a non-allowlisted email when env is missing", async () => {
+    process.env.OPS_ALLOWLIST = "ops@example.com";
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    resetOpsAdminForTests();
+
+    await expect(loadOpsSnapshotHandler({ email: "stranger@example.com" })).rejects.toThrow(
+      "Not found",
+    );
   });
 });
 
@@ -299,6 +345,14 @@ describe("ops surfaces in the repo", () => {
     expect(functions.includes("jsnhrpr@gmail.com")).toBe(false);
     expect(opsPage.includes("jsnhrpr@gmail.com")).toBe(false);
     expect(opsPage.includes("ops.server")).toBe(false);
+  });
+
+  it("renders missingEnv and Not found on the ops page", () => {
+    const opsPage = fs.readFileSync(path.join(root, "src/pages/ops.astro"), "utf-8");
+    expect(opsPage).toMatch(/id="missingEnv"/);
+    expect(opsPage).toMatch(/missingEnv:/);
+    expect(opsPage).toMatch(/Not found/);
+    expect(opsPage).toMatch(/\/auth\?next=\/ops/);
   });
 
   it("documents the allowlist env as server-only", () => {

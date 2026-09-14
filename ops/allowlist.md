@@ -36,6 +36,8 @@ If `OPS_ALLOWLIST` is unset or empty on a deploy, the **server-only** module fal
 
 Non-allowlisted sessions hitting `/ops` get a not-found from the server function (`throw new Error("Not found")`); the route turns that into the app 404. Unauthenticated visitors are redirected to `/auth?next=/ops`.
 
+When `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_URL` is missing, GET snapshot returns empty tables plus `missingEnv` (the missing names). The `/ops` page shows that notice (`#missingEnv`) instead of listing `auth.users`. Non-allowlisted sessions still get not-found.
+
 ## What is not the allowlist
 
 - Do not put operator emails in Astro pages, `src/` client scripts, or any `VITE_*` env.
