@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { selectActiveWeek } from "./current-week";
+import {
+  buildSeasonStandings,
+  regularSeasonWeeks,
+  type SeasonCardInput,
+  type SeasonHistoryRow,
+  type SeasonRow,
+  type SeasonWeekInput,
+} from "./scoring";
 
 export type Household = {
   id: string;
@@ -70,7 +78,14 @@ export type CardRow = {
   card_squares: { event_id: string; grid_position: number }[];
   upset_picks: { id: string; game_id: string; picked_team: string; upset_size: number }[];
   weekly_scores:
-    | { hits: number; lines: number; grid_score: number; upset_score: number; rank: number | null }
+    | {
+        hits: number;
+        lines: number;
+        grid_score: number;
+        upset_score: number;
+        rank: number | null;
+        first_line_at?: string | null;
+      }
     | null;
 };
 
@@ -221,12 +236,7 @@ export function useAutopilotLog(householdId?: string) {
   });
 }
 
-export type SeasonRow = {
-  profile_id: string;
-  grid_points: number;
-  upset_points: number;
-  trophies: number;
-};
+export type { SeasonHistoryRow, SeasonRow };
 
 /** Season totals built from finalized weeks. */
 export function useSeason(householdId?: string, seasonYear?: number) {
@@ -240,10 +250,8 @@ export function useSeason(householdId?: string, seasonYear?: number) {
         .eq("household_id", householdId)
         .eq("status", "final");
       if (wErr) throw wErr;
-      const list = ((weeks ?? []) as any[]).filter(
-        (w) => (seasonYear ? w.season_year === seasonYear : true) && w.week_number <= 18,
-      );
-      if (list.length === 0) return { rows: [] as SeasonRow[], history: [] as any[] };
+      const list = regularSeasonWeeks((weeks ?? []) as SeasonWeekInput[], seasonYear);
+      if (list.length === 0) return { rows: [] as SeasonRow[], history: [] as SeasonHistoryRow[] };
 
       const { data: cards, error: cErr } = await anyDb
         .from("cards")
@@ -254,33 +262,7 @@ export function useSeason(householdId?: string, seasonYear?: number) {
         );
       if (cErr) throw cErr;
 
-      const totals = new Map<string, SeasonRow>();
-      const history: { week: number; winnerProfileId: string | null; points: number }[] = [];
-
-      for (const w of list) {
-        let best: { profile_id: string; points: number } | null = null;
-        for (const c of (cards ?? []) as any[]) {
-          if (c.week_id !== w.id) continue;
-          const s = Array.isArray(c.weekly_scores) ? c.weekly_scores[0] : c.weekly_scores;
-          const grid = Number(s?.grid_score ?? 0);
-          const upset = Number(s?.upset_score ?? 0);
-          const row =
-            totals.get(c.profile_id) ??
-            { profile_id: c.profile_id, grid_points: 0, upset_points: 0, trophies: 0 };
-          row.grid_points += grid;
-          row.upset_points += upset;
-          totals.set(c.profile_id, row);
-          if (!best || grid > best.points) best = { profile_id: c.profile_id, points: grid };
-        }
-        if (best) {
-          const row = totals.get(best.profile_id)!;
-          row.trophies += 1;
-          history.push({ week: w.week_number, winnerProfileId: best.profile_id, points: best.points });
-        }
-      }
-
-      history.sort((a, b) => a.week - b.week);
-      return { rows: [...totals.values()], history };
+      return buildSeasonStandings(list, (cards ?? []) as SeasonCardInput[]);
     },
   });
 }

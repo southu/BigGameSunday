@@ -65,8 +65,13 @@ function Results() {
     };
   });
 
-  const leader = [...boards].sort((a, b) => b.score.gridScore - a.score.gridScore)[0] ?? null;
   const done = step >= hitEvents.length && hitEvents.length > 0;
+  // Playback stays theatrical (grid points as squares light up). After the
+  // last moment, the trophy is the stored rank-1 card from finalize.
+  const theatricalLeader =
+    [...boards].sort((a, b) => b.score.gridScore - a.score.gridScore)[0] ?? null;
+  const storedWinner = boards.find((b) => b.card.weekly_scores?.rank === 1) ?? null;
+  const leader = done && storedWinner ? storedWinner : theatricalLeader;
 
   if (!week || cards.length === 0) {
     return (

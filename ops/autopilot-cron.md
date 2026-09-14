@@ -35,6 +35,12 @@ schedule: */10 * * * *
 
 Production only. Each successful pass writes `autopilot_log` (actions, or a `checked` heartbeat when nothing moved).
 
+## Finalize miss rule
+
+Scheduled finalize runs **Tuesday 6:00 AM Eastern after lock**, after the last Sunday/Monday game of the week.
+
+`computeWeekScores({ finalize: true })` (autopilot and the commissioner button) counts unresolved **manual** moments as misses. Unresolved **auto_score** moments are not marked miss while their game is not completed (`games.upset_won` is still null). In-progress auto_score squares stay open until the game is over.
+
 ## Commissioner "Run autopilot now"
 
 Does **not** use this secret. `runAutopilotNow` in `src/lib/autopilot.functions.ts` requires the signed-in parent's JWT (`requireSupabaseAuth`) and a household row the caller owns. Keep that button; do not route it through the public hook.

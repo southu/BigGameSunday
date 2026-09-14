@@ -1,5 +1,5 @@
 /** Shared weekly scoring: used by the Commissioner panel and by autopilot. */
-import { scoreBoard } from "./scoring";
+import { firstLineAt, rankWeeklyRows, scoreBoard } from "./scoring.ts";
 
 type Db = { from: (table: string) => any };
 
@@ -9,6 +9,7 @@ export type ScoreRow = {
   lines: number;
   grid_score: number;
   upset_score: number;
+  first_line_at: string | null;
   rank: number;
 };
 
@@ -18,10 +19,51 @@ export type ComputeResult = {
   missedManual: number;
 };
 
+export type FinalizeEvent = {
+  id: string;
+  result: string | null;
+  resolution_source: string | null;
+  game_id: string | null;
+  resolved_at?: string | null;
+};
+
+export type FinalizeGame = {
+  id: string;
+  upset_won: boolean | null;
+};
+
+/**
+ * Unresolved moments that become misses on finalize.
+ *
+ * Rule: open hand-called (manual) moments count as misses.
+ * Unresolved auto_score moments are NOT marked miss while their game is
+ * not completed (`games.upset_won` is still null — set only when ESPN
+ * reports the game over). Autopilot only finalizes Tuesday 6:00 AM ET
+ * after lock, after the last Sunday/Monday game; commissioner Finalize
+ * uses this same miss rule so an early click cannot miss an in-progress
+ * auto_score square.
+ */
+export function unresolvedEventsToMiss(
+  events: FinalizeEvent[],
+  gamesById: Map<string, FinalizeGame>,
+): FinalizeEvent[] {
+  return events.filter((e) => {
+    if (e.result !== null) return false;
+    if (e.resolution_source === "auto_score") {
+      if (!e.game_id) return false;
+      const game = gamesById.get(e.game_id);
+      return game != null && game.upset_won !== null;
+    }
+    return true;
+  });
+}
+
 /**
  * Recomputes and stores every card's weekly score for a week.
- * `finalize` also flips the week to final and treats any unresolved
- * hand-called moment as a miss.
+ * Rank order: grid_score, hits, upset_score, earliest first_line_at.
+ * Ranks are written only here (recomputeWeek, autopilot Tuesday finalize,
+ * commissioner Finalize) — never rewritten mid-season without a recompute.
+ * `finalize` also flips the week to final; see unresolvedEventsToMiss.
  */
 export async function computeWeekScores(
   db: Db,
@@ -30,35 +72,42 @@ export async function computeWeekScores(
 ): Promise<ComputeResult> {
   const { data: events, error: eErr } = await db
     .from("events")
-    .select("id, result, resolution_source")
+    .select("id, result, resolution_source, game_id, resolved_at")
     .eq("week_id", weekId);
   if (eErr) throw eErr;
-
-  let missedManual = 0;
-  const eventRows = ((events ?? []) as any[]).map((e) => ({ ...e }));
-
-  if (finalize) {
-    const unresolved = eventRows.filter((e) => e.result === null);
-    if (unresolved.length) {
-      const now = new Date().toISOString();
-      const { error } = await db
-        .from("events")
-        .update({ result: "miss", resolved_at: now })
-        .in(
-          "id",
-          unresolved.map((e) => e.id),
-        );
-      if (error) throw error;
-      for (const e of unresolved) e.result = "miss";
-      missedManual = unresolved.length;
-    }
-  }
 
   const { data: games, error: gErr } = await db
     .from("games")
     .select("id, upset_won")
     .eq("week_id", weekId);
   if (gErr) throw gErr;
+
+  const eventRows = ((events ?? []) as FinalizeEvent[]).map((e) => ({ ...e }));
+  const gameRows = (games ?? []) as FinalizeGame[];
+  const gamesById = new Map(gameRows.map((g) => [g.id, g]));
+
+  let missedManual = 0;
+  if (finalize) {
+    const toMiss = unresolvedEventsToMiss(eventRows, gamesById);
+    if (toMiss.length) {
+      const now = new Date().toISOString();
+      const { error } = await db
+        .from("events")
+        .update({ result: "miss", resolved_at: now })
+        .in(
+          "id",
+          toMiss.map((e) => e.id),
+        );
+      if (error) throw error;
+      const missIds = new Set(toMiss.map((e) => e.id));
+      for (const e of eventRows) {
+        if (!missIds.has(e.id)) continue;
+        e.result = "miss";
+        e.resolved_at = now;
+      }
+      missedManual = toMiss.length;
+    }
+  }
 
   const { data: cards, error: cErr } = await db
     .from("cards")
@@ -68,16 +117,14 @@ export async function computeWeekScores(
     .eq("week_id", weekId);
   if (cErr) throw cErr;
 
-  const resultById = new Map(eventRows.map((e) => [e.id as string, e.result as string | null]));
-  const upsetWonById = new Map(
-    ((games ?? []) as any[]).map((g) => [g.id as string, !!g.upset_won]),
-  );
+  const eventById = new Map(eventRows.map((e) => [e.id, e]));
+  const upsetWonById = new Map(gameRows.map((g) => [g.id, !!g.upset_won]));
 
   const rows = ((cards ?? []) as any[]).map((card) => {
     const grid: (string | null)[] = Array(9).fill(null);
     for (const s of card.card_squares ?? []) grid[s.grid_position] = s.event_id;
     const { hits, lines, gridScore } = scoreBoard(
-      grid.map((id) => !!id && resultById.get(id) === "hit"),
+      grid.map((id) => !!id && eventById.get(id)?.result === "hit"),
     );
     const upsetScore = (card.upset_picks ?? []).reduce(
       (sum: number, u: any) => sum + (upsetWonById.get(u.game_id) ? Number(u.upset_size) : 0),
@@ -89,19 +136,24 @@ export async function computeWeekScores(
       lines,
       grid_score: gridScore,
       upset_score: upsetScore,
+      first_line_at: firstLineAt(grid, eventById),
     };
   });
 
-  const ranked: ScoreRow[] = [...rows]
-    .sort((a, b) => b.grid_score - a.grid_score || b.hits - a.hits || b.upset_score - a.upset_score)
-    .map((r, i) => ({ ...r, rank: i + 1 }));
+  const ranked: ScoreRow[] = rankWeeklyRows(rows);
 
   const cardIds = ((cards ?? []) as any[]).map((c) => c.id as string);
   if (cardIds.length) {
     await db.from("weekly_scores").delete().in("card_id", cardIds);
   }
   if (ranked.length) {
-    const { error } = await db.from("weekly_scores").insert(ranked);
+    let { error } = await db.from("weekly_scores").insert(ranked);
+    // Column ships in supabase/migrations/20260914140000_weekly_scores_first_line_at.sql.
+    // If live has not applied it yet, still store the four-key rank without 500ing.
+    if (error && /first_line_at|42703|PGRST204/i.test(`${error.code ?? ""} ${error.message ?? ""}`)) {
+      const stripped = ranked.map(({ first_line_at: _ignored, ...rest }) => rest);
+      ({ error } = await db.from("weekly_scores").insert(stripped));
+    }
     if (error) throw error;
   }
 

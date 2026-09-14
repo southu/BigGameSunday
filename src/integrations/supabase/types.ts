@@ -373,6 +373,7 @@ export type Database = {
         Row: {
           card_id: string
           created_at: string
+          first_line_at: string | null
           grid_score: number
           hits: number
           lines: number
@@ -382,6 +383,7 @@ export type Database = {
         Insert: {
           card_id: string
           created_at?: string
+          first_line_at?: string | null
           grid_score?: number
           hits?: number
           lines?: number
@@ -391,6 +393,7 @@ export type Database = {
         Update: {
           card_id?: string
           created_at?: string
+          first_line_at?: string | null
           grid_score?: number
           hits?: number
           lines?: number
