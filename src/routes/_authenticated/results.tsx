@@ -7,7 +7,7 @@ import { GridBoard, LineTally } from "@/components/bgs/GridBoard";
 import { PlayerAvatar } from "@/components/bgs/PlayerChip";
 import { useWeekCards, useWeekEvents } from "@/lib/db";
 import { useProfile } from "@/lib/profile";
-import { scoreBoard } from "@/lib/scoring";
+import { compareWeeklyRank, rankWeeklyRows, scoreBoard } from "@/lib/scoring";
 
 export const Route = createFileRoute("/_authenticated/results")({
   head: () => ({
@@ -67,11 +67,40 @@ function Results() {
 
   const done = step >= hitEvents.length && hitEvents.length > 0;
   // Playback stays theatrical (grid points as squares light up). After the
-  // last moment, the trophy is the stored rank-1 card from finalize.
+  // last moment, the trophy is the stored rank-1 card from finalize
+  // (grid_score, hits, upset_score, earliest first_line_at).
   const theatricalLeader =
     [...boards].sort((a, b) => b.score.gridScore - a.score.gridScore)[0] ?? null;
-  const storedWinner = boards.find((b) => b.card.weekly_scores?.rank === 1) ?? null;
+  const storedWinner =
+    boards.find((b) => b.card.weekly_scores?.rank === 1) ??
+    rankWeeklyRows(
+      boards.map((board) => ({
+        board,
+        grid_score: Number(board.card.weekly_scores?.grid_score ?? 0),
+        hits: Number(board.card.weekly_scores?.hits ?? 0),
+        upset_score: Number(board.card.weekly_scores?.upset_score ?? 0),
+        first_line_at: board.card.weekly_scores?.first_line_at ?? null,
+      })),
+    ).find((row) => row.rank === 1)?.board ??
+    [...boards].sort((a, b) =>
+      compareWeeklyRank(
+        {
+          grid_score: Number(a.card.weekly_scores?.grid_score ?? 0),
+          hits: Number(a.card.weekly_scores?.hits ?? 0),
+          upset_score: Number(a.card.weekly_scores?.upset_score ?? 0),
+          first_line_at: a.card.weekly_scores?.first_line_at ?? null,
+        },
+        {
+          grid_score: Number(b.card.weekly_scores?.grid_score ?? 0),
+          hits: Number(b.card.weekly_scores?.hits ?? 0),
+          upset_score: Number(b.card.weekly_scores?.upset_score ?? 0),
+          first_line_at: b.card.weekly_scores?.first_line_at ?? null,
+        },
+      ),
+    )[0] ??
+    null;
   const leader = done && storedWinner ? storedWinner : theatricalLeader;
+  const trophyPoints = Number(leader?.card.weekly_scores?.grid_score ?? leader?.score.gridScore ?? 0);
 
   if (!week || cards.length === 0) {
     return (
@@ -116,7 +145,7 @@ function Results() {
         {done && leader?.player && (
           <p className="mt-2 font-display text-xl">
             🏆 {leader.player.display_name} takes Week {week.week_number} with{" "}
-            {leader.score.gridScore} points!
+            {trophyPoints} points!
           </p>
         )}
       </div>

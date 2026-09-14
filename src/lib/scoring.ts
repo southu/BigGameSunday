@@ -9,7 +9,7 @@ export const LINES: number[][] = [
   [2, 4, 6],
 ];
 
-/** +1 per hit, +5 per completed line (blackout = 49). Upset points are separate and never added here. */
+/** +1 per hit, +5 per completed line (blackout=49). Upset points are separate and never added here. */
 export function scoreBoard(hitFlags: boolean[]) {
   const hits = hitFlags.filter(Boolean).length;
   const lines = LINES.filter((l) => l.every((i) => hitFlags[i])).length;

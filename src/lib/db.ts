@@ -84,7 +84,7 @@ export type CardRow = {
         grid_score: number;
         upset_score: number;
         rank: number | null;
-        first_line_at?: string | null;
+        first_line_at: string | null;
       }
     | null;
 };
@@ -92,6 +92,20 @@ export type CardRow = {
 const anyDb = supabase as unknown as {
   from: (t: string) => any;
 };
+
+const CARD_SCORES_SELECT =
+  "id, week_id, profile_id, locked_at, card_squares(event_id, grid_position), upset_picks(id, game_id, picked_team, upset_size), weekly_scores(hits, lines, grid_score, upset_score, rank, first_line_at)";
+const CARD_SCORES_SELECT_FALLBACK =
+  "id, week_id, profile_id, locked_at, card_squares(event_id, grid_position), upset_picks(id, game_id, picked_team, upset_size), weekly_scores(hits, lines, grid_score, upset_score, rank)";
+const SEASON_CARD_SELECT =
+  "id, week_id, profile_id, weekly_scores(grid_score, upset_score, rank, first_line_at)";
+const SEASON_CARD_SELECT_FALLBACK =
+  "id, week_id, profile_id, weekly_scores(grid_score, upset_score, rank)";
+
+function missingFirstLineAt(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  return /first_line_at|42703|PGRST204/i.test(`${error.code ?? ""} ${error.message ?? ""}`);
+}
 
 export function useHousehold(enabled = true) {
   return useQuery({
@@ -193,17 +207,20 @@ export function useWeekCards(weekId?: string) {
     queryKey: ["cards", weekId],
     enabled: !!weekId,
     queryFn: async (): Promise<CardRow[]> => {
-      const { data, error } = await anyDb
-        .from("cards")
-        .select(
-          "id, week_id, profile_id, locked_at, card_squares(event_id, grid_position), upset_picks(id, game_id, picked_team, upset_size), weekly_scores(hits, lines, grid_score, upset_score, rank)",
-        )
-        .eq("week_id", weekId);
+      let { data, error } = await anyDb.from("cards").select(CARD_SCORES_SELECT).eq("week_id", weekId);
+      if (missingFirstLineAt(error)) {
+        ({ data, error } = await anyDb.from("cards").select(CARD_SCORES_SELECT_FALLBACK).eq("week_id", weekId));
+      }
       if (error) throw error;
-      return ((data ?? []) as any[]).map((c) => ({
-        ...c,
-        weekly_scores: Array.isArray(c.weekly_scores) ? (c.weekly_scores[0] ?? null) : c.weekly_scores,
-      })) as CardRow[];
+      return ((data ?? []) as any[]).map((c) => {
+        const raw = Array.isArray(c.weekly_scores) ? (c.weekly_scores[0] ?? null) : c.weekly_scores;
+        return {
+          ...c,
+          weekly_scores: raw
+            ? { ...raw, first_line_at: raw.first_line_at ?? null }
+            : null,
+        };
+      }) as CardRow[];
     },
   });
 }
@@ -253,13 +270,14 @@ export function useSeason(householdId?: string, seasonYear?: number) {
       const list = regularSeasonWeeks((weeks ?? []) as SeasonWeekInput[], seasonYear);
       if (list.length === 0) return { rows: [] as SeasonRow[], history: [] as SeasonHistoryRow[] };
 
-      const { data: cards, error: cErr } = await anyDb
-        .from("cards")
-        .select("id, week_id, profile_id, weekly_scores(grid_score, upset_score, rank)")
-        .in(
-          "week_id",
-          list.map((w) => w.id),
-        );
+      const weekIds = list.map((w) => w.id);
+      let { data: cards, error: cErr } = await anyDb.from("cards").select(SEASON_CARD_SELECT).in("week_id", weekIds);
+      if (missingFirstLineAt(cErr)) {
+        ({ data: cards, error: cErr } = await anyDb
+          .from("cards")
+          .select(SEASON_CARD_SELECT_FALLBACK)
+          .in("week_id", weekIds));
+      }
       if (cErr) throw cErr;
 
       return buildSeasonStandings(list, (cards ?? []) as SeasonCardInput[]);

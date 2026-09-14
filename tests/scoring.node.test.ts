@@ -15,14 +15,14 @@ const ROOT = process.cwd();
 const GAMBLE = /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i;
 
 describe("scoreBoard", () => {
-  it("blackout is 49 (9 hits + 8 lines × 5)", () => {
+  it("blackout=49 (9 hits + 8 lines × 5)", () => {
     const s = scoreBoard(Array(9).fill(true));
     assert.equal(s.hits, 9);
     assert.equal(s.lines, 8);
     assert.equal(s.gridScore, 49);
   });
 
-  it("a completed line is +5", () => {
+  it("line +5: a completed line is +5", () => {
     const flags = [true, true, true, false, false, false, false, false, false];
     const s = scoreBoard(flags);
     assert.equal(s.hits, 3);
@@ -30,7 +30,7 @@ describe("scoreBoard", () => {
     assert.equal(s.gridScore, 8);
   });
 
-  it("upset is not added to grid", () => {
+  it("upset not added to grid", () => {
     const empty = scoreBoard(Array(9).fill(false));
     assert.equal(empty.gridScore, 0);
     assert.equal(empty.hits, 0);
@@ -136,7 +136,7 @@ describe("buildSeasonStandings", () => {
     assert.equal(trophies["high-grid"], 0);
   });
 
-  it("playoff weeks (week_number > 18) are excluded", () => {
+  it("playoff weeks excluded (week_number <= 18)", () => {
     const weeks = [
       { id: "w18", week_number: 18, season_year: 2026 },
       { id: "w19", week_number: 19, season_year: 2026 },
@@ -390,6 +390,9 @@ describe("wiring", () => {
     const src = readFileSync(join(ROOT, "src/routes/_authenticated/results.tsx"), "utf8");
     assert.match(src, /weekly_scores\?\.rank === 1/);
     assert.match(src, /theatricalLeader/);
+    assert.match(src, /rankWeeklyRows/);
+    assert.match(src, /compareWeeklyRank/);
+    assert.match(src, /first_line_at/);
     assert.doesNotMatch(src, GAMBLE);
   });
 
@@ -406,9 +409,18 @@ describe("wiring", () => {
     const dbSrc = readFileSync(join(ROOT, "src/lib/db.ts"), "utf8");
     assert.match(dbSrc, /buildSeasonStandings/);
     assert.match(dbSrc, /regularSeasonWeeks/);
+    assert.match(dbSrc, /first_line_at/);
     const scoring = readFileSync(join(ROOT, "src/lib/scoring.ts"), "utf8");
     assert.match(scoring, /week_number <= 18/);
     assert.match(scoring, /Number\(s\?\.rank\) === 1/);
     assert.doesNotMatch(scoring, GAMBLE);
+  });
+
+  it("commissioner documents Tuesday finalize and in-progress auto_score miss skip", () => {
+    const src = readFileSync(join(ROOT, "src/routes/_authenticated/commissioner.tsx"), "utf8");
+    assert.match(src, /Tuesday at 6:00 AM Eastern/);
+    assert.match(src, /auto_score/);
+    assert.match(src, /not marked miss/);
+    assert.doesNotMatch(src, GAMBLE);
   });
 });

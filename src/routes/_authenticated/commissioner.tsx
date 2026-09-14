@@ -996,7 +996,9 @@ function Commissioner() {
           <Panel title="Finalize the week" className="lg:col-span-2">
             <p className="text-sm text-muted-foreground">
               Scores every card ({cards.length} in), crowns the weekly winner, and updates the
-              season standings. Household: {profiles.length} players.
+              season standings. Household: {profiles.length} players. Unresolved auto_score
+              moments are not marked miss while the game is not completed. Autopilot finalizes
+              Tuesday at 6:00 AM Eastern after the last game.
             </p>
             <Action onClick={finalize} disabled={busy || events.length === 0}>
               Finalize Week {week.week_number} 🏆
