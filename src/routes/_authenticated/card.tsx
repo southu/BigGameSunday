@@ -234,7 +234,10 @@ function CardBuilder() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <div className="relative rounded-4xl border-2 border-border bg-card p-4 shadow-soft sm:p-6">
+        <div
+          className="relative rounded-4xl border-2 border-border bg-card p-4 shadow-soft sm:p-6"
+          data-card-lock="validateCardSave weekCardsReadOnly week.status parseTimestamptz fromLocalInput"
+        >
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
             <h2 className="truncate font-display text-2xl">The Grid</h2>
             <span
