@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronRight, Plus, Sparkles, Star, Trash2, X } from "lucide-react";
+import { PlayerManager } from "@/components/bgs/PlayerManager";
 import { AppShell, PageTitle } from "@/components/bgs/AppShell";
 import { autoFillWeek, ensureAutoWeek } from "@/lib/autofill.functions";
 import { recomputeWeekScores, runAutopilotNow } from "@/lib/autopilot.functions";
@@ -22,8 +23,8 @@ import { cn } from "@/lib/utils";
 import { formatKick } from "./week";
 
 export const Route = createFileRoute("/_authenticated/commissioner")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    week: typeof search.week === "string" && search.week.length > 0 ? search.week : undefined,
+  validateSearch: (search: Record<string, unknown>): { week?: string | undefined } => ({
+    week: typeof search["week"] === "string" && search["week"].length > 0 ? search["week"] : undefined,
   }),
   head: () => ({
     meta: [
@@ -560,6 +561,8 @@ function Commissioner() {
             : "One tap and this week is ready to go."
         }
       />
+
+      <PlayerManager />
 
       {weeks.length > 1 && (
         <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Week to manage">

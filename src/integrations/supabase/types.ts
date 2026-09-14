@@ -487,6 +487,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      reassign_commissioner: {
+        Args: { player_id: string }
+        Returns: undefined
+      }
       ops_relink_auth_identities: {
         Args: { from_user_id: string; to_user_id: string }
         Returns: Json
