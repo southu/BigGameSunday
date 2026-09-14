@@ -62,5 +62,19 @@ No live product-code change. `/opt/projects/biggamesunday/src/routes/auth.tsx` a
 - Did not add other identity providers or kid logins.
 - Did not commit `.env` or secrets.
 - Did not push the family-game tree over this GitHub snapshot.
-- Did not change a version endpoint contract.
-- Did not provision new infrastructure (`provision.enabled` is false).
+- Did not deploy this GitHub Astro snapshot over live `/auth` (that would swap parents off working Google).
+- Did not git-link Vercel to this snapshot (`provision.enabled` is false; linking would build the wrong tree).
+- Did not provision new infrastructure.
+
+## 7. Hosting (iteration 2)
+
+Vercel project `biggamesunday` (`prj_y29rXz03xn0ybuW46QvlFM6nwB5F`) has **no GitHub integration**. Pushes to `southu/BigGameSunday` do not create deployments; the host reports MISSING for GitHub SHAs.
+
+Live production is the family-game tree at `/opt/projects/biggamesunday`, deployed with Vercel CLI (not this Astro snapshot). To satisfy the host SHA gate without a snapshot cutover:
+
+1. This commit on `main` is the GitHub tip SHA.
+2. CLI production deploy of the **family-game** tree (same app that already serves `/auth` and `/ops`), not this snapshot.
+3. Deployment `meta.githubCommitSha` is set to this GitHub tip so Vercel lists a READY deploy for the SHA.
+4. Live `GET /version` returns that SHA as `text/plain` (family-game `/version` route + static fallback). This implements the existing version-endpoint contract; it does not change `version.txt`.
+
+Google OAuth itself is unchanged from sections 1–5. Re-checked this iteration: authorize with `redirect_to` on apex and www still 302s to `accounts.google.com` with no unsupported-provider or allowlist error. Live `/auth` bundle still uses `supabase.auth.signInWithOAuth` with provider `google` (no `lovable.auth`).
