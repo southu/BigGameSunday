@@ -24,7 +24,7 @@ export type FinalizeEvent = {
   result: string | null;
   resolution_source: string | null;
   game_id: string | null;
-  resolved_at: string | null;
+  resolved_at?: string | null;
 };
 
 export type FinalizeGame = {
