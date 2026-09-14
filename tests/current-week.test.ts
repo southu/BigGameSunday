@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { pickViewWeek, selectActiveWeek, weekSwitcherLabel } from "../src/lib/current-week";
+import { WEEK_LONGSHOTS, weekLongshotRows } from "../src/lib/nfl";
 
 function w(week_number: number, status: string, season_year = 2026) {
   return { season_year, week_number, status };
@@ -117,5 +118,51 @@ describe("useCurrentWeek production wiring", () => {
     expect(src).toMatch(/for \(const week of/);
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
     expect(autofill).toMatch(/auto_create_weeks/);
+  });
+});
+
+describe("week longshot set", () => {
+  const GAMBLE = /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i;
+
+  it("documents Sunday longshots with manual resolution so cards can lock", () => {
+    const rows = weekLongshotRows({ id: "w", household_id: "h" });
+    expect(rows.length).toBeGreaterThanOrEqual(4);
+    expect(rows).toHaveLength(WEEK_LONGSHOTS.length);
+    for (const row of rows) {
+      expect(row.is_longshot).toBe(true);
+      expect(row.resolution_source).toBe("manual");
+      expect(row.game_id).toBeNull();
+      expect(row.description).not.toMatch(GAMBLE);
+    }
+    const blob = WEEK_LONGSHOTS.join(" ").toLowerCase();
+    expect(blob).toMatch(/safety/);
+    expect(blob).toMatch(/defensive/);
+    expect(blob).toMatch(/overtime/);
+    expect(blob).toMatch(/55/);
+  });
+
+  it("skips longshots that are already on the week", () => {
+    const rows = weekLongshotRows({ id: "w", household_id: "h" }, [WEEK_LONGSHOTS[0]]);
+    expect(rows).toHaveLength(WEEK_LONGSHOTS.length - 1);
+    expect(weekLongshotRows({ id: "w", household_id: "h" }, WEEK_LONGSHOTS)).toHaveLength(0);
+  });
+
+  it("autofill and addGame insert the documented longshot set", () => {
+    const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
+    expect(autofill).toMatch(/weekLongshotRows/);
+    expect(autofill).toMatch(/insertMissingWeekLongshots/);
+    const fillFn = autofill.slice(autofill.indexOf("export async function fillWeekFromEspn"));
+    expect(fillFn).toMatch(/insertMissingWeekLongshots/);
+    expect(fillFn.slice(0, fillFn.indexOf("insertMissingWeekLongshots"))).not.toMatch(
+      /if \(!fresh\.length\) return result/,
+    );
+    const commish = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
+    expect(commish).toMatch(/weekLongshotRows/);
+    expect(commish).not.toMatch(GAMBLE);
+    const nfl = readFileSync(join(process.cwd(), "src/lib/nfl.ts"), "utf8");
+    expect(nfl).not.toMatch(GAMBLE);
   });
 });

@@ -125,3 +125,29 @@ export function standardEvents(game: {
     `First score of ${short(game.away_team)}–${short(game.home_team)} is a touchdown?`,
   ];
 }
+
+/**
+ * Documented Sunday longshots for every auto-filled (or add-game) week.
+ * Cards need at least one to lock. Commissioner-called — no auto resolver yet.
+ */
+export const WEEK_LONGSHOTS = [
+  "A safety is scored this Sunday",
+  "A defensive or special-teams touchdown is scored this Sunday",
+  "A game goes to overtime this Sunday",
+  "A field goal of 55 yards or longer is made this Sunday",
+] as const;
+
+export function weekLongshotRows(
+  week: { id: string; household_id: string },
+  existingDescriptions: Iterable<string> = [],
+) {
+  const have = new Set(existingDescriptions);
+  return WEEK_LONGSHOTS.filter((description) => !have.has(description)).map((description) => ({
+    week_id: week.id,
+    household_id: week.household_id,
+    game_id: null as string | null,
+    description,
+    is_longshot: true,
+    resolution_source: "manual" as const,
+  }));
+}

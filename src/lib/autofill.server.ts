@@ -1,6 +1,6 @@
 /** Auto-fill helpers: build a week's games + standard moments from the ESPN scoreboard. */
 import { fetchEspnWeek } from "./espn.server";
-import { standardEvents } from "./nfl";
+import { standardEvents, weekLongshotRows } from "./nfl";
 
 type Db = { from: (table: string) => any };
 
@@ -34,62 +34,85 @@ export async function fillWeekFromEspn(
     skipped: espnGames.length - fresh.length,
     needsReview: fresh.filter((g) => g.needs_review).length,
   };
-  if (!fresh.length) return result;
 
-  const { data: inserted, error } = await db
-    .from("games")
-    .insert(
-      fresh.map((g) => ({
-        week_id: week.id,
-        household_id: week.household_id,
+  if (fresh.length) {
+    const { data: inserted, error } = await db
+      .from("games")
+      .insert(
+        fresh.map((g) => ({
+          week_id: week.id,
+          household_id: week.household_id,
+          home_team: g.home_team,
+          away_team: g.away_team,
+          kickoff_at: g.kickoff_at,
+          underdog_team: g.underdog_team,
+          upset_size: g.upset_size,
+          needs_review: g.needs_review,
+          espn_event_id: g.espn_event_id,
+        })),
+      )
+      .select("id, home_team, away_team, underdog_team, upset_size, kickoff_at");
+    if (error) throw error;
+
+    const rows = (inserted ?? []) as any[];
+    result.gamesAdded = rows.length;
+
+    const moments = rows.flatMap((g) =>
+      standardEvents({
         home_team: g.home_team,
         away_team: g.away_team,
-        kickoff_at: g.kickoff_at,
         underdog_team: g.underdog_team,
-        upset_size: g.upset_size,
-        needs_review: g.needs_review,
-        espn_event_id: g.espn_event_id,
+        upset_size: Number(g.upset_size),
+      }).map((description) => ({
+        week_id: week.id,
+        household_id: week.household_id,
+        game_id: g.id,
+        description,
+        is_longshot: false,
+        resolution_source: "auto_score" as const,
       })),
-    )
-    .select("id, home_team, away_team, underdog_team, upset_size, kickoff_at");
-  if (error) throw error;
+    );
+    if (moments.length) {
+      const { error: mErr } = await db.from("events").insert(moments);
+      if (mErr) throw mErr;
+      result.momentsAdded = moments.length;
+    }
 
-  const rows = (inserted ?? []) as any[];
-  result.gamesAdded = rows.length;
-
-  const moments = rows.flatMap((g) =>
-    standardEvents({
-      home_team: g.home_team,
-      away_team: g.away_team,
-      underdog_team: g.underdog_team,
-      upset_size: Number(g.upset_size),
-    }).map((description) => ({
-      week_id: week.id,
-      household_id: week.household_id,
-      game_id: g.id,
-      description,
-      is_longshot: false,
-      resolution_source: "auto_score" as const,
-    })),
-  );
-  if (moments.length) {
-    const { error: mErr } = await db.from("events").insert(moments);
-    if (mErr) throw mErr;
-    result.momentsAdded = moments.length;
+    const patch: Record<string, unknown> = {};
+    if (!week.featured_game_id && rows[0]) patch["featured_game_id"] = rows[0].id;
+    if (!week.lock_at_override) {
+      const times = [...((existing ?? []) as any[]), ...rows]
+        .map((g) => g.kickoff_at)
+        .filter(Boolean)
+        .map((k: string) => new Date(k).getTime());
+      if (times.length) patch["lock_at"] = new Date(Math.min(...times)).toISOString();
+    }
+    if (Object.keys(patch).length) await db.from("weeks").update(patch).eq("id", week.id);
   }
 
-  const patch: Record<string, unknown> = {};
-  if (!week.featured_game_id && rows[0]) patch["featured_game_id"] = rows[0].id;
-  if (!week.lock_at_override) {
-    const times = [...((existing ?? []) as any[]), ...rows]
-      .map((g) => g.kickoff_at)
-      .filter(Boolean)
-      .map((k: string) => new Date(k).getTime());
-    if (times.length) patch["lock_at"] = new Date(Math.min(...times)).toISOString();
-  }
-  if (Object.keys(patch).length) await db.from("weeks").update(patch).eq("id", week.id);
+  result.momentsAdded += await insertMissingWeekLongshots(db, week);
 
   return result;
+}
+
+/** Commissioner-called longshots so a player can lock a card without hand-flagging stars. */
+async function insertMissingWeekLongshots(
+  db: Db,
+  week: { id: string; household_id: string },
+): Promise<number> {
+  const { data: existingEvents, error } = await db
+    .from("events")
+    .select("description")
+    .eq("week_id", week.id);
+  if (error) throw error;
+  const rows = weekLongshotRows(
+    week,
+    ((existingEvents ?? []) as { description: string }[]).map((e) => e.description),
+  );
+  if (!rows.length) return 0;
+  const { error: insErr } = await db.from("events").insert(rows);
+  if (insErr) throw insErr;
+  return rows.length;
 }
 
 const FOUR_DAYS_MS = 4 * 86400000;

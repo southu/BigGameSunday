@@ -16,6 +16,7 @@ import {
   nextSundayKickoff,
   standardEvents,
   toLocalInput,
+  weekLongshotRows,
 } from "@/lib/nfl";
 import { cn } from "@/lib/utils";
 import { formatKick } from "./week";
@@ -199,7 +200,7 @@ function Commissioner() {
         ["events", weekId],
         ["current-week", household!.id],
       ]);
-      return `Auto-filled ${res.gamesAdded} games and ${res.momentsAdded} moments${
+      return `Auto-filled ${res.gamesAdded} games and ${res.momentsAdded} moments, including this week's longshots${
         res.needsReview ? ` · ${res.needsReview} need a quick review (underdog not set yet)` : ""
       }.`;
     }, "Week auto-filled.");
@@ -213,11 +214,15 @@ function Commissioner() {
         ["events", week.id],
         ["current-week", household!.id],
       ]);
-      return res.gamesAdded
-        ? `Added ${res.gamesAdded} games and ${res.momentsAdded} moments${
-            res.skipped ? ` · skipped ${res.skipped} already on the list` : ""
-          }${res.needsReview ? ` · ${res.needsReview} need a quick review (underdog not set yet)` : ""}.`
-        : "Every game from that NFL week is already on your list.";
+      if (res.gamesAdded) {
+        return `Added ${res.gamesAdded} games and ${res.momentsAdded} moments, including this week's longshots${
+          res.skipped ? ` · skipped ${res.skipped} already on the list` : ""
+        }${res.needsReview ? ` · ${res.needsReview} need a quick review (underdog not set yet)` : ""}.`;
+      }
+      if (res.momentsAdded) {
+        return `This week's longshot list is on the board (${res.momentsAdded}) — cards can lock.`;
+      }
+      return "Every game from that NFL week is already on your list.";
     }, "Auto-fill done.");
 
   const toggleAutoCreate = (on: boolean) =>
@@ -316,16 +321,21 @@ function Commissioner() {
         underdog_team: underdog,
         upset_size: upsetSize,
       });
-      const { error: eErr } = await db.from("events").insert(
-        descriptions.map((description) => ({
+      const longshots = weekLongshotRows(
+        { id: week.id, household_id: household!.id },
+        events.map((e) => e.description),
+      );
+      const { error: eErr } = await db.from("events").insert([
+        ...descriptions.map((description) => ({
           week_id: week.id,
           household_id: household!.id,
           game_id: data.id,
           description,
           is_longshot: false,
-          resolution_source: "auto_score",
+          resolution_source: "auto_score" as const,
         })),
-      );
+        ...longshots,
+      ]);
       if (eErr) throw eErr;
 
       if (!week.featured_game_id) {
@@ -342,7 +352,7 @@ function Commissioner() {
       await refresh([["games", week.id], ["events", week.id], ["current-week", household!.id]]);
       await syncLock([...games.map((g) => g.kickoff_at), kickoff]);
       await touchWeek();
-    }, "Game added with 3 ready-made moments.");
+    }, "Game added with ready-made moments and this week's longshots.");
 
   const deleteGame = (gameId: string) =>
     run(async () => {
@@ -585,8 +595,8 @@ function Commissioner() {
         <Panel title="Create the week">
           <p className="text-sm text-muted-foreground">
             We'll call it Week {draft.week_number} of {draft.season_year}, pull in every real NFL
-            game for that week with kickoff times and underdogs, and add the three ready-made
-            moments to each one. You can change anything afterwards.
+            game for that week with kickoff times and underdogs, add the three ready-made moments to
+            each one, and add this week's longshot list. You can change anything afterwards.
           </p>
           <Action onClick={createWeekAutoFilled} disabled={busy}>
             <Sparkles className="h-4 w-4" /> Auto-fill this week
@@ -867,7 +877,8 @@ function Commissioner() {
               <Plus className="h-4 w-4" /> Add game
             </Action>
             <p className="mt-2 text-xs font-bold text-muted-foreground">
-              Adds three ready-made moments: Winner's Circle, Fireworks or Defense, and first score.
+              Adds three ready-made moments plus this week's longshot list (safety, defensive score,
+              overtime, 55+ yard field goal). You'll call those on Sunday.
             </p>
           </Panel>
 

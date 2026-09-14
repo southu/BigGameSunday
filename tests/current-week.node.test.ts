@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import { pickViewWeek, selectActiveWeek, weekSwitcherLabel } from "../src/lib/current-week.ts";
+import { WEEK_LONGSHOTS, weekLongshotRows } from "../src/lib/nfl.ts";
 
 function w(week_number: number, status: string, season_year = 2026) {
   return { season_year, week_number, status };
@@ -118,5 +119,52 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(src, /for \(const week of/);
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
     assert.match(autofill, /auto_create_weeks/);
+  });
+});
+
+describe("week longshot set", () => {
+  const GAMBLE = /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i;
+
+  it("documents Sunday longshots with manual resolution so cards can lock", () => {
+    const rows = weekLongshotRows({ id: "w", household_id: "h" });
+    assert.ok(rows.length >= 4);
+    assert.equal(rows.length, WEEK_LONGSHOTS.length);
+    for (const row of rows) {
+      assert.equal(row.is_longshot, true);
+      assert.equal(row.resolution_source, "manual");
+      assert.equal(row.game_id, null);
+      assert.doesNotMatch(row.description, GAMBLE);
+    }
+    const blob = WEEK_LONGSHOTS.join(" ").toLowerCase();
+    assert.match(blob, /safety/);
+    assert.match(blob, /defensive/);
+    assert.match(blob, /overtime/);
+    assert.match(blob, /55/);
+  });
+
+  it("skips longshots that are already on the week", () => {
+    const rows = weekLongshotRows({ id: "w", household_id: "h" }, [WEEK_LONGSHOTS[0]]);
+    assert.equal(rows.length, WEEK_LONGSHOTS.length - 1);
+    assert.equal(weekLongshotRows({ id: "w", household_id: "h" }, WEEK_LONGSHOTS).length, 0);
+  });
+
+  it("autofill and addGame insert the documented longshot set", () => {
+    const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
+    assert.match(autofill, /weekLongshotRows/);
+    assert.match(autofill, /insertMissingWeekLongshots/);
+    const fillFn = autofill.slice(autofill.indexOf("export async function fillWeekFromEspn"));
+    assert.match(fillFn, /insertMissingWeekLongshots/);
+    assert.doesNotMatch(
+      fillFn.slice(0, fillFn.indexOf("insertMissingWeekLongshots")),
+      /if \(!fresh\.length\) return result/,
+    );
+    const commish = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
+    assert.match(commish, /weekLongshotRows/);
+    assert.doesNotMatch(commish, GAMBLE);
+    const nfl = readFileSync(join(process.cwd(), "src/lib/nfl.ts"), "utf8");
+    assert.doesNotMatch(nfl, GAMBLE);
   });
 });
