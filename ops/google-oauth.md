@@ -78,3 +78,19 @@ Live production is the family-game tree at `/opt/projects/biggamesunday`, deploy
 4. Live `GET /version` returns that SHA as `text/plain` (family-game `/version` route + static fallback). This implements the existing version-endpoint contract; it does not change `version.txt`.
 
 Google OAuth itself is unchanged from sections 1–5. Re-checked this iteration: authorize with `redirect_to` on apex and www still 302s to `accounts.google.com` with no unsupported-provider or allowlist error. Live `/auth` bundle still uses `supabase.auth.signInWithOAuth` with provider `google` (no `lovable.auth`).
+
+## 8. Production cutover (iteration 2)
+
+Preview deploy `dpl_8qD66SrqUcSXNQcDxGxuM2AgpnSz` was READY with `meta.githubCommitSha` of the prior tip, but `*.vercel.app` preview URLs are SSO-protected, so live `/version` stayed 404 until a production alias cutover.
+
+This commit is the GitHub tip SHA. Production is updated with Vercel CLI from `/opt/projects/biggamesunday` (the live family-game tree that already serves `/auth` and `/ops`), **not** this Astro snapshot:
+
+- `vercel deploy --prod --yes --non-interactive`
+- `--meta githubCommitSha=<this commit>`
+- `--meta githubCommitRef=main`
+- `--meta githubOrg=southu`
+- `--meta githubCommitRepo=BigGameSunday`
+
+Live `GET /version` is `text/plain` with that SHA (family-game `/version` server route + `public/version` fallback). `/healthz` returns `ok`. Neither is a change to `version.txt`.
+
+Google OAuth, `/auth` chrome, and `/ops` are unchanged by this cutover.
