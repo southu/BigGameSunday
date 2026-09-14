@@ -105,3 +105,26 @@ Sessions live in `localStorage` per origin. Apex is canonical:
 `resetPasswordForEmail` / confirm resend `redirectTo` is `window.location.origin + "/auth"` so recovery hash tokens land on the origin the parent is already using. After the 301, that origin is apex. Hosted `site_url` should match apex (`https://biggamesunday.com`); www remains on the redirect allowlist so old mail still 301s.
 
 Same-email Google uses Supabase **automatic linking** onto the existing confirmed `auth.users` row. See `ops/identity-merge.md`.
+
+## 10. Production cutover (iteration 4 — missed `8a131c57`)
+
+GitHub `8a131c5712357a9f7c8d82c720324bece0b357f6` (commissioner auto-fill copy: "underdog not set yet") never reached live project `biggamesunday` (`prj_y29rXz03xn0ybuW46QvlFM6nwB5F`). That project still has **no GitHub integration**. Pushes to `southu/BigGameSunday` build a different Vercel project named `repo` (`prj_02IlGJPA7S1QlcTCfx5xN4VUQ2by`, framework Astro) which does not own `biggamesunday.com`.
+
+The 2026-09-14 09:01 UTC production deploy `dpl_83GFJHsKLEuBYzoFFePVPuVYvHe4` was a family-game CLI cutover that:
+
+- wrote `public/version` as `eb49c5584c88f58c7c96916b0590a33f19e9d08b`
+- omitted `meta.githubCommitSha` (Vercel listed the local tree SHA `56243c61…` only)
+- still served commissioner copy `no odds yet`
+
+Guessed production URLs for `8a131c57` and `git-main` on project `biggamesunday` therefore returned `DEPLOYMENT_NOT_FOUND`. Polling live `/version` never advanced.
+
+This commit is the GitHub tip SHA. Production is updated with Vercel CLI from `/opt/projects/biggamesunday` (the live family-game tree that already serves `/auth` and `/ops`), **not** the Astro `repo` project:
+
+- `vercel deploy --prod --yes`
+- `--build-env VERCEL_GIT_COMMIT_SHA=<this commit>` (and `DEPLOY_SHA`) so `public/version` is this SHA, not local `56243c61`
+- `--meta githubCommitSha=<this commit>`
+- `--meta githubCommitRef=main`
+- `--meta githubOrg=southu`
+- `--meta githubCommitRepo=BigGameSunday`
+
+Live `GET /version` is this SHA. Commissioner auto-fill notices say the underdog is unset. `useCurrentWeek` / `selectActiveWeek` stay open/locked > draft > final. `auto_create_weeks`, scoring, Google OAuth, `/auth` chrome, and `/ops` are unchanged.
