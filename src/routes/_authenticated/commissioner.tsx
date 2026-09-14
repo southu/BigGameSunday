@@ -24,7 +24,8 @@ import { formatKick } from "./week";
 
 export const Route = createFileRoute("/_authenticated/commissioner")({
   validateSearch: (search: Record<string, unknown>): { week?: string | undefined } => ({
-    week: typeof search["week"] === "string" && search["week"].length > 0 ? search["week"] : undefined,
+    week:
+      typeof search["week"] === "string" && search["week"].length > 0 ? search["week"] : undefined,
   }),
   head: () => ({
     meta: [
