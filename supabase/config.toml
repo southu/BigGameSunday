@@ -1,0 +1,23 @@
+# Live project. Automatic linking of Google onto an existing confirmed
+# parent email is GoTrue default — do not create a second auth.users row.
+project_id = "vzsltdvinnqingujsnft"
+
+[auth]
+site_url = "https://biggamesunday.com"
+additional_redirect_urls = [
+  "https://biggamesunday.com",
+  "https://biggamesunday.com/**",
+  "https://www.biggamesunday.com",
+  "https://www.biggamesunday.com/**",
+]
+enable_signup = true
+# Manual linking is linkIdentity() for a different email while signed in.
+# Same-email Google uses automatic linking; leave this false.
+enable_manual_linking = false
+
+[auth.email]
+enable_confirmations = true
+enable_signup = true
+
+[auth.external.google]
+enabled = true

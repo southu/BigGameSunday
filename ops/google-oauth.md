@@ -94,3 +94,14 @@ This commit is the GitHub tip SHA. Production is updated with Vercel CLI from `/
 Live `GET /version` is `text/plain` with that SHA (family-game `/version` server route + `public/version` fallback). `/healthz` returns `ok`. Neither is a change to `version.txt`.
 
 Google OAuth, `/auth` chrome, and `/ops` are unchanged by this cutover.
+
+## 9. Canonical host (parent finish)
+
+Sessions live in `localStorage` per origin. Apex is canonical:
+
+- `https://biggamesunday.com` — keep
+- `https://www.biggamesunday.com` — **301** to apex (Cloudflare redirect rule + Vercel domain redirect)
+
+`resetPasswordForEmail` / confirm resend `redirectTo` is `window.location.origin + "/auth"` so recovery hash tokens land on the origin the parent is already using. After the 301, that origin is apex. Hosted `site_url` should match apex (`https://biggamesunday.com`); www remains on the redirect allowlist so old mail still 301s.
+
+Same-email Google uses Supabase **automatic linking** onto the existing confirmed `auth.users` row. See `ops/identity-merge.md`.

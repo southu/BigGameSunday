@@ -1,5 +1,7 @@
 ---
 export const prerender = false;
+
+const initialMode = Astro.url.searchParams.get("mode") === "signup" ? "signup" : "signin";
 ---
 
 <!doctype html>
@@ -14,45 +16,82 @@ export const prerender = false;
     <main class="wrap">
       <a class="brand" href="/">Big Game Sunday</a>
       <div class="card">
-        <div class="tabs" role="tablist">
-          <button type="button" id="tab-signup" data-mode="signup">New household</button>
-          <button type="button" id="tab-signin" data-mode="signin">Sign in</button>
+        <div id="auth-panel">
+          <div class="tabs" role="tablist">
+            <button
+              type="button"
+              id="tab-signup"
+              data-mode="signup"
+              role="tab"
+              aria-selected={initialMode === "signup" ? "true" : "false"}
+              class={initialMode === "signup" ? "active" : ""}>New household</button>
+            <button
+              type="button"
+              id="tab-signin"
+              data-mode="signin"
+              role="tab"
+              aria-selected={initialMode === "signin" ? "true" : "false"}
+              class={initialMode === "signin" ? "active" : ""}>Sign in</button>
+          </div>
+
+          <form id="auth-form">
+            <label>
+              Parent's email
+              <input id="email" type="email" required autocomplete="email" />
+            </label>
+            <label>
+              Password
+              <input id="password" type="password" required minlength="6" autocomplete="current-password" />
+            </label>
+            <p id="error" class="error" hidden></p>
+            <p id="message" class="message" hidden></p>
+            <button type="submit" id="submit">{initialMode === "signup" ? "Create household account" : "Sign in"}</button>
+            <button type="button" id="forgot" class="linkish">Forgot password?</button>
+            <button type="button" id="resend" class="linkish">Resend confirmation</button>
+          </form>
+
+          <div class="or"><span></span>OR<span></span></div>
+          <button type="button" id="google">Continue with Google</button>
+          <p class="fine">Only the parent account uses an email. Kids' profiles are just a name and an avatar.</p>
         </div>
 
-        <form id="auth-form">
+        <form id="recovery-form" hidden>
+          <h1 class="recovery-title">Set a new password</h1>
           <label>
-            Parent's email
-            <input id="email" type="email" required autocomplete="email" />
+            New password
+            <input id="new-password" type="password" minlength="6" autocomplete="new-password" />
           </label>
           <label>
-            Password
-            <input id="password" type="password" required minlength="6" autocomplete="current-password" />
+            Confirm new password
+            <input id="confirm-password" type="password" minlength="6" autocomplete="new-password" />
           </label>
-          <p id="error" class="error" hidden></p>
-          <p id="message" class="message" hidden></p>
-          <button type="submit" id="submit">Sign in</button>
-          <button type="button" id="forgot" class="linkish">Forgot password?</button>
+          <p id="recovery-error" class="error" hidden></p>
+          <p id="recovery-message" class="message" hidden></p>
+          <button type="submit" id="recovery-submit">Save new password</button>
         </form>
-
-        <div class="or"><span></span>OR<span></span></div>
-        <button type="button" id="google">Continue with Google</button>
-        <p class="fine">Only the parent account uses an email. Kids' profiles are just a name and an avatar.</p>
       </div>
     </main>
 
     <script>
       import {
+        authModeFromSearch,
         createParentAuthClient,
         googleRedirectTo,
+        isPasswordRecoveryHash,
+        mapAuthError,
+        passwordResetRedirectTo,
+        resendSignupConfirmation,
         resetPasswordForEmail,
         signInWithGoogle,
         signInWithPassword,
         signUpWithPassword,
+        updateUserPassword,
       } from "../lib/auth/parent";
 
       const params = new URLSearchParams(window.location.search);
       const next = params.get("next") === "/ops" ? "/ops" : "/";
-      let mode: "signin" | "signup" = next === "/ops" ? "signin" : "signup";
+      let mode: "signin" | "signup" = authModeFromSearch(params);
+      let recovery = isPasswordRecoveryHash(window.location.hash);
 
       const emailInput = document.getElementById("email") as HTMLInputElement;
       const passwordInput = document.getElementById("password") as HTMLInputElement;
@@ -61,11 +100,27 @@ export const prerender = false;
       const messageEl = document.getElementById("message") as HTMLParagraphElement;
       const tabSignin = document.getElementById("tab-signin") as HTMLButtonElement;
       const tabSignup = document.getElementById("tab-signup") as HTMLButtonElement;
+      const authPanel = document.getElementById("auth-panel") as HTMLDivElement;
+      const recoveryForm = document.getElementById("recovery-form") as HTMLFormElement;
+      const newPasswordInput = document.getElementById("new-password") as HTMLInputElement;
+      const confirmPasswordInput = document.getElementById("confirm-password") as HTMLInputElement;
+      const recoveryErrorEl = document.getElementById("recovery-error") as HTMLParagraphElement;
+      const recoveryMessageEl = document.getElementById("recovery-message") as HTMLParagraphElement;
+      const recoverySubmit = document.getElementById("recovery-submit") as HTMLButtonElement;
+      const resendBtn = document.getElementById("resend") as HTMLButtonElement;
+      const forgotBtn = document.getElementById("forgot") as HTMLButtonElement;
+      const googleBtn = document.getElementById("google") as HTMLButtonElement;
+
+      function client() {
+        return createParentAuthClient();
+      }
 
       function setBusy(busy: boolean) {
         submit.disabled = busy;
-        (document.getElementById("google") as HTMLButtonElement).disabled = busy;
-        (document.getElementById("forgot") as HTMLButtonElement).disabled = busy;
+        googleBtn.disabled = busy;
+        forgotBtn.disabled = busy;
+        resendBtn.disabled = busy;
+        recoverySubmit.disabled = busy;
       }
 
       function showError(text: string | null) {
@@ -78,17 +133,48 @@ export const prerender = false;
         messageEl.textContent = text ?? "";
       }
 
+      function showRecoveryError(text: string | null) {
+        recoveryErrorEl.hidden = !text;
+        recoveryErrorEl.textContent = text ?? "";
+      }
+
+      function showRecoveryMessage(text: string | null) {
+        recoveryMessageEl.hidden = !text;
+        recoveryMessageEl.textContent = text ?? "";
+      }
+
+      function syncModeUrl() {
+        const url = new URL(window.location.href);
+        if (mode === "signup") url.searchParams.set("mode", "signup");
+        else url.searchParams.delete("mode");
+        window.history.replaceState(null, "", url);
+      }
+
       function renderMode() {
         tabSignin.classList.toggle("active", mode === "signin");
         tabSignup.classList.toggle("active", mode === "signup");
+        tabSignin.setAttribute("aria-selected", mode === "signin" ? "true" : "false");
+        tabSignup.setAttribute("aria-selected", mode === "signup" ? "true" : "false");
         submit.textContent = mode === "signup" ? "Create household account" : "Sign in";
+        passwordInput.autocomplete = mode === "signup" ? "new-password" : "current-password";
       }
 
-      function client() {
-        return createParentAuthClient();
+      function renderRecovery() {
+        authPanel.hidden = recovery;
+        recoveryForm.hidden = !recovery;
+        newPasswordInput.required = recovery;
+        confirmPasswordInput.required = recovery;
+        emailInput.required = !recovery;
+        passwordInput.required = !recovery;
+      }
+
+      function enterRecovery() {
+        recovery = true;
+        renderRecovery();
       }
 
       async function redirectIfSignedIn() {
+        if (recovery || isPasswordRecoveryHash(window.location.hash)) return;
         try {
           const { data } = await client().auth.getSession();
           if (data.session) window.location.replace(next);
@@ -100,10 +186,12 @@ export const prerender = false;
       tabSignin.addEventListener("click", () => {
         mode = "signin";
         renderMode();
+        syncModeUrl();
       });
       tabSignup.addEventListener("click", () => {
         mode = "signup";
         renderMode();
+        syncModeUrl();
       });
 
       document.getElementById("auth-form")!.addEventListener("submit", async (event) => {
@@ -119,7 +207,7 @@ export const prerender = false;
               client(),
               email,
               password,
-              window.location.origin,
+              passwordResetRedirectTo(window.location.origin),
             );
             if (error) throw error;
             if (!data.session) {
@@ -133,13 +221,13 @@ export const prerender = false;
           if (error) throw error;
           window.location.replace(next);
         } catch (err) {
-          showError(err instanceof Error ? err.message : "Something went wrong.");
+          showError(mapAuthError(err instanceof Error ? err : { message: "Something went wrong." }));
         } finally {
           setBusy(false);
         }
       });
 
-      document.getElementById("google")!.addEventListener("click", async () => {
+      googleBtn.addEventListener("click", async () => {
         showError(null);
         const { error } = await signInWithGoogle(
           client(),
@@ -148,7 +236,7 @@ export const prerender = false;
         if (error) showError("Google sign-in didn't work. Try email instead.");
       });
 
-      document.getElementById("forgot")!.addEventListener("click", async () => {
+      forgotBtn.addEventListener("click", async () => {
         setBusy(true);
         showError(null);
         showMessage(null);
@@ -161,18 +249,78 @@ export const prerender = false;
           const { error } = await resetPasswordForEmail(
             client(),
             email,
-            "https://www.biggamesunday.com/auth",
+            passwordResetRedirectTo(window.location.origin),
           );
           if (error) throw error;
           showMessage("If that email is registered, a reset link is on the way. Check your inbox.");
         } catch (err) {
-          showError(err instanceof Error ? err.message : "Something went wrong.");
+          showError(mapAuthError(err instanceof Error ? err : { message: "Something went wrong." }));
         } finally {
           setBusy(false);
         }
       });
 
+      resendBtn.addEventListener("click", async () => {
+        setBusy(true);
+        showError(null);
+        showMessage(null);
+        try {
+          const email = emailInput.value.trim();
+          if (!email) {
+            showError("Enter your email first.");
+            return;
+          }
+          const { error } = await resendSignupConfirmation(
+            client(),
+            email,
+            passwordResetRedirectTo(window.location.origin),
+          );
+          if (error) throw error;
+          showMessage("If that email still needs confirming, a new link is on the way. Check your inbox.");
+        } catch (err) {
+          showError(mapAuthError(err instanceof Error ? err : { message: "Something went wrong." }));
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      recoveryForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setBusy(true);
+        showRecoveryError(null);
+        showRecoveryMessage(null);
+        try {
+          const password = newPasswordInput.value;
+          const confirm = confirmPasswordInput.value;
+          if (password.length < 6) {
+            showRecoveryError("Use at least 6 characters.");
+            return;
+          }
+          if (password !== confirm) {
+            showRecoveryError("Those passwords don't match.");
+            return;
+          }
+          const { error } = await updateUserPassword(client(), password);
+          if (error) throw error;
+          showRecoveryMessage("Password saved. Taking you in.");
+          window.location.replace(next);
+        } catch (err) {
+          showRecoveryError(mapAuthError(err instanceof Error ? err : { message: "Something went wrong." }));
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      try {
+        client().auth.onAuthStateChange((event) => {
+          if (event === "PASSWORD_RECOVERY") enterRecovery();
+        });
+      } catch {
+        // Missing env is reported when the parent tries to submit.
+      }
+
       renderMode();
+      renderRecovery();
       void redirectIfSignedIn();
     </script>
   </body>
@@ -306,6 +454,11 @@ export const prerender = false;
     text-align: center;
     font-size: 0.75rem;
     color: #8b98a5;
+  }
+  .recovery-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
   }
   button:disabled {
     opacity: 0.5;
