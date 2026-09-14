@@ -1,5 +1,12 @@
+BEGIN;
+
+-- Install atomically and allow safe reapplication to projects missing this migration.
+LOCK TABLE public.profiles IN SHARE ROW EXCLUSIVE MODE;
+DROP TRIGGER IF EXISTS guard_profile_change ON public.profiles;
+DROP TRIGGER IF EXISTS check_household_commissioner ON public.profiles;
+
 -- Serialize profile changes within a household, including onboarding.
-CREATE FUNCTION public.guard_profile_change() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.guard_profile_change() RETURNS trigger
 LANGUAGE plpgsql SET search_path = public AS $$
 DECLARE family uuid; replacement uuid;
 BEGIN
@@ -10,8 +17,8 @@ BEGIN
   IF TG_OP = 'UPDATE' AND NEW.household_id <> OLD.household_id THEN
     RAISE EXCEPTION 'Players must stay in their household.';
   END IF;
-  IF TG_OP = 'INSERT' AND NOT EXISTS (SELECT 1 FROM public.profiles WHERE household_id = family) THEN
-    NEW.is_commissioner := true;
+  IF TG_OP = 'INSERT' THEN
+    NEW.is_commissioner := NOT EXISTS (SELECT 1 FROM public.profiles WHERE household_id = family);
   END IF;
   IF TG_OP = 'DELETE' THEN
     SELECT id INTO replacement FROM public.profiles
@@ -37,7 +44,7 @@ FROM chosen WHERE p.household_id = chosen.household_id;
 CREATE TRIGGER guard_profile_change BEFORE INSERT OR UPDATE OR DELETE ON public.profiles
 FOR EACH ROW EXECUTE FUNCTION public.guard_profile_change();
 
-CREATE FUNCTION public.check_household_commissioner() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.check_household_commissioner() RETURNS trigger
 LANGUAGE plpgsql SET search_path = public AS $$
 DECLARE family uuid;
 BEGIN
@@ -54,7 +61,7 @@ AFTER INSERT OR UPDATE OR DELETE ON public.profiles DEFERRABLE INITIALLY DEFERRE
 FOR EACH ROW EXECUTE FUNCTION public.check_household_commissioner();
 
 -- Invoker permissions retain the existing household-owner RLS boundary.
-CREATE FUNCTION public.reassign_commissioner(player_id uuid) RETURNS void
+CREATE OR REPLACE FUNCTION public.reassign_commissioner(player_id uuid) RETURNS void
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
 DECLARE family uuid;
 BEGIN
@@ -71,3 +78,5 @@ REVOKE ALL ON FUNCTION public.reassign_commissioner(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.reassign_commissioner(uuid) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;
