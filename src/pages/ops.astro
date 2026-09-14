@@ -1,0 +1,256 @@
+---
+export const prerender = false;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>ops — users and households</title>
+  </head>
+  <body>
+    <main class="wrap">
+      <h1>ops</h1>
+      <p id="notice" hidden></p>
+
+      <h2>users</h2>
+      <div class="scroll">
+        <table data-columns="email,email_confirmed_at,confirmation_sent_at,created_at">
+          <thead>
+            <tr>
+              <th>email</th>
+              <th>confirmed</th>
+              <th>confirm sent</th>
+              <th>created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="users-body"></tbody>
+        </table>
+      </div>
+
+      <h2>households</h2>
+      <div class="scroll">
+        <table data-columns="name,owner_user_id,created_at">
+          <thead>
+            <tr>
+              <th>name</th>
+              <th>owner</th>
+              <th>created</th>
+            </tr>
+          </thead>
+          <tbody id="households-body"></tbody>
+        </table>
+      </div>
+    </main>
+
+    <script>
+      import { createParentAuthClient } from "../lib/auth/parent";
+
+      type OpsUser = {
+        id: string;
+        email: string | null;
+        email_confirmed_at: string | null;
+        confirmation_sent_at: string | null;
+        created_at: string;
+      };
+
+      type OpsHousehold = {
+        id: string;
+        name: string;
+        owner_user_id: string;
+        created_at: string;
+      };
+
+      const notice = document.getElementById("notice") as HTMLParagraphElement;
+      const usersBody = document.getElementById("users-body") as HTMLTableSectionElement;
+      const householdsBody = document.getElementById("households-body") as HTMLTableSectionElement;
+
+      function showNotice(text: string) {
+        notice.hidden = !text;
+        notice.textContent = text;
+      }
+
+      function cell(text: string): HTMLTableCellElement {
+        const td = document.createElement("td");
+        td.textContent = text;
+        return td;
+      }
+
+      async function bearer(): Promise<string | null> {
+        try {
+          const client = createParentAuthClient();
+          const { data } = await client.auth.getSession();
+          return data.session?.access_token ?? null;
+        } catch {
+          return null;
+        }
+      }
+
+      async function loadSnapshot() {
+        const token = await bearer();
+        if (!token) {
+          window.location.replace("/auth?next=/ops");
+          return;
+        }
+
+        const res = await fetch("/api/ops/snapshot", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.status === 401) {
+          window.location.replace("/auth?next=/ops");
+          return;
+        }
+        if (res.status === 404) {
+          document.body.textContent = "Not found";
+          return;
+        }
+        if (!res.ok) {
+          showNotice("Could not load ops");
+          return;
+        }
+
+        const snapshot = (await res.json()) as {
+          users: OpsUser[];
+          households: OpsHousehold[];
+          missingEnv?: string[];
+        };
+
+        if (snapshot.missingEnv && snapshot.missingEnv.length > 0) {
+          showNotice(snapshot.missingEnv.join(", "));
+        }
+
+        usersBody.replaceChildren();
+        for (const user of snapshot.users) {
+          const tr = document.createElement("tr");
+          tr.append(
+            cell(user.email ?? "—"),
+            cell(user.email_confirmed_at ?? "—"),
+            cell(user.confirmation_sent_at ?? "—"),
+            cell(user.created_at),
+          );
+          const action = document.createElement("td");
+          if (!user.email_confirmed_at) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = "resend";
+            button.addEventListener("click", () => void onResend(user.id, button));
+            action.append(button);
+          }
+          tr.append(action);
+          usersBody.append(tr);
+        }
+
+        householdsBody.replaceChildren();
+        for (const household of snapshot.households) {
+          const tr = document.createElement("tr");
+          tr.append(
+            cell(household.name),
+            cell(household.owner_user_id),
+            cell(household.created_at),
+          );
+          householdsBody.append(tr);
+        }
+      }
+
+      async function onResend(userId: string, button: HTMLButtonElement) {
+        button.disabled = true;
+        button.textContent = "…";
+        showNotice("");
+        try {
+          const token = await bearer();
+          if (!token) {
+            window.location.replace("/auth?next=/ops");
+            return;
+          }
+          const res = await fetch("/api/ops/resend", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({ userId }),
+          });
+          const result = (await res.json().catch(() => null)) as
+            | { ok?: boolean; error?: string }
+            | null;
+          if (res.ok && result?.ok) {
+            showNotice("Sent.");
+            await loadSnapshot();
+          } else if (res.status === 404) {
+            document.body.textContent = "Not found";
+          } else {
+            showNotice(result?.error || "Could not send");
+          }
+        } catch {
+          showNotice("Not found");
+        } finally {
+          button.disabled = false;
+          button.textContent = "resend";
+        }
+      }
+
+      void loadSnapshot();
+    </script>
+  </body>
+</html>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: Inter, system-ui, sans-serif;
+    background: #0f1419;
+    color: #e7e9ea;
+  }
+  .wrap {
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+  h1 {
+    font-size: 1.25rem;
+    margin: 0;
+  }
+  h2 {
+    margin: 2rem 0 0.5rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8b98a5;
+  }
+  .scroll {
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    text-align: left;
+  }
+  th,
+  td {
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid #2f3336;
+  }
+  button {
+    border: 0;
+    border-radius: 9999px;
+    background: #1d9bf0;
+    color: #fff;
+    padding: 0.25rem 0.75rem;
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.5;
+  }
+  #notice {
+    margin-top: 0.75rem;
+    font-weight: 700;
+  }
+</style>

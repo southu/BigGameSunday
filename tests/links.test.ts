@@ -72,6 +72,8 @@ describe('Internal Links', () => {
   validRoutes.add('/admin/health');
   validRoutes.add('/admin/health/links');
   validRoutes.add('/admin/health/builds');
+  validRoutes.add('/auth');
+  validRoutes.add('/ops');
 
   it('should have valid routes defined', () => {
     expect(validRoutes.size).toBeGreaterThan(0);

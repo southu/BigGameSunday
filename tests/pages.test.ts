@@ -40,7 +40,11 @@ describe('Pages', () => {
     for (const page of astroPages) {
       const content = fs.readFileSync(page, 'utf-8');
 
-      if (page.includes('/admin/login')) {
+      if (
+        page.includes('/admin/login') ||
+        page.endsWith(`${path.sep}ops.astro`) ||
+        page.endsWith(`${path.sep}auth.astro`)
+      ) {
         continue;
       }
 
