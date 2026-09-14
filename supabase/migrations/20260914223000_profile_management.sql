@@ -69,3 +69,5 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.reassign_commissioner(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.reassign_commissioner(uuid) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
