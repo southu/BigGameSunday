@@ -32,7 +32,7 @@ Multiple operators:
 OPS_ALLOWLIST=jsnhrpr@gmail.com,other.operator@example.com
 ```
 
-If `OPS_ALLOWLIST` is unset or empty on a deploy, the **server-only** module falls back to the live operator email so `/ops` cannot 404 the operator. That fallback is in `src/lib/ops.server.ts`, not in a client module.
+If `OPS_ALLOWLIST` is unset or empty, the allowlist is empty: every authed session gets not-found. There is no hard-coded fallback address.
 
 Non-allowlisted sessions hitting `/ops` get a not-found from the server function (`throw new Error("Not found")`); the route turns that into the app 404. Unauthenticated visitors are redirected to `/auth?next=/ops`.
 

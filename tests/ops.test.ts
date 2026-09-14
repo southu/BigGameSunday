@@ -31,9 +31,13 @@ describe("OPS_ALLOWLIST", () => {
     ]);
   });
 
-  it("falls back to the live operator when the env is empty (server-only)", () => {
+  it("is empty when the env is unset or blank", () => {
+    delete process.env.OPS_ALLOWLIST;
+    expect(opsAllowlist().size).toBe(0);
     process.env.OPS_ALLOWLIST = "";
-    expect(opsAllowlist().has("jsnhrpr@gmail.com")).toBe(true);
+    expect(opsAllowlist().size).toBe(0);
+    process.env.OPS_ALLOWLIST = "  ,  ";
+    expect(opsAllowlist().size).toBe(0);
   });
 
   it("uses the env list when set", () => {
@@ -45,6 +49,13 @@ describe("OPS_ALLOWLIST", () => {
   it("throws Not found for a non-allowlisted email", () => {
     process.env.OPS_ALLOWLIST = "ops@example.com";
     expect(() => assertOps({ email: "stranger@example.com" })).toThrow("Not found");
+  });
+
+  it("throws Not found for any email when the allowlist is empty", () => {
+    delete process.env.OPS_ALLOWLIST;
+    expect(() => assertOps({ email: "jsnhrpr@gmail.com" })).toThrow("Not found");
+    process.env.OPS_ALLOWLIST = "";
+    expect(() => assertOps({ email: "ops@example.com" })).toThrow("Not found");
   });
 });
 
@@ -241,12 +252,14 @@ describe("ops surfaces in the repo", () => {
     expect(header.includes('href="/ops"')).toBe(false);
   });
 
-  it("does not put operator emails in client ops modules", () => {
+  it("does not hard-code operator emails in ops modules", () => {
     const functions = fs.readFileSync(path.join(root, "src/lib/ops.functions.ts"), "utf-8");
     const opsPage = fs.readFileSync(path.join(root, "src/pages/ops.astro"), "utf-8");
+    const server = fs.readFileSync(path.join(root, "src/lib/ops.server.ts"), "utf-8");
     expect(functions.includes("jsnhrpr@gmail.com")).toBe(false);
     expect(opsPage.includes("jsnhrpr@gmail.com")).toBe(false);
     expect(opsPage.includes("ops.server")).toBe(false);
+    expect(server.includes("jsnhrpr@gmail.com")).toBe(false);
   });
 
   it("renders missingEnv and Not found on the ops page", () => {

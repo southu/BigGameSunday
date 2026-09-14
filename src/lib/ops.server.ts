@@ -36,13 +36,9 @@ export function parseOpsAllowlist(raw: string | undefined): string[] {
     .filter(Boolean);
 }
 
-/** Comma-separated emails from OPS_ALLOWLIST. Server-only; never VITE_*. */
+/** Comma-separated emails from OPS_ALLOWLIST. Server-only; never VITE_*. Empty/unset => empty set. */
 export function opsAllowlist(): Set<string> {
-  const listed = new Set(parseOpsAllowlist(process.env["OPS_ALLOWLIST"]));
-  // If the env var is missing on a deploy, keep the live operator on /ops.
-  // This fallback lives in a .server.ts module and is not shipped to the client bundle.
-  if (listed.size === 0) listed.add("jsnhrpr@gmail.com");
-  return listed;
+  return new Set(parseOpsAllowlist(process.env["OPS_ALLOWLIST"]));
 }
 
 function normalizeEmail(value: unknown): string {
