@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronRight, Plus, Sparkles, Star, Trash2, X } from "lucide-react";
 import { AppShell, PageTitle } from "@/components/bgs/AppShell";
 import { autoFillWeek, ensureAutoWeek } from "@/lib/autofill.functions";
-import { recomputeWeek, runAutopilotNow } from "@/lib/autopilot.functions";
+import { recomputeWeekScores, runAutopilotNow } from "@/lib/autopilot.functions";
 import { nextStepFor } from "@/lib/autopilot-schedule";
 import { pickViewWeek, weekSwitcherLabel } from "@/lib/current-week";
 import { db, useAutopilotLog, useHouseholdWeeks, useWeekCards, useWeekEvents, useWeekGames } from "@/lib/db";
@@ -161,7 +161,7 @@ function Commissioner() {
 
   const runAutoFill = useServerFn(autoFillWeek);
   const runEnsureWeek = useServerFn(ensureAutoWeek);
-  const runRecompute = useServerFn(recomputeWeek);
+  const runRecompute = useServerFn(recomputeWeekScores);
   const runAutopilot = useServerFn(runAutopilotNow);
   const autoCheckedRef = useRef(false);
 

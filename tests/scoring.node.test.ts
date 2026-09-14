@@ -371,10 +371,12 @@ describe("wiring", () => {
 
   it("recomputeWeek still calls computeWeekScores", () => {
     const src = readFileSync(join(ROOT, "src/lib/autopilot.functions.ts"), "utf8");
-    assert.match(src, /export const recomputeWeek/);
+    assert.match(src, /export const recomputeWeekScores/);
+    assert.match(src, /export const recomputeWeek = recomputeWeekScores/);
     assert.match(src, /import \{ computeWeekScores \} from "\.\/finalize"/);
     assert.match(src, /computeWeekScores/);
     assert.match(src, /finalize: !!data\.finalize/);
+    assert.match(src, /first_line_at/);
     assert.doesNotMatch(src, /import\("\.\/finalize"\)/);
   });
 

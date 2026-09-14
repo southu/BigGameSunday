@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 
 const sha = (
   process.env.VERCEL_GIT_COMMIT_SHA ||
@@ -10,4 +10,6 @@ const sha = (
 
 mkdirSync("public", { recursive: true });
 writeFileSync("public/version", `${sha}\n`);
+mkdirSync("public/tests", { recursive: true });
+copyFileSync("tests/scoring.node.test.ts", "public/tests/scoring.node.test.ts");
 console.log(`wrote public/version ${sha}`);

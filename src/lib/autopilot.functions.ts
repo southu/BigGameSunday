@@ -23,8 +23,12 @@ export const runAutopilotNow = createServerFn({ method: "POST" })
     return await runAutopilot(db, { householdId: data.householdId });
   });
 
-/** Recompute every card's score + standings — used after a post-finalize correction. */
-export const recomputeWeek = createServerFn({ method: "POST" })
+/**
+ * Persist first_line_at and four-key rank (grid_score, hits, upset_score, earliest first_line_at).
+ * Commissioner Finalize and post-finalize recompute share this function — ranks are not rewritten
+ * mid-season without an explicit recompute.
+ */
+export const recomputeWeekScores = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { weekId: string; finalize?: boolean }) => {
     if (!input?.weekId) throw new Error("Missing week.");
@@ -39,3 +43,6 @@ export const recomputeWeek = createServerFn({ method: "POST" })
       winnerCardId: out.winnerCardId,
     };
   });
+
+/** Alias kept so existing commissioner imports keep working. */
+export const recomputeWeek = recomputeWeekScores;
