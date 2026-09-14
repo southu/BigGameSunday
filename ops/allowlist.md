@@ -43,7 +43,7 @@ When `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_URL` is missing, GET snapshot retu
 - Do not put operator emails in Astro pages, `src/` client scripts, or any `VITE_*` env.
 - Do not add `/ops` to Header / AppShell `NAV`.
 - Do not commit `.env` or Vercel secrets.
-- Household card/week RLS is unchanged (`owner_user_id = auth.uid()` / `owns_household`). `/ops` uses the service role only to *list* users and households for allowlisted operators and to resend confirm / merge duplicate identities; it does not edit other families' cards.
+- Household card/week RLS is unchanged (`owner_user_id = auth.uid()` / `owns_household`). `/ops` uses the service role only to *list* users and households for allowlisted operators and to resend confirmation; GET snapshot does not mutate auth identities. It does not edit other families' cards.
 
 ## Set / rotate
 

@@ -3,20 +3,18 @@ import * as fs from "fs";
 import * as path from "path";
 import {
   assertOps,
-  collapseDuplicateIdentitiesToHouseholdOwner,
   confirmationSentAdvanced,
+  extractAccessTokenFromRequest,
+  getOpsClaimsFromRequest,
   loadOpsSnapshotHandler,
   missingEnvNames,
-  OPS_RELINK_IDENTITIES_RPC,
   opsAllowlist,
   parseOpsAllowlist,
-  planIdentityCollapse,
   resendOpsConfirmHandler,
   resetOpsAdminForTests,
-  type CollapseUser,
   type OpsAdminLike,
 } from "../src/lib/ops.server";
-import type { OpsHousehold } from "../src/lib/ops.functions";
+import { gateOpsRequest } from "../src/lib/ops.functions";
 
 const previousAllowlist = process.env.OPS_ALLOWLIST;
 
@@ -93,129 +91,36 @@ describe("missingEnv", () => {
   });
 });
 
-describe("identity collapse", () => {
-  const households: OpsHousehold[] = [
-    {
-      id: "hh-1",
-      name: "Family",
-      owner_user_id: "owner-1",
-      created_at: "2026-01-01T00:00:00Z",
-    },
-  ];
-
-  const owner: CollapseUser = {
-    id: "owner-1",
-    email: "parent@example.com",
-    email_confirmed_at: "2026-01-02T00:00:00Z",
-    app_metadata: { provider: "email", providers: ["email"] },
-    identities: [{ provider: "email" }],
-  };
-
-  const googleExtra: CollapseUser = {
-    id: "google-2",
-    email: "parent@example.com",
-    email_confirmed_at: "2026-01-03T00:00:00Z",
-    app_metadata: { provider: "google", providers: ["google"] },
-    identities: [{ provider: "google" }],
-  };
-
-  it("is a no-op when there is no household to collapse onto", () => {
-    expect(planIdentityCollapse([owner, googleExtra], [])).toEqual([]);
+describe("ops request session token", () => {
+  it("reads a Bearer access token", () => {
+    const token = "aaa.bbb.ccc";
+    const request = new Request("https://biggamesunday.com/ops", {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(extractAccessTokenFromRequest(request)).toBe(token);
   });
 
-  it("is a no-op when the email is unique", () => {
-    expect(planIdentityCollapse([owner], households)).toEqual([]);
+  it("reads the parent access cookie", () => {
+    const token = "aaa.bbb.ccc";
+    const request = new Request("https://biggamesunday.com/ops", {
+      headers: { cookie: `sb-access-token=${token}` },
+    });
+    expect(extractAccessTokenFromRequest(request)).toBe(token);
   });
 
-  it("plans extras onto households.owner_user_id", () => {
-    const plans = planIdentityCollapse([owner, googleExtra], households);
-    expect(plans).toEqual([
-      {
-        email: "parent@example.com",
-        ownerId: "owner-1",
-        extraIds: ["google-2"],
-        extraProviders: ["google"],
-        confirmOwnerEmail: false,
-      },
-    ]);
+  it("returns null when the request has no session", () => {
+    const request = new Request("https://biggamesunday.com/ops");
+    expect(extractAccessTokenFromRequest(request)).toBeNull();
   });
 
-  it("relinks the Google identity onto the owner and deletes the extra user", async () => {
-    const rpcCalls: Array<{ fn: string; args: Record<string, unknown> }> = [];
-    const deleted: string[] = [];
-    const updates: Array<{ id: string; attributes: Record<string, unknown> }> = [];
-
-    const admin: OpsAdminLike = {
-      auth: {
-        resend: async () => ({ error: null }),
-        admin: {
-          getUserById: async (id) => ({ data: { user: { id } }, error: null }),
-          updateUserById: async (id, attributes) => {
-            updates.push({ id, attributes });
-            return {};
-          },
-          deleteUser: async (id) => {
-            deleted.push(id);
-            return {};
-          },
-        },
-      },
-      rpc: async (fn, args) => {
-        rpcCalls.push({ fn, args });
-        return { data: { moved: 1 }, error: null };
-      },
-    };
-
-    const plans = await collapseDuplicateIdentitiesToHouseholdOwner(
-      [owner, googleExtra],
-      households,
-      admin,
-    );
-
-    expect(plans).toHaveLength(1);
-    expect(rpcCalls).toEqual([
-      {
-        fn: OPS_RELINK_IDENTITIES_RPC,
-        args: { from_user_id: "google-2", to_user_id: "owner-1" },
-      },
-    ]);
-    expect(updates).toEqual([
-      {
-        id: "owner-1",
-        attributes: {
-          app_metadata: { provider: "email", providers: ["email", "google"] },
-        },
-      },
-    ]);
-    expect(deleted).toEqual(["google-2"]);
+  it("getOpsClaimsFromRequest throws Unauthorized without a session", async () => {
+    const request = new Request("https://biggamesunday.com/ops");
+    await expect(getOpsClaimsFromRequest(request)).rejects.toThrow("Unauthorized");
   });
 
-  it("does not succeed with metadata-only stamps when identities cannot be relinked", async () => {
-    const updates: Array<{ id: string; attributes: Record<string, unknown> }> = [];
-    const deleted: string[] = [];
-    const admin: OpsAdminLike = {
-      auth: {
-        resend: async () => ({ error: null }),
-        admin: {
-          getUserById: async (id) => ({ data: { user: { id } }, error: null }),
-          updateUserById: async (id, attributes) => {
-            updates.push({ id, attributes });
-            return {};
-          },
-          deleteUser: async (id) => {
-            deleted.push(id);
-            return {};
-          },
-        },
-      },
-      rpc: async () => ({ data: null, error: { message: "Could not find the function", code: "PGRST202" } }),
-    };
-
-    await expect(
-      collapseDuplicateIdentitiesToHouseholdOwner([owner, googleExtra], households, admin),
-    ).rejects.toThrow(/relink auth identities/i);
-    expect(updates).toEqual([]);
-    expect(deleted).toEqual([]);
+  it("gateOpsRequest throws Unauthorized without a session", async () => {
+    const request = new Request("https://biggamesunday.com/ops");
+    await expect(gateOpsRequest(request)).rejects.toThrow("Unauthorized");
   });
 });
 
@@ -251,15 +156,12 @@ describe("resend confirm", () => {
               error: null,
             };
           },
-          updateUserById: async () => ({}),
-          deleteUser: async () => ({}),
           generateLink: async (params: unknown) => {
             generateLinkCalls.push(params);
             return { error: null };
           },
         } as OpsAdminLike["auth"]["admin"],
       },
-      rpc: async () => ({ data: null, error: null }),
     };
     return { admin, resendCalls, generateLinkCalls };
   }
@@ -353,6 +255,21 @@ describe("ops surfaces in the repo", () => {
     expect(opsPage).toMatch(/missingEnv:/);
     expect(opsPage).toMatch(/Not found/);
     expect(opsPage).toMatch(/\/auth\?next=\/ops/);
+  });
+
+  it("redirects unauthenticated GET /ops on the server", () => {
+    const opsPage = fs.readFileSync(path.join(root, "src/pages/ops.astro"), "utf-8");
+    expect(opsPage).toMatch(/Astro\.redirect\(\s*["']\/auth\?next=\/ops["']\s*\)/);
+    expect(opsPage).toMatch(/gateOpsRequest\(Astro\.request\)/);
+  });
+
+  it("GET snapshot only reads users and households", () => {
+    const src = fs.readFileSync(path.join(root, "src/lib/ops.server.ts"), "utf-8");
+    expect(src).not.toMatch(/collapseDuplicateIdentitiesToHouseholdOwner\(/);
+    expect(src).not.toMatch(/deleteUser\(/);
+    expect(src).not.toMatch(/updateUserById\(/);
+    expect(src).toMatch(/auth\.admin\.listUsers/);
+    expect(src).toMatch(/from\("households"\)/);
   });
 
   it("documents the allowlist env as server-only", () => {

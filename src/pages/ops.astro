@@ -1,5 +1,23 @@
 ---
 export const prerender = false;
+
+import { gateOpsRequest } from "../lib/ops.functions";
+
+try {
+  await gateOpsRequest(Astro.request);
+} catch (error) {
+  const msg = error instanceof Error ? error.message : "";
+  if (msg === "Unauthorized") {
+    return Astro.redirect("/auth?next=/ops");
+  }
+  if (msg === "Not found") {
+    return new Response("Not found", {
+      status: 404,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
+  throw error;
+}
 ---
 
 <!doctype html>

@@ -24,6 +24,13 @@ export type OpsSnapshot = {
  * Route UI never imports the allowlist or service role; handlers live in
  * ops.server.ts and are loaded only from server modules / API routes.
  */
+export async function gateOpsRequest(request: Request): Promise<{ email?: unknown }> {
+  const { getOpsClaimsFromRequest, assertOps } = await import("./ops.server");
+  const claims = await getOpsClaimsFromRequest(request);
+  assertOps(claims);
+  return claims;
+}
+
 export async function loadOpsSnapshot(claims: { email?: unknown }): Promise<OpsSnapshot> {
   const { loadOpsSnapshotHandler } = await import("./ops.server");
   return loadOpsSnapshotHandler(claims);

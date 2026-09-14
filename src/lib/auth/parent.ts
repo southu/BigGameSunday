@@ -1,5 +1,64 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+/** Readable by the /ops document GET so the server can redirect unauthenticated requests. */
+export const PARENT_ACCESS_COOKIE = "sb-access-token";
+
+function tokenFromStoredSession(value: string): string | null {
+  try {
+    const parsed = JSON.parse(value) as {
+      access_token?: unknown;
+      currentSession?: { access_token?: unknown };
+    };
+    if (typeof parsed.access_token === "string") return parsed.access_token;
+    if (typeof parsed.currentSession?.access_token === "string") {
+      return parsed.currentSession.access_token;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function writeParentAccessCookie(token: string | null) {
+  if (typeof document === "undefined") return;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  if (token) {
+    document.cookie = `${PARENT_ACCESS_COOKIE}=${encodeURIComponent(token)}; Path=/; SameSite=Lax; Max-Age=604800${secure}`;
+  } else {
+    document.cookie = `${PARENT_ACCESS_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+  }
+}
+
+function parentAuthStorage(): Storage {
+  return {
+    get length() {
+      return window.localStorage.length;
+    },
+    clear() {
+      window.localStorage.clear();
+      writeParentAccessCookie(null);
+    },
+    key(index: number) {
+      return window.localStorage.key(index);
+    },
+    getItem(key: string) {
+      const value = window.localStorage.getItem(key);
+      const token = value ? tokenFromStoredSession(value) : null;
+      if (token) writeParentAccessCookie(token);
+      return value;
+    },
+    setItem(key: string, value: string) {
+      window.localStorage.setItem(key, value);
+      const token = tokenFromStoredSession(value);
+      if (token) writeParentAccessCookie(token);
+    },
+    removeItem(key: string) {
+      window.localStorage.removeItem(key);
+      writeParentAccessCookie(null);
+    },
+  };
+}
+
 /** Browser/parent auth client. Anon key only — never the service role. */
 export function createParentAuthClient(): SupabaseClient {
   const url = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.PUBLIC_SUPABASE_URL) as
@@ -13,7 +72,13 @@ export function createParentAuthClient(): SupabaseClient {
     throw new Error("Missing Supabase environment variables");
   }
 
-  return createClient(url, key);
+  return createClient(url, key, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      storage: typeof window === "undefined" ? undefined : parentAuthStorage(),
+    },
+  });
 }
 
 export type AuthMode = "signin" | "signup";
