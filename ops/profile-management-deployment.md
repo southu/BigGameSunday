@@ -1,6 +1,6 @@
 # Profile management database deployment
 
-## Pending live application — 2026-09-15, iteration 6
+## Pending live application — 2026-09-15, iteration 8
 
 Target: Supabase project `vzsltdvinnqingujsnft` for `biggamesunday.com`.
 
@@ -82,3 +82,17 @@ Requested operator action: unlock the vault and select **Arm for N hours** for
 `biggamesunday`, then rerun `python3 scripts/deploy-profile-management.py`.
 All 61 local Node tests and the production build passed. These checks and this
 documentation commit do not establish a live fix.
+
+## 2026-09-15 mission iteration 8 — credential access still blocked
+
+Ran `python3 scripts/deploy-profile-management.py` from `main` at
+`f23abbbbf71d31745d5c0b59636d15580bf86316`. It exited with status 1:
+`Vault is locked or unarmed. Use Arm for N hours in the vault UI first.`
+No credential lease was requested and no live SQL ran. BUG-1, AC4, and the
+reassignment path of AC6 remain unresolved. The existing migration is unchanged.
+
+Requested that the operator unlock the vault and select **Arm for N hours** for
+`biggamesunday`. After that action, rerun the deployment script to apply the
+migration and execute its database checks; then run independent live acceptance
+testing. All 61 local Node tests and the production build passed. This record is
+not a migration deployment or evidence of a live fix.
