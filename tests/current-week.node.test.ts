@@ -9,6 +9,7 @@ import {
   selectActiveWeek,
   shouldOpenExistingNextWeek,
   skipLockNeedsRefresh,
+  skipTargetWeek,
   weekAtSlot,
   weekSwitcherLabel,
 } from "../src/lib/current-week.ts";
@@ -100,6 +101,11 @@ describe("selectActiveWeek", () => {
     const leftover = w(1, "draft");
     const premature = w(2, "final");
     assert.equal(canSkipWeek(leftover), true);
+    assert.equal(skipTargetWeek([leftover, premature], leftover)?.week_number, 1);
+    assert.equal(skipTargetWeek([leftover, premature], premature)?.week_number, 1);
+    assert.equal(skipTargetWeek([w(1, "final"), w(2, "final")], w(2, "final")), null);
+    assert.equal(skipTargetWeek([w(1, "open"), w(2, "final")], w(2, "final")), null);
+    assert.equal(skipTargetWeek([w(1, "open"), w(2, "draft")], w(1, "open"))?.week_number, 1);
     const next = weekAtSlot([leftover, premature], nextWeekSlot(leftover));
     assert.equal(next?.status, "final");
     assert.equal(shouldOpenExistingNextWeek(next), true);
@@ -194,11 +200,13 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(src, /Skip this week \/ start next week/);
     assert.match(src, /without Reveal/);
     assert.match(src, /canSkipWeek/);
+    assert.match(src, /skipTargetWeek/);
     assert.match(src, /nextWeekSlot/);
     const skipFn = src.slice(
       src.indexOf("const skipAndStartNext"),
       src.indexOf("const toggleHold"),
     );
+    assert.match(skipFn, /skipTargetWeek/);
     assert.match(skipFn, /status:\s*"final"/);
     assert.match(skipFn, /status:\s*"open"/);
     assert.match(skipFn, /shouldOpenExistingNextWeek/);

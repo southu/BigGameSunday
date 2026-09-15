@@ -8,6 +8,7 @@ import {
   selectActiveWeek,
   shouldOpenExistingNextWeek,
   skipLockNeedsRefresh,
+  skipTargetWeek,
   weekAtSlot,
   weekSwitcherLabel,
 } from "../src/lib/current-week";
@@ -99,6 +100,11 @@ describe("selectActiveWeek", () => {
     const leftover = w(1, "draft");
     const premature = w(2, "final");
     expect(canSkipWeek(leftover)).toBe(true);
+    expect(skipTargetWeek([leftover, premature], leftover)?.week_number).toBe(1);
+    expect(skipTargetWeek([leftover, premature], premature)?.week_number).toBe(1);
+    expect(skipTargetWeek([w(1, "final"), w(2, "final")], w(2, "final"))).toBeNull();
+    expect(skipTargetWeek([w(1, "open"), w(2, "final")], w(2, "final"))).toBeNull();
+    expect(skipTargetWeek([w(1, "open"), w(2, "draft")], w(1, "open"))?.week_number).toBe(1);
     const next = weekAtSlot([leftover, premature], nextWeekSlot(leftover));
     expect(next?.status).toBe("final");
     expect(shouldOpenExistingNextWeek(next)).toBe(true);
@@ -193,11 +199,13 @@ describe("useCurrentWeek production wiring", () => {
     expect(src).toMatch(/Skip this week \/ start next week/);
     expect(src).toMatch(/without Reveal/);
     expect(src).toMatch(/canSkipWeek/);
+    expect(src).toMatch(/skipTargetWeek/);
     expect(src).toMatch(/nextWeekSlot/);
     const skipFn = src.slice(
       src.indexOf("const skipAndStartNext"),
       src.indexOf("const toggleHold"),
     );
+    expect(skipFn).toMatch(/skipTargetWeek/);
     expect(skipFn).toMatch(/status:\s*"final"/);
     expect(skipFn).toMatch(/status:\s*"open"/);
     expect(skipFn).toMatch(/shouldOpenExistingNextWeek/);

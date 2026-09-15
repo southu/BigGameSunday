@@ -14,6 +14,7 @@ import {
   pickViewWeek,
   shouldOpenExistingNextWeek,
   skipLockNeedsRefresh,
+  skipTargetWeek,
   weekAtSlot,
   weekSwitcherLabel,
 } from "@/lib/current-week";
@@ -523,16 +524,17 @@ function Commissioner() {
     run(async () => {
       if (!household) throw new Error("No household yet.");
       if (!week) throw new Error("Create a week first.");
-      if (!canSkipWeek(week)) throw new Error("This week is already finished.");
+      const leftover = skipTargetWeek(weeks, week);
+      if (!leftover || !canSkipWeek(leftover)) throw new Error("This week is already finished.");
 
-      const skippedNumber = week.week_number;
-      const slot = nextWeekSlot(week);
+      const skippedNumber = leftover.week_number;
+      const slot = nextWeekSlot(leftover);
       const now = new Date().toISOString();
 
       const { error: skipErr } = await db
         .from("weeks")
         .update({ status: "final", finalized_at: now })
-        .eq("id", week.id);
+        .eq("id", leftover.id);
       if (skipErr) throw skipErr;
 
       const next = weekAtSlot(weeks, slot);
@@ -761,7 +763,7 @@ function Commissioner() {
                 {NEXT_LABEL[week.status] ?? "Next step"}
               </Action>
             )}
-            {canSkipWeek(week) && (
+            {skipTargetWeek(weeks, week) && (
               <div className="mt-3">
                 <Action onClick={skipAndStartNext} disabled={busy}>
                   Skip this week / start next week

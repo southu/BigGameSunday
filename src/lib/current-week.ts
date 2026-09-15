@@ -61,6 +61,30 @@ export function canSkipWeek(week: WeekLike | null | undefined): boolean {
   return !!week && week.status !== "final";
 }
 
+function isOlderThan(week: WeekLike, than: WeekLike): boolean {
+  return (
+    week.season_year < than.season_year ||
+    (week.season_year === than.season_year && week.week_number < than.week_number)
+  );
+}
+
+/**
+ * Week the skip control closes.
+ * The viewed leftover if it is still playable; otherwise the newest older
+ * leftover draft sitting behind a finished week (Harper: draft W1 + final W2).
+ */
+export function skipTargetWeek<T extends WeekLike>(
+  weeks: readonly T[],
+  viewed: T | null | undefined,
+): T | null {
+  if (canSkipWeek(viewed)) return viewed ?? null;
+  if (!viewed) return null;
+  const olderDrafts = [...weeks]
+    .filter((w) => w.status === "draft" && isOlderThan(w, viewed))
+    .sort(recency);
+  return olderDrafts[0] ?? null;
+}
+
 /**
  * After skip, an existing next week is playable only when already open.
  * Draft, locked, or prematurely final next weeks must be reopened.
