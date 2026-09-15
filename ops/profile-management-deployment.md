@@ -1,6 +1,6 @@
 # Profile management database deployment
 
-## Pending live application — 2026-09-14, iteration 5
+## Pending live application — 2026-09-15, iteration 6
 
 Target: Supabase project `vzsltdvinnqingujsnft` for `biggamesunday.com`.
 
@@ -65,3 +65,20 @@ existing migration on madcat. The script applies the SQL unchanged and runs the
 database checks. The independent tester must then verify the live RPC and chips.
 All 61 local Node tests passed on this attempt. No application or SQL changes
 were needed or made.
+
+## 2026-09-15 mission iteration 6 — live SQL still blocked
+
+Retried `python3 scripts/deploy-profile-management.py` from `main` at
+`5d3f22dd766787cd4dd3ccb312ec10a5395d3b88`. It exited with status 1:
+`Vault is locked or unarmed. Use Arm for N hours in the vault UI first.`
+The script stopped before requesting a lease or executing live SQL.
+
+BUG-1 remains unresolved: the tester reports that live PostgREST cannot find
+`public.reassign_commissioner(player_id uuid)` (PGRST202). AC4 and the
+reassignment portion of AC6 still require migration application and live testing.
+The existing migration and application code remain unchanged.
+
+Requested operator action: unlock the vault and select **Arm for N hours** for
+`biggamesunday`, then rerun `python3 scripts/deploy-profile-management.py`.
+All 61 local Node tests and the production build passed. These checks and this
+documentation commit do not establish a live fix.
