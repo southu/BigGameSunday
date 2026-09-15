@@ -6,8 +6,10 @@ import { computeWeekScores, unresolvedEventsToMiss } from "../src/lib/finalize.t
 import {
   buildSeasonStandings,
   firstLineAt,
+  pickRevealLeader,
   rankWeeklyRows,
   regularSeasonWeeks,
+  revealPlaybackDone,
   scoreBoard,
 } from "../src/lib/scoring.ts";
 
@@ -66,6 +68,46 @@ describe("firstLineAt", () => {
       ["c", { result: "miss", resolved_at: "2026-09-14T17:10:00.000Z" }],
     ]);
     assert.equal(firstLineAt(grid, eventById), null);
+  });
+});
+
+describe("revealPlaybackDone / pickRevealLeader", () => {
+  it("finalized week with zero hits is done and uses stored rank 1", () => {
+    assert.equal(revealPlaybackDone(0, 0, "final"), true);
+    const theatrical = { id: "grid-first" };
+    const stored = { id: "upset-rank-1" };
+    assert.equal(pickRevealLeader(true, stored, theatrical), stored);
+  });
+
+  it("locked week with zero hits stays theatrical", () => {
+    assert.equal(revealPlaybackDone(0, 0, "locked"), false);
+    assert.equal(revealPlaybackDone(0, 0, "open"), false);
+    const theatrical = { id: "grid-first" };
+    const stored = { id: "upset-rank-1" };
+    assert.equal(pickRevealLeader(false, stored, theatrical), theatrical);
+  });
+
+  it("keeps theatrical leader until the last hit plays", () => {
+    assert.equal(revealPlaybackDone(0, 3, "final"), false);
+    assert.equal(revealPlaybackDone(2, 3, "final"), false);
+    assert.equal(revealPlaybackDone(3, 3, "final"), true);
+    const theatrical = { id: "live-grid" };
+    const stored = { id: "rank-1" };
+    assert.equal(pickRevealLeader(false, stored, theatrical), theatrical);
+    assert.equal(pickRevealLeader(true, stored, theatrical), stored);
+  });
+
+  it("upset/later-tiebreak rank-1 wins over equal-grid theatrical leader", () => {
+    const ranked = rankWeeklyRows([
+      { id: "grid-first", grid_score: 0, hits: 0, upset_score: 0, first_line_at: null },
+      { id: "upset-rank-1", grid_score: 0, hits: 0, upset_score: 5, first_line_at: null },
+    ]);
+    assert.equal(ranked[0].id, "upset-rank-1");
+    assert.equal(ranked[0].rank, 1);
+    const done = revealPlaybackDone(0, 0, "final");
+    const stored = ranked.find((r) => r.rank === 1);
+    const theatrical = ranked.find((r) => r.id === "grid-first");
+    assert.equal(pickRevealLeader(done, stored, theatrical)?.id, "upset-rank-1");
   });
 });
 
@@ -387,6 +429,9 @@ describe("wiring", () => {
     assert.match(src, /rankWeeklyRows/);
     assert.match(src, /compareWeeklyRank/);
     assert.match(src, /first_line_at/);
+    assert.match(src, /revealPlaybackDone/);
+    assert.match(src, /pickRevealLeader/);
+    assert.doesNotMatch(src, /hitEvents\.length > 0/);
     assert.doesNotMatch(src, GAMBLE);
   });
 

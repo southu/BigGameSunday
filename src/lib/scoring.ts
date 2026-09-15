@@ -101,6 +101,30 @@ export function rankWeeklyRows<T extends WeeklyRankInput>(rows: T[]): Array<T & 
     .map((r, i) => ({ ...r, rank: i + 1 }));
 }
 
+/**
+ * Reveal playback is done after every hit has played.
+ * A finalized week with zero hits has nothing to play back, so it is done
+ * immediately and the trophy must use stored rank 1 (not theatrical grid).
+ */
+export function revealPlaybackDone(
+  step: number,
+  hitCount: number,
+  weekStatus: string | null | undefined,
+): boolean {
+  if (hitCount > 0) return step >= hitCount;
+  return weekStatus === "final";
+}
+
+/** After playback, prefer the stored rank-1 card; otherwise the theatrical leader. */
+export function pickRevealLeader<T>(
+  done: boolean,
+  storedWinner: T | null | undefined,
+  theatricalLeader: T | null | undefined,
+): T | null {
+  if (done && storedWinner) return storedWinner;
+  return theatricalLeader ?? null;
+}
+
 export type SeasonRow = {
   profile_id: string;
   grid_points: number;

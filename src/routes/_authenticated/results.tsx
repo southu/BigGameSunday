@@ -7,7 +7,13 @@ import { GridBoard, LineTally } from "@/components/bgs/GridBoard";
 import { PlayerAvatar } from "@/components/bgs/PlayerChip";
 import { useWeekCards, useWeekEvents } from "@/lib/db";
 import { useProfile } from "@/lib/profile";
-import { compareWeeklyRank, rankWeeklyRows, scoreBoard } from "@/lib/scoring";
+import {
+  compareWeeklyRank,
+  pickRevealLeader,
+  rankWeeklyRows,
+  revealPlaybackDone,
+  scoreBoard,
+} from "@/lib/scoring";
 
 export const Route = createFileRoute("/_authenticated/results")({
   head: () => ({
@@ -65,10 +71,11 @@ function Results() {
     };
   });
 
-  const done = step >= hitEvents.length && hitEvents.length > 0;
   // Playback stays theatrical (grid points as squares light up). After the
-  // last moment, the trophy is the stored rank-1 card from finalize
-  // (grid_score, hits, upset_score, earliest first_line_at).
+  // last moment — or immediately when a finalized week has zero hits — the
+  // trophy is the stored rank-1 card from finalize (grid_score, hits,
+  // upset_score, earliest first_line_at).
+  const done = revealPlaybackDone(step, hitEvents.length, week?.status);
   const theatricalLeader =
     [...boards].sort((a, b) => b.score.gridScore - a.score.gridScore)[0] ?? null;
   const storedWinner =
@@ -99,7 +106,7 @@ function Results() {
       ),
     )[0] ??
     null;
-  const leader = done && storedWinner ? storedWinner : theatricalLeader;
+  const leader = pickRevealLeader(done, storedWinner, theatricalLeader);
   const trophyPoints = Number(leader?.card.weekly_scores?.grid_score ?? leader?.score.gridScore ?? 0);
 
   if (!week || cards.length === 0) {
