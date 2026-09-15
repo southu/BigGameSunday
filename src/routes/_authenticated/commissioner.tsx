@@ -13,6 +13,7 @@ import {
   nextWeekSlot,
   pickViewWeek,
   shouldOpenExistingNextWeek,
+  skipControlCopy,
   skipLockNeedsRefresh,
   skipTargetWeek,
   weekAtSlot,
@@ -639,6 +640,8 @@ function Commissioner() {
 
   const needsCall = events.filter((e) => e.result === null);
   const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(week?.status ?? "draft") + 1];
+  const skipLeftover = skipTargetWeek(weeks, week);
+  const skipCopy = skipLeftover ? skipControlCopy(skipLeftover, week) : null;
 
   return (
     <AppShell>
@@ -763,15 +766,12 @@ function Commissioner() {
                 {NEXT_LABEL[week.status] ?? "Next step"}
               </Action>
             )}
-            {skipTargetWeek(weeks, week) && (
+            {skipCopy && (
               <div className="mt-3">
                 <Action onClick={skipAndStartNext} disabled={busy}>
-                  Skip this week / start next week
+                  {skipCopy.button}
                 </Action>
-                <p className="mt-2 text-xs font-bold text-muted-foreground">
-                  Didn't play this week? Close it without Reveal and open next week's cards — works
-                  on Tuesday.
-                </p>
+                <p className="mt-2 text-xs font-bold text-muted-foreground">{skipCopy.hint}</p>
               </div>
             )}
             <div className="mt-4 flex flex-wrap items-end gap-2">

@@ -8,6 +8,7 @@ import {
   pickViewWeek,
   selectActiveWeek,
   shouldOpenExistingNextWeek,
+  skipControlCopy,
   skipLockNeedsRefresh,
   skipTargetWeek,
   weekAtSlot,
@@ -84,6 +85,15 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([w(1, "final"), w(2, "open")])?.week_number, 2);
   });
 
+  it("does not label This Sunday when the active week is a newer final", () => {
+    const leftover = wr("w1", 1, "draft");
+    const premature = wr("w2", 2, "final");
+    const active = selectActiveWeek([leftover, premature]);
+    assert.equal(active?.id, "w2");
+    assert.equal(weekSwitcherLabel(leftover, active), "Week 1");
+    assert.equal(weekSwitcherLabel(premature, active), "Week 2");
+  });
+
   it("skip planner: leftover draft can close without Reveal and targets next week", () => {
     const draft = w(1, "draft");
     const nextDraft = w(2, "draft");
@@ -116,6 +126,19 @@ describe("selectActiveWeek", () => {
     const after = [w(1, "final"), w(2, "open")];
     assert.equal(selectActiveWeek(after)?.week_number, 2);
     assert.equal(selectActiveWeek(after)?.status, "open");
+  });
+
+  it("skip copy names leftover draft when viewing a premature-final week", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    assert.equal(skipControlCopy(leftover, leftover).button, "Skip this week / start next week");
+    assert.match(skipControlCopy(leftover, leftover).hint, /without Reveal/);
+    const copy = skipControlCopy(leftover, premature);
+    assert.equal(copy.button, "Skip leftover Week 1 / open this week");
+    assert.match(copy.hint, /Week 1 is still a leftover draft/);
+    assert.match(copy.hint, /without Reveal/);
+    assert.doesNotMatch(copy.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    assert.doesNotMatch(copy.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
   });
 
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
@@ -197,11 +220,15 @@ describe("useCurrentWeek production wiring", () => {
       "utf8",
     );
     assert.match(src, /skipAndStartNext/);
-    assert.match(src, /Skip this week \/ start next week/);
-    assert.match(src, /without Reveal/);
+    assert.match(src, /skipControlCopy/);
+    assert.match(src, /skipCopy\.button/);
     assert.match(src, /canSkipWeek/);
     assert.match(src, /skipTargetWeek/);
     assert.match(src, /nextWeekSlot/);
+    const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
+    assert.match(lib, /Skip this week \/ start next week/);
+    assert.match(lib, /Skip leftover Week/);
+    assert.match(lib, /without Reveal/);
     const skipFn = src.slice(
       src.indexOf("const skipAndStartNext"),
       src.indexOf("const toggleHold"),

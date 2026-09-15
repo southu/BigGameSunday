@@ -61,6 +61,27 @@ export function canSkipWeek(week: WeekLike | null | undefined): boolean {
   return !!week && week.status !== "final";
 }
 
+function isSameSlot(a: WeekLike, b: WeekLike): boolean {
+  return a.season_year === b.season_year && a.week_number === b.week_number;
+}
+
+/** Button and hint for the commissioner skip control. */
+export function skipControlCopy(
+  leftover: WeekLike,
+  viewed: WeekLike | null | undefined,
+): { button: string; hint: string } {
+  if (viewed && isSameSlot(leftover, viewed)) {
+    return {
+      button: "Skip this week / start next week",
+      hint: "Didn't play this week? Close it without Reveal and open next week's cards — works on Tuesday.",
+    };
+  }
+  return {
+    button: `Skip leftover Week ${leftover.week_number} / open this week`,
+    hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal and open this week so the family can play — works on Tuesday.`,
+  };
+}
+
 function isOlderThan(week: WeekLike, than: WeekLike): boolean {
   return (
     week.season_year < than.season_year ||

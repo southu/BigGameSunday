@@ -7,6 +7,7 @@ import {
   pickViewWeek,
   selectActiveWeek,
   shouldOpenExistingNextWeek,
+  skipControlCopy,
   skipLockNeedsRefresh,
   skipTargetWeek,
   weekAtSlot,
@@ -83,6 +84,15 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([w(1, "final"), w(2, "open")])?.week_number).toBe(2);
   });
 
+  it("does not label This Sunday when the active week is a newer final", () => {
+    const leftover = wr("w1", 1, "draft");
+    const premature = wr("w2", 2, "final");
+    const active = selectActiveWeek([leftover, premature]);
+    expect(active?.id).toBe("w2");
+    expect(weekSwitcherLabel(leftover, active)).toBe("Week 1");
+    expect(weekSwitcherLabel(premature, active)).toBe("Week 2");
+  });
+
   it("skip planner: leftover draft can close without Reveal and targets next week", () => {
     const draft = w(1, "draft");
     const nextDraft = w(2, "draft");
@@ -115,6 +125,19 @@ describe("selectActiveWeek", () => {
     const after = [w(1, "final"), w(2, "open")];
     expect(selectActiveWeek(after)?.week_number).toBe(2);
     expect(selectActiveWeek(after)?.status).toBe("open");
+  });
+
+  it("skip copy names leftover draft when viewing a premature-final week", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    expect(skipControlCopy(leftover, leftover).button).toBe("Skip this week / start next week");
+    expect(skipControlCopy(leftover, leftover).hint).toMatch(/without Reveal/);
+    const copy = skipControlCopy(leftover, premature);
+    expect(copy.button).toBe("Skip leftover Week 1 / open this week");
+    expect(copy.hint).toMatch(/Week 1 is still a leftover draft/);
+    expect(copy.hint).toMatch(/without Reveal/);
+    expect(copy.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    expect(copy.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
   });
 
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
@@ -196,11 +219,15 @@ describe("useCurrentWeek production wiring", () => {
       "utf8",
     );
     expect(src).toMatch(/skipAndStartNext/);
-    expect(src).toMatch(/Skip this week \/ start next week/);
-    expect(src).toMatch(/without Reveal/);
+    expect(src).toMatch(/skipControlCopy/);
+    expect(src).toMatch(/skipCopy\.button/);
     expect(src).toMatch(/canSkipWeek/);
     expect(src).toMatch(/skipTargetWeek/);
     expect(src).toMatch(/nextWeekSlot/);
+    const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
+    expect(lib).toMatch(/Skip this week \/ start next week/);
+    expect(lib).toMatch(/Skip leftover Week/);
+    expect(lib).toMatch(/without Reveal/);
     const skipFn = src.slice(
       src.indexOf("const skipAndStartNext"),
       src.indexOf("const toggleHold"),
