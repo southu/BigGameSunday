@@ -417,4 +417,9 @@ describe("wiring", () => {
     assert.match(src, /not marked miss/);
     assert.doesNotMatch(src, GAMBLE);
   });
+
+  it("gitignore covers supabase/.temp so CLI scratch cannot dirty the tree", () => {
+    const gi = readFileSync(join(ROOT, ".gitignore"), "utf8");
+    assert.match(gi, /^supabase\/\.temp\/$/m);
+  });
 });
