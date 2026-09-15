@@ -126,5 +126,8 @@ export function markdownToHtml(markdown: string): string {
     if (para.length > 0) out.push(renderParagraph(para));
   }
 
-  return out.join("\n");
+  // Cloudflare Email Address Obfuscation rewrites addresses in HTML unless
+  // opted out. Live /privacy and /terms must keep Counsel contact emails
+  // as plaintext in the HTTP body.
+  return `<!--email_off-->${out.join("\n")}<!--/email_off-->`;
 }

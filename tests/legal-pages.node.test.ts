@@ -65,7 +65,10 @@ describe("markdownToHtml", () => {
     assert.match(html, /<h2>1\. Who we are<\/h2>/);
     assert.match(html, /<h2>2\. Scope<\/h2>/);
     assert.match(html, /DP7, LLC/);
-    assert.match(html, /privacy@biggamesunday.com/);
+    assert.match(
+      html,
+      /<!--email_off-->[\s\S]*privacy@biggamesunday\.com[\s\S]*<!--\/email_off-->/,
+    );
     assert.doesNotMatch(html, GAMBLE);
   });
 
@@ -75,7 +78,10 @@ describe("markdownToHtml", () => {
     assert.match(html, /<h2>1\. Acceptance<\/h2>/);
     assert.match(html, /<h2>2\. Eligibility<\/h2>/);
     assert.match(html, /DP7, LLC/);
-    assert.match(html, /privacy@biggamesunday.com/);
+    assert.match(
+      html,
+      /<!--email_off-->[\s\S]*privacy@biggamesunday\.com[\s\S]*<!--\/email_off-->/,
+    );
     assert.match(html, /href="https:\/\/biggamesunday.com\/privacy"/);
     assert.doesNotMatch(html, GAMBLE);
   });
@@ -93,6 +99,8 @@ describe("public legal routes", () => {
     assert.doesNotMatch(terms, /supabase|beforeLoad|_authenticated|ssr:\s*false/);
     assert.doesNotMatch(privacy, GAMBLE);
     assert.doesNotMatch(terms, GAMBLE);
-    assert.doesNotMatch(read("src/components/bgs/LegalDocument.tsx"), GAMBLE);
+    const document = read("src/components/bgs/LegalDocument.tsx");
+    assert.match(document, /data-contact="privacy@biggamesunday.com"/);
+    assert.doesNotMatch(document, GAMBLE);
   });
 });

@@ -25,7 +25,11 @@ export function LegalDocument({ markdown, current }: { markdown: string; current
         </div>
       </header>
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:py-14">
-        <article className="legal-prose" dangerouslySetInnerHTML={{ __html: html }} />
+        <article
+          className="legal-prose"
+          data-contact="privacy@biggamesunday.com"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
       </main>
       <SiteFooter />
     </div>
