@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { pickViewWeek, selectActiveWeek, weekSwitcherLabel } from "../src/lib/current-week.ts";
+import {
+  canSkipWeek,
+  nextWeekSlot,
+  pickViewWeek,
+  selectActiveWeek,
+  weekAtSlot,
+  weekSwitcherLabel,
+} from "../src/lib/current-week.ts";
 import { WEEK_LONGSHOTS, insertMissingWeekLongshots, weekLongshotRows } from "../src/lib/nfl.ts";
 
 function w(week_number: number, status: string, season_year = 2026) {
@@ -74,6 +81,19 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([w(1, "final"), w(2, "open")])?.week_number, 2);
   });
 
+  it("skip planner: leftover draft can close without Reveal and targets next week", () => {
+    const draft = w(1, "draft");
+    const nextDraft = w(2, "draft");
+    assert.equal(canSkipWeek(draft), true);
+    assert.equal(canSkipWeek(w(1, "open")), true);
+    assert.equal(canSkipWeek(w(1, "locked")), true);
+    assert.equal(canSkipWeek(w(1, "final")), false);
+    assert.deepEqual(nextWeekSlot(draft), { season_year: 2026, week_number: 2 });
+    assert.deepEqual(nextWeekSlot(w(18, "draft")), { season_year: 2027, week_number: 1 });
+    assert.equal(weekAtSlot([draft, nextDraft], nextWeekSlot(draft))?.week_number, 2);
+    assert.equal(weekAtSlot([draft], nextWeekSlot(draft)), undefined);
+  });
+
   it("returns null for an empty list", () => {
     assert.equal(selectActiveWeek([]), null);
   });
@@ -127,7 +147,10 @@ describe("useCurrentWeek production wiring", () => {
   });
 
   it("commissioner can switch to a newer draft while the locked week stays the default", () => {
-    const src = readFileSync(join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"), "utf8");
+    const src = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
     assert.match(src, /weekSwitcherLabel/);
     assert.match(src, /This Sunday/);
     assert.match(src, /Next week/);
@@ -137,8 +160,32 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(src, /week:\s*"next"/);
   });
 
+  it("commissioner skip closes a leftover week without Reveal and opens the next", () => {
+    const src = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
+    assert.match(src, /skipAndStartNext/);
+    assert.match(src, /Skip this week \/ start next week/);
+    assert.match(src, /without Reveal/);
+    assert.match(src, /canSkipWeek/);
+    assert.match(src, /nextWeekSlot/);
+    const skipFn = src.slice(
+      src.indexOf("const skipAndStartNext"),
+      src.indexOf("const toggleHold"),
+    );
+    assert.match(skipFn, /status:\s*"final"/);
+    assert.match(skipFn, /status:\s*"open"/);
+    assert.doesNotMatch(skipFn, /finalize:\s*true/);
+    assert.doesNotMatch(skipFn, /runRecompute/);
+    assert.doesNotMatch(skipFn, /Head to the Reveal/);
+  });
+
   it("commissioner copy does not use gambling vocabulary", () => {
-    const src = readFileSync(join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"), "utf8");
+    const src = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
     assert.doesNotMatch(src, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
   });
 

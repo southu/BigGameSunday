@@ -8,8 +8,21 @@ import { AppShell, PageTitle } from "@/components/bgs/AppShell";
 import { autoFillWeek, ensureAutoWeek } from "@/lib/autofill.functions";
 import { recomputeWeekScores, runAutopilotNow } from "@/lib/autopilot.functions";
 import { nextStepFor } from "@/lib/autopilot-schedule";
-import { pickViewWeek, weekSwitcherLabel } from "@/lib/current-week";
-import { db, useAutopilotLog, useHouseholdWeeks, useWeekCards, useWeekEvents, useWeekGames } from "@/lib/db";
+import {
+  canSkipWeek,
+  nextWeekSlot,
+  pickViewWeek,
+  weekAtSlot,
+  weekSwitcherLabel,
+} from "@/lib/current-week";
+import {
+  db,
+  useAutopilotLog,
+  useHouseholdWeeks,
+  useWeekCards,
+  useWeekEvents,
+  useWeekGames,
+} from "@/lib/db";
 import { useProfile } from "@/lib/profile";
 import {
   NFL_TEAMS,
@@ -259,7 +272,6 @@ function Commissioner() {
     })();
   }, [household?.id, household?.auto_create_weeks]);
 
-
   /** Keep the lock time on the earliest kickoff unless the Commissioner set it by hand. */
   async function syncLock(allKickoffs: (string | null)[]) {
     if (!week || week.lock_at_override) return;
@@ -291,7 +303,6 @@ function Commissioner() {
     ]);
     return "Correction saved — scores and standings recomputed.";
   }
-
 
   const addGame = () =>
     run(async () => {
@@ -351,7 +362,11 @@ function Commissioner() {
         underdog_team: "",
         upset_size: "3",
       });
-      await refresh([["games", week.id], ["events", week.id], ["current-week", household!.id]]);
+      await refresh([
+        ["games", week.id],
+        ["events", week.id],
+        ["current-week", household!.id],
+      ]);
       await syncLock([...games.map((g) => g.kickoff_at), kickoff]);
       await touchWeek();
     }, "Game added with ready-made moments and this week's longshots.");
@@ -361,7 +376,11 @@ function Commissioner() {
       await db.from("events").delete().eq("game_id", gameId);
       const { error } = await db.from("games").delete().eq("id", gameId);
       if (error) throw error;
-      await refresh([["games", week!.id], ["events", week!.id], ["current-week", household!.id]]);
+      await refresh([
+        ["games", week!.id],
+        ["events", week!.id],
+        ["current-week", household!.id],
+      ]);
       await syncLock(games.filter((g) => g.id !== gameId).map((g) => g.kickoff_at));
       await touchWeek();
     }, "Game removed.");
@@ -373,7 +392,9 @@ function Commissioner() {
       await refresh([["games", week!.id]]);
       if ("kickoff_at" in patch) {
         await syncLock(
-          games.map((g) => (g.id === gameId ? (patch["kickoff_at"] as string | null) : g.kickoff_at)),
+          games.map((g) =>
+            g.id === gameId ? (patch["kickoff_at"] as string | null) : g.kickoff_at,
+          ),
         );
       }
       await touchWeek();
@@ -495,13 +516,73 @@ function Commissioner() {
         : "Week finalized — head to the Reveal!";
     }, "Week finalized — head to the Reveal!");
 
+  /** Close a leftover week without Reveal and open (or create) the next week's cards. */
+  const skipAndStartNext = () =>
+    run(async () => {
+      if (!household) throw new Error("No household yet.");
+      if (!week) throw new Error("Create a week first.");
+      if (!canSkipWeek(week)) throw new Error("This week is already finished.");
+
+      const skippedNumber = week.week_number;
+      const slot = nextWeekSlot(week);
+      const now = new Date().toISOString();
+
+      const { error: skipErr } = await db
+        .from("weeks")
+        .update({ status: "final", finalized_at: now })
+        .eq("id", week.id);
+      if (skipErr) throw skipErr;
+
+      const next = weekAtSlot(weeks, slot);
+      let nextId = next?.id ?? null;
+
+      if (!nextId) {
+        const { data, error: cErr } = await db
+          .from("weeks")
+          .insert({
+            household_id: household.id,
+            season_year: slot.season_year,
+            week_number: slot.week_number,
+            lock_at: nextSundayKickoff().toISOString(),
+            status: "open",
+            auto_opened_at: now,
+          })
+          .select("id")
+          .single();
+        if (cErr) throw cErr;
+        nextId = data.id as string;
+        try {
+          await runAutoFill({ data: { weekId: nextId } });
+        } catch {
+          /* week is already open; commissioner can auto-fill after */
+        }
+      } else if (next?.status === "draft") {
+        try {
+          await runAutoFill({ data: { weekId: nextId } });
+        } catch {
+          /* still open so the family can play */
+        }
+        const { error: openErr } = await db
+          .from("weeks")
+          .update({ status: "open", auto_opened_at: now })
+          .eq("id", nextId);
+        if (openErr) throw openErr;
+      }
+
+      await refresh([
+        ["current-week", household.id],
+        ["games", nextId],
+        ["events", nextId],
+        ["season", household.id],
+      ]);
+      setViewWeekId(nextId);
+      return `Week ${skippedNumber} skipped — Week ${slot.week_number} is open for the family.`;
+    }, "Week skipped — next week is open.");
+
   const toggleHold = (on: boolean) =>
     run(
       async () => {
-        const { error } = await db
-          .from("weeks")
-          .update({ autopilot_hold: on })
-          .eq("id", week!.id);
+        const { error } = await db.from("weeks").update({ autopilot_hold: on }).eq("id", week!.id);
         if (error) throw error;
         await refresh([["current-week", household!.id]]);
       },
@@ -523,7 +604,6 @@ function Commissioner() {
         ? res.actions.map((a) => a.detail).join(" · ")
         : "Autopilot checked in — nothing to do just yet.";
     }, "Autopilot ran.");
-
 
   if (!activePlayer?.is_commissioner) {
     return (
@@ -674,6 +754,17 @@ function Commissioner() {
                 {NEXT_LABEL[week.status] ?? "Next step"}
               </Action>
             )}
+            {canSkipWeek(week) && (
+              <div className="mt-3">
+                <Action onClick={skipAndStartNext} disabled={busy}>
+                  Skip this week / start next week
+                </Action>
+                <p className="mt-2 text-xs font-bold text-muted-foreground">
+                  Didn't play this week? Close it without Reveal and open next week's cards — works
+                  on Tuesday.
+                </p>
+              </div>
+            )}
             <div className="mt-4 flex flex-wrap items-end gap-2">
               <Field label="Cards lock at">
                 <input
@@ -765,7 +856,6 @@ function Commissioner() {
             </p>
           </Panel>
 
-
           <Panel title="Games">
             <ul className="space-y-2">
               {games.map((g) => (
@@ -817,7 +907,9 @@ function Commissioner() {
                   <div className="mt-2 grid gap-2 sm:grid-cols-3">
                     <select
                       value={g.underdog_team ?? g.away_team}
-                      onChange={(e) => updateGame(g.id, { underdog_team: e.target.value, needs_review: false })}
+                      onChange={(e) =>
+                        updateGame(g.id, { underdog_team: e.target.value, needs_review: false })
+                      }
                       className={smallInputCls}
                     >
                       <option value={g.away_team}>Underdog: {g.away_team}</option>
@@ -825,7 +917,12 @@ function Commissioner() {
                     </select>
                     <input
                       value={String(g.upset_size)}
-                      onChange={(e) => updateGame(g.id, { upset_size: Number(e.target.value) || 0, needs_review: false })}
+                      onChange={(e) =>
+                        updateGame(g.id, {
+                          upset_size: Number(e.target.value) || 0,
+                          needs_review: false,
+                        })
+                      }
                       inputMode="decimal"
                       aria-label="Upset size"
                       className={smallInputCls}
@@ -833,14 +930,18 @@ function Commissioner() {
                     <input
                       type="datetime-local"
                       value={toLocalInput(g.kickoff_at)}
-                      onChange={(e) => updateGame(g.id, { kickoff_at: fromLocalInput(e.target.value) })}
+                      onChange={(e) =>
+                        updateGame(g.id, { kickoff_at: fromLocalInput(e.target.value) })
+                      }
                       aria-label="Kickoff"
                       className={smallInputCls}
                     />
                   </div>
                 </li>
               ))}
-              {games.length === 0 && <li className="text-sm text-muted-foreground">No games yet.</li>}
+              {games.length === 0 && (
+                <li className="text-sm text-muted-foreground">No games yet.</li>
+              )}
             </ul>
 
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -859,8 +960,12 @@ function Commissioner() {
                 onChange={(e) => setGame({ ...game, underdog_team: e.target.value })}
                 className={inputCls}
               >
-                <option value="">Underdog: away team{game.away_team && ` (${game.away_team})`}</option>
-                {game.home_team && <option value={game.home_team}>Underdog: {game.home_team}</option>}
+                <option value="">
+                  Underdog: away team{game.away_team && ` (${game.away_team})`}
+                </option>
+                {game.home_team && (
+                  <option value={game.home_team}>Underdog: {game.home_team}</option>
+                )}
               </select>
               <input
                 value={game.upset_size}
@@ -992,7 +1097,9 @@ function Commissioner() {
                 </li>
               ))}
               {events.length === 0 && (
-                <li className="text-sm text-muted-foreground">Add a game above to fill this list.</li>
+                <li className="text-sm text-muted-foreground">
+                  Add a game above to fill this list.
+                </li>
               )}
             </ul>
           </Panel>
@@ -1000,9 +1107,9 @@ function Commissioner() {
           <Panel title="Finalize the week" className="lg:col-span-2">
             <p className="text-sm text-muted-foreground">
               Scores every card ({cards.length} in), crowns the weekly winner, and updates the
-              season standings. Household: {profiles.length} players. Unresolved auto_score
-              moments are not marked miss while the game is not completed. Autopilot finalizes
-              Tuesday at 6:00 AM Eastern after the last game.
+              season standings. Household: {profiles.length} players. Unresolved auto_score moments
+              are not marked miss while the game is not completed. Autopilot finalizes Tuesday at
+              6:00 AM Eastern after the last game.
             </p>
             <Action onClick={finalize} disabled={busy || events.length === 0}>
               Finalize Week {week.week_number} 🏆

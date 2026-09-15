@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { pickViewWeek, selectActiveWeek, weekSwitcherLabel } from "../src/lib/current-week";
+import {
+  canSkipWeek,
+  nextWeekSlot,
+  pickViewWeek,
+  selectActiveWeek,
+  weekAtSlot,
+  weekSwitcherLabel,
+} from "../src/lib/current-week";
 import { WEEK_LONGSHOTS, insertMissingWeekLongshots, weekLongshotRows } from "../src/lib/nfl";
 
 function w(week_number: number, status: string, season_year = 2026) {
@@ -73,6 +80,19 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([w(1, "final"), w(2, "open")])?.week_number).toBe(2);
   });
 
+  it("skip planner: leftover draft can close without Reveal and targets next week", () => {
+    const draft = w(1, "draft");
+    const nextDraft = w(2, "draft");
+    expect(canSkipWeek(draft)).toBe(true);
+    expect(canSkipWeek(w(1, "open"))).toBe(true);
+    expect(canSkipWeek(w(1, "locked"))).toBe(true);
+    expect(canSkipWeek(w(1, "final"))).toBe(false);
+    expect(nextWeekSlot(draft)).toEqual({ season_year: 2026, week_number: 2 });
+    expect(nextWeekSlot(w(18, "draft"))).toEqual({ season_year: 2027, week_number: 1 });
+    expect(weekAtSlot([draft, nextDraft], nextWeekSlot(draft))?.week_number).toBe(2);
+    expect(weekAtSlot([draft], nextWeekSlot(draft))).toBeUndefined();
+  });
+
   it("returns null for an empty list", () => {
     expect(selectActiveWeek([])).toBeNull();
   });
@@ -126,7 +146,10 @@ describe("useCurrentWeek production wiring", () => {
   });
 
   it("commissioner can switch to a newer draft while the locked week stays the default", () => {
-    const src = readFileSync(join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"), "utf8");
+    const src = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
     expect(src).toMatch(/weekSwitcherLabel/);
     expect(src).toMatch(/This Sunday/);
     expect(src).toMatch(/Next week/);
@@ -136,8 +159,32 @@ describe("useCurrentWeek production wiring", () => {
     expect(src).toMatch(/week:\s*"next"/);
   });
 
+  it("commissioner skip closes a leftover week without Reveal and opens the next", () => {
+    const src = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/skipAndStartNext/);
+    expect(src).toMatch(/Skip this week \/ start next week/);
+    expect(src).toMatch(/without Reveal/);
+    expect(src).toMatch(/canSkipWeek/);
+    expect(src).toMatch(/nextWeekSlot/);
+    const skipFn = src.slice(
+      src.indexOf("const skipAndStartNext"),
+      src.indexOf("const toggleHold"),
+    );
+    expect(skipFn).toMatch(/status:\s*"final"/);
+    expect(skipFn).toMatch(/status:\s*"open"/);
+    expect(skipFn).not.toMatch(/finalize:\s*true/);
+    expect(skipFn).not.toMatch(/runRecompute/);
+    expect(skipFn).not.toMatch(/Head to the Reveal/);
+  });
+
   it("commissioner copy does not use gambling vocabulary", () => {
-    const src = readFileSync(join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"), "utf8");
+    const src = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
     expect(src).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
   });
 

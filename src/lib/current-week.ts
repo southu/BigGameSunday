@@ -12,6 +12,11 @@ export type WeekLike = {
 
 export type WeekRef = WeekLike & { id: string };
 
+export type WeekSlot = {
+  season_year: number;
+  week_number: number;
+};
+
 function recency(a: WeekLike, b: WeekLike): number {
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
@@ -35,6 +40,25 @@ export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | n
   const inPlay = ranked.find((w) => isInPlay(w.status));
   if (inPlay) return inPlay;
   return ranked[0] ?? null;
+}
+
+/** Regular season wraps to week 1 of the next year after week 18. */
+export function nextWeekSlot(week: WeekSlot): WeekSlot {
+  if (week.week_number >= 18) {
+    return { season_year: week.season_year + 1, week_number: 1 };
+  }
+  return { season_year: week.season_year, week_number: week.week_number + 1 };
+}
+
+export function weekAtSlot<T extends WeekSlot>(weeks: readonly T[], slot: WeekSlot): T | undefined {
+  return weeks.find(
+    (w) => w.season_year === slot.season_year && w.week_number === slot.week_number,
+  );
+}
+
+/** Skip closes a leftover week without Reveal; finished weeks stay put. */
+export function canSkipWeek(week: WeekLike | null | undefined): boolean {
+  return !!week && week.status !== "final";
 }
 
 /** This Sunday = in-play active week; Next week = newer draft the commish can open. */
