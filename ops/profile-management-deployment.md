@@ -51,3 +51,17 @@ An operator must use **Arm for N hours** in the vault UI, then rerun the existin
 deployment script. The migration and frontend RPC remain unchanged. All 61 Node
 tests and the production build passed again, but these checks do not establish
 that the live database defects are fixed. Live SQL application remains pending.
+
+## 2026-09-15 mission iteration 4 — operator action required
+
+Retried `python3 scripts/deploy-profile-management.py`; it exited with status 1:
+`Vault is locked or unarmed. Use Arm for N hours in the vault UI first.`
+The script stopped before leasing a credential or sending any SQL. BUG-1 remains
+unresolved; this documentation commit does not apply the migration.
+
+Operator action: unlock the vault and select **Arm for N hours**, then run
+`python3 scripts/deploy-profile-management.py` from the checkout containing the
+existing migration on madcat. The script applies the SQL unchanged and runs the
+database checks. The independent tester must then verify the live RPC and chips.
+All 61 local Node tests passed on this attempt. No application or SQL changes
+were needed or made.
