@@ -14,6 +14,8 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as HealthzRouteImport } from './routes/healthz'
 import { Route as OpsRouteImport } from './routes/ops'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VersionRouteImport } from './routes/version'
 import { Route as AuthenticatedCardRouteImport } from './routes/_authenticated/card'
 import { Route as AuthenticatedCommissionerRouteImport } from './routes/_authenticated/commissioner'
@@ -46,6 +48,16 @@ const HealthzRoute = HealthzRouteImport.update({
 const OpsRoute = OpsRouteImport.update({
   id: '/ops',
   path: '/ops',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VersionRoute = VersionRouteImport.update({
@@ -100,6 +112,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/healthz': typeof HealthzRoute
   '/ops': typeof OpsRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/version': typeof VersionRoute
   '/card': typeof AuthenticatedCardRoute
   '/commissioner': typeof AuthenticatedCommissionerRoute
@@ -115,6 +129,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/healthz': typeof HealthzRoute
   '/ops': typeof OpsRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/version': typeof VersionRoute
   '/card': typeof AuthenticatedCardRoute
   '/commissioner': typeof AuthenticatedCommissionerRoute
@@ -132,6 +148,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/healthz': typeof HealthzRoute
   '/ops': typeof OpsRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/version': typeof VersionRoute
   '/_authenticated/card': typeof AuthenticatedCardRoute
   '/_authenticated/commissioner': typeof AuthenticatedCommissionerRoute
@@ -149,6 +167,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/healthz'
     | '/ops'
+    | '/privacy'
+    | '/terms'
     | '/version'
     | '/card'
     | '/commissioner'
@@ -164,6 +184,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/healthz'
     | '/ops'
+    | '/privacy'
+    | '/terms'
     | '/version'
     | '/card'
     | '/commissioner'
@@ -180,6 +202,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/healthz'
     | '/ops'
+    | '/privacy'
+    | '/terms'
     | '/version'
     | '/_authenticated/card'
     | '/_authenticated/commissioner'
@@ -197,6 +221,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   HealthzRoute: typeof HealthzRoute
   OpsRoute: typeof OpsRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
   VersionRoute: typeof VersionRoute
   ApiPublicHooksAutopilotRoute: typeof ApiPublicHooksAutopilotRoute
 }
@@ -236,6 +262,20 @@ declare module '@tanstack/react-router' {
       path: '/ops'
       fullPath: '/ops'
       preLoaderRoute: typeof OpsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/version': {
@@ -333,6 +373,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   HealthzRoute: HealthzRoute,
   OpsRoute: OpsRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
   VersionRoute: VersionRoute,
   ApiPublicHooksAutopilotRoute: ApiPublicHooksAutopilotRoute,
 }

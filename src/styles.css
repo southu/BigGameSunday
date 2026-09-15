@@ -229,3 +229,73 @@
   min-height: 48px;
   min-width: 48px;
 }
+
+/* Long-form legal markdown: readable prose, not display/game type. */
+.legal-prose {
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--color-foreground);
+}
+
+.legal-prose :is(h1, h2, h3, h4) {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  color: var(--color-foreground);
+}
+
+.legal-prose h1 {
+  font-size: 2rem;
+  margin: 0 0 1rem;
+}
+
+.legal-prose h2 {
+  font-size: 1.25rem;
+  margin: 2.25rem 0 0.75rem;
+}
+
+.legal-prose h3 {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.legal-prose p {
+  margin: 0 0 1rem;
+}
+
+.legal-prose ul {
+  margin: 0 0 1rem;
+  padding-left: 1.35rem;
+  list-style: disc;
+}
+
+.legal-prose li {
+  margin: 0.2rem 0;
+}
+
+.legal-prose li + li {
+  margin-top: 0.35rem;
+}
+
+.legal-prose a {
+  color: var(--color-foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.legal-prose a:hover {
+  color: var(--navy-soft);
+}
+
+.legal-prose strong {
+  font-weight: 800;
+}
+
+.legal-prose hr {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin: 2rem 0;
+}
