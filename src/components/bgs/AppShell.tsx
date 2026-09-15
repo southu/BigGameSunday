@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/lib/profile";
 import { PlayerAvatar } from "./PlayerChip";
+import { SiteFooter } from "./SiteFooter";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -36,7 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24 md:pb-0">
+    <div className="flex min-h-screen flex-col bg-background pb-24 md:pb-0">
       <header className="sticky top-0 z-40 border-b-4 border-gold bg-navy text-cream">
         <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
           <Link to="/week" className="flex min-w-0 items-center gap-2">
@@ -102,7 +103,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+
+      <SiteFooter />
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-6 border-t-4 border-gold bg-navy text-cream md:hidden">
         {NAV.map((n) => (

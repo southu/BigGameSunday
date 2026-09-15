@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { SiteFooter } from "@/components/bgs/SiteFooter";
 import { useSession } from "@/lib/profile";
 
 export const Route = createFileRoute("/")({
@@ -31,8 +32,8 @@ function Landing() {
   }, [ready, session, navigate]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-4xl px-4 py-10">
+    <div className="flex min-h-screen flex-col bg-background">
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
         <section className="field-stripes relative overflow-hidden rounded-4xl p-6 text-cream shadow-pop sm:p-12">
           <span className="grid h-14 w-14 place-items-center rounded-3xl bg-gold text-3xl">🏈</span>
           <h1 className="mt-5 font-display text-4xl leading-tight sm:text-6xl">
@@ -59,11 +60,24 @@ function Landing() {
         </section>
 
         <section className="mt-8 grid gap-3 sm:grid-cols-3">
-          <Card emoji="🧩" title="The Grid" text="Pick 9 moments and arrange them however you like." />
-          <Card emoji="🐕" title="Upset Watch" text="Back 3 underdogs and climb the Upset Ladder." />
-          <Card emoji="🏆" title="Trophies" text="Weekly winners, season champion, all season long." />
+          <Card
+            emoji="🧩"
+            title="The Grid"
+            text="Pick 9 moments and arrange them however you like."
+          />
+          <Card
+            emoji="🐕"
+            title="Upset Watch"
+            text="Back 3 underdogs and climb the Upset Ladder."
+          />
+          <Card
+            emoji="🏆"
+            title="Trophies"
+            text="Weekly winners, season champion, all season long."
+          />
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }

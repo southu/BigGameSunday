@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { markdownToHtml } from "@/lib/legal-markdown";
+import { SiteFooter } from "./SiteFooter";
 
 export type LegalPageId = "privacy" | "terms";
 
@@ -7,7 +8,7 @@ export function LegalDocument({ markdown, current }: { markdown: string; current
   const html = markdownToHtml(markdown);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-4">
           <Link to="/" className="font-display text-lg leading-none text-foreground">
@@ -23,9 +24,10 @@ export function LegalDocument({ markdown, current }: { markdown: string; current
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:py-14">
         <article className="legal-prose" dangerouslySetInnerHTML={{ __html: html }} />
       </main>
+      <SiteFooter />
     </div>
   );
 }

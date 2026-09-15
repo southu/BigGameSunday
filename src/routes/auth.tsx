@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { SiteFooter } from "@/components/bgs/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/profile";
 import { cn } from "@/lib/utils";
@@ -151,7 +152,9 @@ function AuthPage() {
         options: { emailRedirectTo: passwordResetRedirectTo(window.location.origin) },
       });
       if (error) throw error;
-      setMessage("If that email still needs confirming, a new link is on the way. Check your inbox.");
+      setMessage(
+        "If that email still needs confirming, a new link is on the way. Check your inbox.",
+      );
     } catch (err) {
       setError(mapAuthError(err instanceof Error ? err : { message: "Something went wrong." }));
     } finally {
@@ -185,145 +188,159 @@ function AuthPage() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-background px-4 py-10">
-      <div className="w-full max-w-md">
-        <Link to="/" className="mb-6 flex items-center justify-center gap-2">
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gold text-2xl">🏈</span>
-          <span className="font-display text-2xl">Big Game Sunday</span>
-        </Link>
+    <div className="flex min-h-screen flex-col bg-background">
+      <div className="grid flex-1 place-items-center px-4 py-10">
+        <div className="w-full max-w-md">
+          <Link to="/" className="mb-6 flex items-center justify-center gap-2">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gold text-2xl">
+              🏈
+            </span>
+            <span className="font-display text-2xl">Big Game Sunday</span>
+          </Link>
 
-        <div className="rounded-4xl border-2 border-border bg-card p-6 shadow-soft">
-          {recovery ? (
-            <form onSubmit={saveNewPassword} className="space-y-3">
-              <h1 className="font-display text-xl">Set a new password</h1>
-              <label className="block">
-                <span className="text-sm font-bold">New password</span>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border-2 border-input bg-background px-4 py-3 font-bold outline-none focus:border-gold"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-bold">Confirm new password</span>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border-2 border-input bg-background px-4 py-3 font-bold outline-none focus:border-gold"
-                />
-              </label>
-              {error && <p className="text-sm font-bold text-berry">{error}</p>}
-              {message && <p className="text-sm font-bold text-grass">{message}</p>}
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full rounded-full bg-navy px-6 py-4 font-display text-lg text-cream shadow-pop disabled:opacity-50"
-              >
-                {busy ? "One moment…" : "Save new password"}
-              </button>
-            </form>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1" role="tablist">
-                {(["signup", "signin"] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    id={m === "signin" ? "tab-signin" : "tab-signup"}
-                    role="tab"
-                    aria-selected={mode === m}
-                    onClick={() => selectMode(m)}
-                    className={cn(
-                      "rounded-full px-4 py-2 font-display",
-                      mode === m ? "bg-navy text-cream" : "text-muted-foreground",
-                    )}
-                  >
-                    {m === "signup" ? "New household" : "Sign in"}
-                  </button>
-                ))}
-              </div>
-
-              <form onSubmit={submit} className="mt-5 space-y-3">
+          <div className="rounded-4xl border-2 border-border bg-card p-6 shadow-soft">
+            {recovery ? (
+              <form onSubmit={saveNewPassword} className="space-y-3">
+                <h1 className="font-display text-xl">Set a new password</h1>
                 <label className="block">
-                  <span className="text-sm font-bold">Parent's email</span>
-                  <input
-                    type="email"
-                    required
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="mt-1 w-full rounded-2xl border-2 border-input bg-background px-4 py-3 font-bold outline-none focus:border-gold"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-bold">Password</span>
+                  <span className="text-sm font-bold">New password</span>
                   <input
                     type="password"
                     required
                     minLength={6}
-                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
                     className="mt-1 w-full rounded-2xl border-2 border-input bg-background px-4 py-3 font-bold outline-none focus:border-gold"
                   />
                 </label>
-
+                <label className="block">
+                  <span className="text-sm font-bold">Confirm new password</span>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="mt-1 w-full rounded-2xl border-2 border-input bg-background px-4 py-3 font-bold outline-none focus:border-gold"
+                  />
+                </label>
                 {error && <p className="text-sm font-bold text-berry">{error}</p>}
                 {message && <p className="text-sm font-bold text-grass">{message}</p>}
-
                 <button
                   type="submit"
                   disabled={busy}
                   className="w-full rounded-full bg-navy px-6 py-4 font-display text-lg text-cream shadow-pop disabled:opacity-50"
                 >
-                  {busy ? "One moment…" : mode === "signup" ? "Create household account" : "Sign in"}
-                </button>
-                <button
-                  type="button"
-                  onClick={forgotPassword}
-                  disabled={busy}
-                  className="w-full text-center text-sm font-bold text-muted-foreground"
-                >
-                  Forgot password?
-                </button>
-                <button
-                  type="button"
-                  id="resend"
-                  onClick={resendConfirmation}
-                  disabled={busy}
-                  className="w-full text-center text-sm font-bold text-muted-foreground"
-                >
-                  Resend confirmation
+                  {busy ? "One moment…" : "Save new password"}
                 </button>
               </form>
+            ) : (
+              <>
+                <div
+                  className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1"
+                  role="tablist"
+                >
+                  {(["signup", "signin"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      id={m === "signin" ? "tab-signin" : "tab-signup"}
+                      role="tab"
+                      aria-selected={mode === m}
+                      onClick={() => selectMode(m)}
+                      className={cn(
+                        "rounded-full px-4 py-2 font-display",
+                        mode === m ? "bg-navy text-cream" : "text-muted-foreground",
+                      )}
+                    >
+                      {m === "signup" ? "New household" : "Sign in"}
+                    </button>
+                  ))}
+                </div>
 
-              <div className="my-4 flex items-center gap-3 text-xs font-bold text-muted-foreground">
-                <span className="h-0.5 flex-1 bg-border" /> OR <span className="h-0.5 flex-1 bg-border" />
-              </div>
+                <form onSubmit={submit} className="mt-5 space-y-3">
+                  <label className="block">
+                    <span className="text-sm font-bold">Parent's email</span>
+                    <input
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="mt-1 w-full rounded-2xl border-2 border-input bg-background px-4 py-3 font-bold outline-none focus:border-gold"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-bold">Password</span>
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="mt-1 w-full rounded-2xl border-2 border-input bg-background px-4 py-3 font-bold outline-none focus:border-gold"
+                    />
+                  </label>
 
-              <button
-                type="button"
-                onClick={google}
-                className="w-full rounded-full border-2 border-border bg-background px-6 py-4 font-display text-lg"
-              >
-                Continue with Google
-              </button>
+                  {error && <p className="text-sm font-bold text-berry">{error}</p>}
+                  {message && <p className="text-sm font-bold text-grass">{message}</p>}
 
-              <p className="mt-5 text-center text-xs text-muted-foreground">
-                Only the parent account uses an email. Kids' profiles are just a name and an avatar.
-              </p>
-            </>
-          )}
+                  <button
+                    type="submit"
+                    disabled={busy}
+                    className="w-full rounded-full bg-navy px-6 py-4 font-display text-lg text-cream shadow-pop disabled:opacity-50"
+                  >
+                    {busy
+                      ? "One moment…"
+                      : mode === "signup"
+                        ? "Create household account"
+                        : "Sign in"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={forgotPassword}
+                    disabled={busy}
+                    className="w-full text-center text-sm font-bold text-muted-foreground"
+                  >
+                    Forgot password?
+                  </button>
+                  <button
+                    type="button"
+                    id="resend"
+                    onClick={resendConfirmation}
+                    disabled={busy}
+                    className="w-full text-center text-sm font-bold text-muted-foreground"
+                  >
+                    Resend confirmation
+                  </button>
+                </form>
+
+                <div className="my-4 flex items-center gap-3 text-xs font-bold text-muted-foreground">
+                  <span className="h-0.5 flex-1 bg-border" /> OR{" "}
+                  <span className="h-0.5 flex-1 bg-border" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={google}
+                  className="w-full rounded-full border-2 border-border bg-background px-6 py-4 font-display text-lg"
+                >
+                  Continue with Google
+                </button>
+
+                <p className="mt-5 text-center text-xs text-muted-foreground">
+                  Only the parent account uses an email. Kids' profiles are just a name and an
+                  avatar.
+                </p>
+              </>
+            )}
+          </div>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 }
