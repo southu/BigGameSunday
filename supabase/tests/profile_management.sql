@@ -21,7 +21,7 @@ $$;
 SELECT set_config('request.jwt.claim.sub', gen_random_uuid()::text, true);
 SET LOCAL ROLE authenticated;
 DO $$
-DECLARE family uuid; parent uuid; kid uuid; rejected boolean;
+DECLARE family uuid; parent uuid; kid uuid; sibling uuid; rejected boolean;
 BEGIN
   INSERT INTO public.households(name) VALUES ('Profile migration verification') RETURNING id INTO family;
   INSERT INTO public.profiles(household_id, display_name, is_commissioner)
@@ -33,6 +33,23 @@ BEGIN
     VALUES (family, 'KidReassign', true) RETURNING id INTO kid;
   SET CONSTRAINTS ALL IMMEDIATE;
   SET CONSTRAINTS ALL DEFERRED;
+
+  UPDATE public.profiles SET display_name = 'Team Captain', avatar = '🧢', color = 'bg-sky'
+    WHERE id = kid;
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = kid
+      AND display_name = 'Team Captain' AND avatar = '🧢' AND color = 'bg-sky'
+      AND NOT is_commissioner) THEN
+    RAISE EXCEPTION 'Player edit did not persist or changed commissioner';
+  END IF;
+  INSERT INTO public.profiles(household_id, display_name)
+    VALUES (family, 'Sibling') RETURNING id INTO sibling;
+  DELETE FROM public.profiles WHERE id = sibling;
+  SET CONSTRAINTS ALL IMMEDIATE;
+  SET CONSTRAINTS ALL DEFERRED;
+  IF EXISTS (SELECT 1 FROM public.profiles WHERE id = sibling) OR
+      NOT (SELECT is_commissioner FROM public.profiles WHERE id = parent) THEN
+    RAISE EXCEPTION 'Deleting a regular player changed commissioner';
+  END IF;
 
   PERFORM public.reassign_commissioner(player_id => kid);
   SET CONSTRAINTS ALL IMMEDIATE;

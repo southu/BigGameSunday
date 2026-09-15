@@ -27,3 +27,13 @@ unresolved until this migration is applied.
 
 Keep the frontend RPC signature `reassign_commissioner(player_id uuid)`.
 Never record credentials in this document or in git.
+
+## 2026-09-15 follow-up
+
+The deployment script was retried and still reported a locked or unarmed vault;
+no live SQL was executed. The migration and expanded profile CRUD checks passed
+on a temporary local PostgreSQL database with authenticated household RLS.
+The frontend now switches players after refreshing profile data and selects the
+database-appointed commissioner after deletion. Header chip labels include the
+current commissioner role. Production build, 61 Node tests, and lint for the
+changed components passed. Live application still requires the resume steps above.

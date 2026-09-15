@@ -19,12 +19,17 @@ export function PlayerManager() {
   const [notice, setNotice] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  async function run(action: () => Promise<void>, message: string) {
+  async function run(
+    action: () => Promise<void>,
+    message: string,
+    afterRefresh?: (players: Profile[]) => void,
+  ) {
     setBusy(true);
     setNotice("");
     try {
       await action();
       await queryClient.invalidateQueries({ queryKey: ["profiles", household!.id] });
+      afterRefresh?.(queryClient.getQueryData<Profile[]>(["profiles", household!.id]) ?? []);
       await queryClient.invalidateQueries({ queryKey: ["cards"] });
       await queryClient.invalidateQueries({ queryKey: ["season"] });
       setNotice(message);
@@ -62,24 +67,29 @@ export function PlayerManager() {
   }
 
   function remove(player: Profile) {
-    void run(async () => {
-      if (profiles.length <= 1) throw new Error("Keep at least one player in your household.");
-      const { error } = await db
-        .from("profiles")
-        .delete()
-        .eq("id", player.id)
-        .eq("household_id", household!.id);
-      if (error) throw error;
-      if (player.is_commissioner) {
-        const next = profiles.find((p) => p.id !== player.id);
-        if (next) setActivePlayerId(next.id);
-      }
-      if (editing === player.id) {
-        setEditing(null);
-        setDraft(empty);
-      }
-      setDeleting(null);
-    }, "Player removed.");
+    void run(
+      async () => {
+        if (profiles.length <= 1) throw new Error("Keep at least one player in your household.");
+        const { error } = await db
+          .from("profiles")
+          .delete()
+          .eq("id", player.id)
+          .eq("household_id", household!.id);
+        if (error) throw error;
+        if (editing === player.id) {
+          setEditing(null);
+          setDraft(empty);
+        }
+        setDeleting(null);
+      },
+      "Player removed.",
+      (players) => {
+        if (player.is_commissioner) {
+          const commissioner = players.find((p) => p.is_commissioner);
+          if (commissioner) setActivePlayerId(commissioner.id);
+        }
+      },
+    );
   }
 
   return (
@@ -119,13 +129,18 @@ export function PlayerManager() {
                   className={button}
                   disabled={busy}
                   onClick={() =>
-                    void run(async () => {
-                      const { error } = await supabase.rpc("reassign_commissioner", {
-                        player_id: player.id,
-                      });
-                      if (error) throw error;
-                      setActivePlayerId(player.id);
-                    }, `${player.display_name} is now the commissioner.`)
+                    void run(
+                      async () => {
+                        const { error } = await supabase.rpc("reassign_commissioner", {
+                          player_id: player.id,
+                        });
+                        if (error) throw error;
+                      },
+                      `${player.display_name} is now the commissioner.`,
+                      () => {
+                        setActivePlayerId(player.id);
+                      },
+                    )
                   }
                 >
                   Make commissioner

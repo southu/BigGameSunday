@@ -61,7 +61,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <button
                     key={p.id}
                     onClick={() => setActivePlayerId(p.id)}
-                    aria-label={`Play as ${p.display_name}`}
+                    aria-label={`Play as ${p.display_name}${p.is_commissioner ? ", commissioner" : ""}`}
+                    aria-pressed={p.id === activePlayer?.id}
+                    title={`${p.display_name}${p.is_commissioner ? " · Commissioner" : ""}`}
                     className={cn(
                       "rounded-full p-0.5 transition-transform",
                       p.id === activePlayer?.id
