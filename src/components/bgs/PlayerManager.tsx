@@ -137,8 +137,9 @@ export function PlayerManager() {
                         if (error) throw error;
                       },
                       `${player.display_name} is now the commissioner.`,
-                      () => {
-                        setActivePlayerId(player.id);
+                      (players) => {
+                        const commissioner = players.find((p) => p.is_commissioner);
+                        if (commissioner) setActivePlayerId(commissioner.id);
                       },
                     )
                   }
