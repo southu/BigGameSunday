@@ -28,7 +28,7 @@ export function PlayerManager() {
     setNotice("");
     try {
       await action();
-      await queryClient.invalidateQueries({ queryKey: ["profiles", household!.id] });
+      await queryClient.refetchQueries({ queryKey: ["profiles", household!.id] });
       afterRefresh?.(queryClient.getQueryData<Profile[]>(["profiles", household!.id]) ?? []);
       await queryClient.invalidateQueries({ queryKey: ["cards"] });
       await queryClient.invalidateQueries({ queryKey: ["season"] });

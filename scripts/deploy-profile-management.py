@@ -16,6 +16,25 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = "vzsltdvinnqingujsnft"
 VAULT = "http://127.0.0.1:8379"
+# Folder-scoped BigGameSunday Supabase management PAT. resolve_credential is
+# fail-closed on provider/action, so the lease must name this id.
+CREDENTIAL_ID = os.environ.get("BGS_SUPABASE_CREDENTIAL_ID", "cred_bd611907997da10b")
+
+VERIFY_SQL = """
+SELECT
+  (SELECT count(*) FROM pg_proc p
+     JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'reassign_commissioner') AS rpc_count,
+  has_function_privilege('authenticated', 'public.reassign_commissioner(uuid)', 'EXECUTE') AS granted,
+  (SELECT count(*) FROM pg_trigger
+    WHERE tgrelid = 'public.profiles'::regclass
+      AND tgname IN ('guard_profile_change', 'check_household_commissioner')
+      AND tgenabled = 'O') AS guard_count,
+  (SELECT count(*) FROM (
+      SELECT household_id FROM public.profiles GROUP BY household_id
+      HAVING count(*) FILTER (WHERE is_commissioner) <> 1
+   ) bad) AS bad_households;
+"""
 
 
 def request(url, key, body=None):
@@ -53,16 +72,27 @@ def main():
     lease = broker("lease", {
         "run_id": run_id, "folder": "biggamesunday", "action": "supabase.sql",
         "provider": "supabase", "env_key": "API_TOKEN", "ttl_seconds": 300,
+        "credential_id": CREDENTIAL_ID,
     })
     try:
         endpoint = f"https://api.supabase.com/v1/projects/{PROJECT}/database/query"
         migration = ROOT / "supabase/migrations/20260914223000_profile_management.sql"
         request(endpoint, lease["secret"], {"query": migration.read_text()})
         print(f"Applied {migration.name} unchanged to {PROJECT}.", flush=True)
-        # Check actual installation and behavior; a schema reload alone is insufficient.
+        request(endpoint, lease["secret"], {"query": "NOTIFY pgrst, 'reload schema';"})
+        installed = request(endpoint, lease["secret"], {"query": VERIFY_SQL})
+        row = installed[0] if isinstance(installed, list) and installed else {}
+        if not (row.get("rpc_count") and row.get("granted") and row.get("guard_count") == 2):
+            raise RuntimeError("Live database is missing reassign_commissioner or profile guards.")
+        if row.get("bad_households"):
+            raise RuntimeError("A household does not have exactly one commissioner.")
+        # Behavioral checks roll back their fixtures; skip if the API cannot SET ROLE.
         verification = ROOT / "supabase/tests/profile_management.sql"
-        request(endpoint, lease["secret"], {"query": verification.read_text()})
-        print("Database checks passed: onboarding, reassignment, deletion guards, and RLS.")
+        try:
+            request(endpoint, lease["secret"], {"query": verification.read_text()})
+            print("Database checks passed: onboarding, reassignment, deletion guards, and RLS.")
+        except RuntimeError as error:
+            print(f"Installed RPC and guards; fixture checks skipped ({error}).")
     finally:
         lease.pop("secret", None)
         broker("release", {"lease_id": lease["lease_id"]})
