@@ -57,11 +57,22 @@ describe("selectActiveWeek", () => {
   });
 
   it("a: draft W1 + final W2 → active W2", () => {
-    expect(selectActiveWeek([w(1, "draft"), w(2, "final")])?.week_number).toBe(2);
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    const forward = selectActiveWeek([leftover, premature]);
+    const reverse = selectActiveWeek([premature, leftover]);
+    expect(forward?.week_number).toBe(2);
+    expect(forward?.status).toBe("final");
+    expect(reverse?.week_number).toBe(2);
+    expect(reverse?.status).toBe("final");
   });
 
   it("b: draft W1 + open W2 → active W2", () => {
-    expect(selectActiveWeek([w(1, "draft"), w(2, "open")])?.week_number).toBe(2);
+    const leftover = w(1, "draft");
+    const open = w(2, "open");
+    expect(selectActiveWeek([leftover, open])?.week_number).toBe(2);
+    expect(selectActiveWeek([open, leftover])?.week_number).toBe(2);
+    expect(selectActiveWeek([leftover, open])?.status).toBe("open");
   });
 
   it("c: open W1 + draft W2 → active W1, W2 labeled Next week", () => {
@@ -81,7 +92,31 @@ describe("selectActiveWeek", () => {
   });
 
   it("e: skip path: final/skipped W1 + open W2 → W2", () => {
-    expect(selectActiveWeek([w(1, "final"), w(2, "open")])?.week_number).toBe(2);
+    const skipped = w(1, "final");
+    const open = w(2, "open");
+    const picked = selectActiveWeek([skipped, open]);
+    expect(picked?.week_number).toBe(2);
+    expect(picked?.status).toBe("open");
+    expect(selectActiveWeek([open, skipped])?.week_number).toBe(2);
+  });
+
+  it("never prefers an older leftover draft over a newer week of any status", () => {
+    expect(selectActiveWeek([w(1, "draft"), w(2, "final"), w(3, "draft")])?.week_number).toBe(3);
+    expect(selectActiveWeek([w(3, "final"), w(1, "draft"), w(2, "draft")])?.week_number).toBe(3);
+    expect(selectActiveWeek([w(2, "final"), w(1, "draft")])?.status).toBe("final");
+  });
+
+  it("selectActiveWeek does not rank draft above final as a class", () => {
+    const src = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
+    const start = src.indexOf("function compareActiveWeek");
+    const end = src.indexOf("export function nextWeekSlot");
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    const body = src.slice(start, end);
+    expect(body).not.toMatch(/status === ["']draft["']/);
+    expect(body).not.toMatch(/status === ["']final["']/);
+    expect(src).not.toMatch(/ranked\.find\(\(w\) => w\.status === "draft"\)/);
+    expect(src).not.toMatch(/else latest draft/);
   });
 
   it("does not label This Sunday when the active week is a newer final", () => {

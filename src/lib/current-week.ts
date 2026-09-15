@@ -34,12 +34,24 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
   );
 }
 
+/**
+ * In-play (open/locked) always beats not-in-play. After that only recency
+ * matters — draft vs final is not a rank, so an older leftover draft cannot
+ * hide a newer week (Harper House: draft W1 + final W2 → W2).
+ */
+function compareActiveWeek(a: WeekLike, b: WeekLike): number {
+  const aPlay = isInPlay(a.status);
+  const bPlay = isInPlay(b.status);
+  if (aPlay !== bPlay) return aPlay ? -1 : 1;
+  return recency(a, b);
+}
+
 export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | null {
-  if (weeks.length === 0) return null;
-  const ranked = [...weeks].sort(recency);
-  const inPlay = ranked.find((w) => isInPlay(w.status));
-  if (inPlay) return inPlay;
-  return ranked[0] ?? null;
+  let active: T | null = null;
+  for (const week of weeks) {
+    if (!active || compareActiveWeek(week, active) < 0) active = week;
+  }
+  return active;
 }
 
 /** Regular season wraps to week 1 of the next year after week 18. */
