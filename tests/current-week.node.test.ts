@@ -14,7 +14,7 @@ function wr(id: string, week_number: number, status: string, season_year = 2026)
 }
 
 describe("selectActiveWeek", () => {
-  it("priority is open/locked > draft > final", () => {
+  it("prefers latest open or locked over any draft or final", () => {
     assert.equal(selectActiveWeek([w(1, "final"), w(2, "draft"), w(3, "locked")])?.week_number, 3);
     assert.equal(selectActiveWeek([w(1, "final"), w(2, "draft"), w(3, "open")])?.week_number, 3);
     assert.equal(selectActiveWeek([w(1, "final"), w(2, "draft")])?.week_number, 2);
@@ -36,12 +36,42 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([w(1, "locked"), w(2, "open")])?.week_number, 2);
   });
 
-  it("falls back to the latest draft when none are in play", () => {
+  it("falls back to the newest week overall when none are in play", () => {
     assert.equal(selectActiveWeek([w(1, "final"), w(2, "draft")])?.week_number, 2);
+    assert.equal(selectActiveWeek([w(1, "draft"), w(2, "final")])?.week_number, 2);
+    assert.equal(selectActiveWeek([w(1, "draft"), w(2, "draft")])?.week_number, 2);
   });
 
   it("falls back to the latest final when there is no draft or in-play week", () => {
     assert.equal(selectActiveWeek([w(1, "final"), w(2, "final")])?.week_number, 2);
+  });
+
+  it("a: draft W1 + final W2 → active W2", () => {
+    assert.equal(selectActiveWeek([w(1, "draft"), w(2, "final")])?.week_number, 2);
+  });
+
+  it("b: draft W1 + open W2 → active W2", () => {
+    assert.equal(selectActiveWeek([w(1, "draft"), w(2, "open")])?.week_number, 2);
+  });
+
+  it("c: open W1 + draft W2 → active W1, W2 labeled Next week", () => {
+    const open = wr("w1", 1, "open");
+    const draft = wr("w2", 2, "draft");
+    const active = selectActiveWeek([open, draft]);
+    assert.equal(active?.week_number, 1);
+    assert.equal(active?.id, "w1");
+    assert.equal(weekSwitcherLabel(open, active), "This Sunday");
+    assert.equal(weekSwitcherLabel(draft, active), "Next week");
+    assert.equal(pickViewWeek([open, draft], active, null)?.id, "w1");
+    assert.equal(pickViewWeek([open, draft], active, "next")?.id, "w2");
+  });
+
+  it("d: only final W1 → W1", () => {
+    assert.equal(selectActiveWeek([w(1, "final")])?.week_number, 1);
+  });
+
+  it("e: skip path: final/skipped W1 + open W2 → W2", () => {
+    assert.equal(selectActiveWeek([w(1, "final"), w(2, "open")])?.week_number, 2);
   });
 
   it("returns null for an empty list", () => {

@@ -160,7 +160,7 @@ export function useHouseholdWeeks(householdId?: string) {
   });
 }
 
-/** Active week: latest open/locked; else latest draft; else latest final. */
+/** Active week: latest open/locked; else newest week overall (draft or final). */
 export function useCurrentWeek(householdId?: string) {
   return useQuery({
     queryKey: ["current-week", householdId],

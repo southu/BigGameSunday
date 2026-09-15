@@ -13,7 +13,7 @@ function wr(id: string, week_number: number, status: string, season_year = 2026)
 }
 
 describe("selectActiveWeek", () => {
-  it("priority is open/locked > draft > final", () => {
+  it("prefers latest open or locked over any draft or final", () => {
     expect(selectActiveWeek([w(1, "final"), w(2, "draft"), w(3, "locked")])?.week_number).toBe(3);
     expect(selectActiveWeek([w(1, "final"), w(2, "draft"), w(3, "open")])?.week_number).toBe(3);
     expect(selectActiveWeek([w(1, "final"), w(2, "draft")])?.week_number).toBe(2);
@@ -35,12 +35,42 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([w(1, "locked"), w(2, "open")])?.week_number).toBe(2);
   });
 
-  it("falls back to the latest draft when none are in play", () => {
+  it("falls back to the newest week overall when none are in play", () => {
     expect(selectActiveWeek([w(1, "final"), w(2, "draft")])?.week_number).toBe(2);
+    expect(selectActiveWeek([w(1, "draft"), w(2, "final")])?.week_number).toBe(2);
+    expect(selectActiveWeek([w(1, "draft"), w(2, "draft")])?.week_number).toBe(2);
   });
 
   it("falls back to the latest final when there is no draft or in-play week", () => {
     expect(selectActiveWeek([w(1, "final"), w(2, "final")])?.week_number).toBe(2);
+  });
+
+  it("a: draft W1 + final W2 → active W2", () => {
+    expect(selectActiveWeek([w(1, "draft"), w(2, "final")])?.week_number).toBe(2);
+  });
+
+  it("b: draft W1 + open W2 → active W2", () => {
+    expect(selectActiveWeek([w(1, "draft"), w(2, "open")])?.week_number).toBe(2);
+  });
+
+  it("c: open W1 + draft W2 → active W1, W2 labeled Next week", () => {
+    const open = wr("w1", 1, "open");
+    const draft = wr("w2", 2, "draft");
+    const active = selectActiveWeek([open, draft]);
+    expect(active?.week_number).toBe(1);
+    expect(active?.id).toBe("w1");
+    expect(weekSwitcherLabel(open, active)).toBe("This Sunday");
+    expect(weekSwitcherLabel(draft, active)).toBe("Next week");
+    expect(pickViewWeek([open, draft], active, null)?.id).toBe("w1");
+    expect(pickViewWeek([open, draft], active, "next")?.id).toBe("w2");
+  });
+
+  it("d: only final W1 → W1", () => {
+    expect(selectActiveWeek([w(1, "final")])?.week_number).toBe(1);
+  });
+
+  it("e: skip path: final/skipped W1 + open W2 → W2", () => {
+    expect(selectActiveWeek([w(1, "final"), w(2, "open")])?.week_number).toBe(2);
   });
 
   it("returns null for an empty list", () => {

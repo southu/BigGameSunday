@@ -1,9 +1,8 @@
 /**
  * Active week for a household:
  *   1. latest open or locked (never hide these behind a newer draft)
- *   2. else latest draft (none in play yet)
- *   3. else latest final
- * "Latest" is highest season_year, then highest week_number.
+ *   2. else newest week overall (highest season_year, then week_number),
+ *      whether draft or final — never an older draft over a newer week
  */
 export type WeekLike = {
   season_year: number;
@@ -35,9 +34,7 @@ export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | n
   const ranked = [...weeks].sort(recency);
   const inPlay = ranked.find((w) => isInPlay(w.status));
   if (inPlay) return inPlay;
-  const draft = ranked.find((w) => w.status === "draft");
-  if (draft) return draft;
-  return ranked.find((w) => w.status === "final") ?? ranked[0] ?? null;
+  return ranked[0] ?? null;
 }
 
 /** This Sunday = in-play active week; Next week = newer draft the commish can open. */
