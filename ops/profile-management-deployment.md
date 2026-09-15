@@ -37,3 +37,17 @@ The frontend now switches players after refreshing profile data and selects the
 database-appointed commissioner after deletion. Header chip labels include the
 current commissioner role. Production build, 61 Node tests, and lint for the
 changed components passed. Live application still requires the resume steps above.
+
+## 2026-09-15 mission iteration 2 — still blocked
+
+Retried `python3 scripts/deploy-profile-management.py` from the builder checkout.
+The broker reports `armed: false`, `vault_unlocked: false`, and
+`arm_pending_unlock: false`; the script stopped before requesting a lease or
+executing SQL. The vault's documented Arm flow requires the master password,
+which is not available in this session. The project environment contains no
+Supabase management token or database connection credential.
+
+An operator must use **Arm for N hours** in the vault UI, then rerun the existing
+deployment script. The migration and frontend RPC remain unchanged. All 61 Node
+tests and the production build passed again, but these checks do not establish
+that the live database defects are fixed. Live SQL application remains pending.
