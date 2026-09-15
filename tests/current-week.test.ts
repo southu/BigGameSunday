@@ -6,6 +6,8 @@ import {
   nextWeekSlot,
   pickViewWeek,
   selectActiveWeek,
+  shouldOpenExistingNextWeek,
+  skipLockNeedsRefresh,
   weekAtSlot,
   weekSwitcherLabel,
 } from "../src/lib/current-week";
@@ -93,6 +95,29 @@ describe("selectActiveWeek", () => {
     expect(weekAtSlot([draft], nextWeekSlot(draft))).toBeUndefined();
   });
 
+  it("skip reopens a premature-final next week so the family can play it", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    expect(canSkipWeek(leftover)).toBe(true);
+    const next = weekAtSlot([leftover, premature], nextWeekSlot(leftover));
+    expect(next?.status).toBe("final");
+    expect(shouldOpenExistingNextWeek(next)).toBe(true);
+    expect(shouldOpenExistingNextWeek(w(2, "draft"))).toBe(true);
+    expect(shouldOpenExistingNextWeek(w(2, "locked"))).toBe(true);
+    expect(shouldOpenExistingNextWeek(w(2, "open"))).toBe(false);
+    expect(shouldOpenExistingNextWeek(undefined)).toBe(false);
+    const after = [w(1, "final"), w(2, "open")];
+    expect(selectActiveWeek(after)?.week_number).toBe(2);
+    expect(selectActiveWeek(after)?.status).toBe("open");
+  });
+
+  it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
+    const now = Date.parse("2026-09-15T16:00:00.000Z");
+    expect(skipLockNeedsRefresh("2026-09-13T17:00:00.000Z", now)).toBe(true);
+    expect(skipLockNeedsRefresh("2026-09-20T17:00:00.000Z", now)).toBe(false);
+    expect(skipLockNeedsRefresh(null, now)).toBe(false);
+  });
+
   it("returns null for an empty list", () => {
     expect(selectActiveWeek([])).toBeNull();
   });
@@ -175,6 +200,10 @@ describe("useCurrentWeek production wiring", () => {
     );
     expect(skipFn).toMatch(/status:\s*"final"/);
     expect(skipFn).toMatch(/status:\s*"open"/);
+    expect(skipFn).toMatch(/shouldOpenExistingNextWeek/);
+    expect(skipFn).toMatch(/finalized_at:\s*null/);
+    expect(skipFn).toMatch(/skipLockNeedsRefresh/);
+    expect(skipFn).not.toMatch(/next\?\.status === "draft"/);
     expect(skipFn).not.toMatch(/finalize:\s*true/);
     expect(skipFn).not.toMatch(/runRecompute/);
     expect(skipFn).not.toMatch(/Head to the Reveal/);

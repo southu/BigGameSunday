@@ -7,6 +7,8 @@ import {
   nextWeekSlot,
   pickViewWeek,
   selectActiveWeek,
+  shouldOpenExistingNextWeek,
+  skipLockNeedsRefresh,
   weekAtSlot,
   weekSwitcherLabel,
 } from "../src/lib/current-week.ts";
@@ -94,6 +96,29 @@ describe("selectActiveWeek", () => {
     assert.equal(weekAtSlot([draft], nextWeekSlot(draft)), undefined);
   });
 
+  it("skip reopens a premature-final next week so the family can play it", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    assert.equal(canSkipWeek(leftover), true);
+    const next = weekAtSlot([leftover, premature], nextWeekSlot(leftover));
+    assert.equal(next?.status, "final");
+    assert.equal(shouldOpenExistingNextWeek(next), true);
+    assert.equal(shouldOpenExistingNextWeek(w(2, "draft")), true);
+    assert.equal(shouldOpenExistingNextWeek(w(2, "locked")), true);
+    assert.equal(shouldOpenExistingNextWeek(w(2, "open")), false);
+    assert.equal(shouldOpenExistingNextWeek(undefined), false);
+    const after = [w(1, "final"), w(2, "open")];
+    assert.equal(selectActiveWeek(after)?.week_number, 2);
+    assert.equal(selectActiveWeek(after)?.status, "open");
+  });
+
+  it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
+    const now = Date.parse("2026-09-15T16:00:00.000Z");
+    assert.equal(skipLockNeedsRefresh("2026-09-13T17:00:00.000Z", now), true);
+    assert.equal(skipLockNeedsRefresh("2026-09-20T17:00:00.000Z", now), false);
+    assert.equal(skipLockNeedsRefresh(null, now), false);
+  });
+
   it("returns null for an empty list", () => {
     assert.equal(selectActiveWeek([]), null);
   });
@@ -176,6 +201,10 @@ describe("useCurrentWeek production wiring", () => {
     );
     assert.match(skipFn, /status:\s*"final"/);
     assert.match(skipFn, /status:\s*"open"/);
+    assert.match(skipFn, /shouldOpenExistingNextWeek/);
+    assert.match(skipFn, /finalized_at:\s*null/);
+    assert.match(skipFn, /skipLockNeedsRefresh/);
+    assert.doesNotMatch(skipFn, /next\?\.status === "draft"/);
     assert.doesNotMatch(skipFn, /finalize:\s*true/);
     assert.doesNotMatch(skipFn, /runRecompute/);
     assert.doesNotMatch(skipFn, /Head to the Reveal/);

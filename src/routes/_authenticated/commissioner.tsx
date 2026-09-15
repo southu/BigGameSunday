@@ -12,6 +12,8 @@ import {
   canSkipWeek,
   nextWeekSlot,
   pickViewWeek,
+  shouldOpenExistingNextWeek,
+  skipLockNeedsRefresh,
   weekAtSlot,
   weekSwitcherLabel,
 } from "@/lib/current-week";
@@ -556,16 +558,21 @@ function Commissioner() {
         } catch {
           /* week is already open; commissioner can auto-fill after */
         }
-      } else if (next?.status === "draft") {
+      } else if (shouldOpenExistingNextWeek(next)) {
         try {
           await runAutoFill({ data: { weekId: nextId } });
         } catch {
           /* still open so the family can play */
         }
-        const { error: openErr } = await db
-          .from("weeks")
-          .update({ status: "open", auto_opened_at: now })
-          .eq("id", nextId);
+        const patch: Record<string, unknown> = {
+          status: "open",
+          auto_opened_at: now,
+          finalized_at: null,
+        };
+        if (skipLockNeedsRefresh(next.lock_at)) {
+          patch.lock_at = nextSundayKickoff().toISOString();
+        }
+        const { error: openErr } = await db.from("weeks").update(patch).eq("id", nextId);
         if (openErr) throw openErr;
       }
 

@@ -61,6 +61,23 @@ export function canSkipWeek(week: WeekLike | null | undefined): boolean {
   return !!week && week.status !== "final";
 }
 
+/**
+ * After skip, an existing next week is playable only when already open.
+ * Draft, locked, or prematurely final next weeks must be reopened.
+ */
+export function shouldOpenExistingNextWeek<T extends WeekLike>(
+  next: T | null | undefined,
+): next is T {
+  return !!next && next.status !== "open";
+}
+
+/** Past lock times would immediately re-lock a reopened week; refresh them on skip. */
+export function skipLockNeedsRefresh(lockAt: string | null | undefined, now = Date.now()): boolean {
+  if (!lockAt) return false;
+  const ms = Date.parse(lockAt);
+  return Number.isFinite(ms) && ms <= now;
+}
+
 /** This Sunday = in-play active week; Next week = newer draft the commish can open. */
 export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
   if (!active) return `Week ${w.week_number}`;
