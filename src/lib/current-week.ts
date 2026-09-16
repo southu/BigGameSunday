@@ -75,14 +75,37 @@ export function canSkipWeek(week: WeekLike | null | undefined): boolean {
   return !!week && week.status !== "final";
 }
 
-function isSameSlot(a: WeekLike, b: WeekLike): boolean {
+function isSameSlot(a: WeekSlot, b: WeekSlot): boolean {
   return a.season_year === b.season_year && a.week_number === b.week_number;
+}
+
+function hasNewerInPlayThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
+  return weeks.some(
+    (w) =>
+      isInPlay(w.status) &&
+      (w.season_year > week.season_year ||
+        (w.season_year === week.season_year && w.week_number > week.week_number)),
+  );
+}
+
+/**
+ * Skip leftover may create/reopen/refresh next only when no newer week is
+ * already in play. Otherwise just close the leftover and leave the family
+ * on that newer week (auto-created W3 must not bounce them back to W2).
+ */
+export function skipTouchesNextWeek(
+  next: WeekSlot | null | undefined,
+  weeks: readonly WeekLike[],
+): boolean {
+  if (!next) return !weeks.some((w) => isInPlay(w.status));
+  return !hasNewerInPlayThan(next, weeks);
 }
 
 /** Button and hint for the commissioner skip control. */
 export function skipControlCopy(
   leftover: WeekLike,
   viewed: WeekLike | null | undefined,
+  weeks: readonly WeekLike[] = [],
 ): { button: string; hint: string } {
   if (skipScrubsViewedInPlace(leftover, viewed)) {
     return {
@@ -96,9 +119,22 @@ export function skipControlCopy(
       hint: "Didn't play this week? Close it without Reveal and open next week's cards — works on Tuesday.",
     };
   }
+  const slot = nextWeekSlot(leftover);
+  if (viewed && isSameSlot(viewed, slot)) {
+    return {
+      button: `Skip leftover Week ${leftover.week_number} / open this week`,
+      hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal and open this week so the family can play — works on Tuesday.`,
+    };
+  }
+  if (skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks)) {
+    return {
+      button: `Skip leftover Week ${leftover.week_number} / open Week ${slot.week_number}`,
+      hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal and open Week ${slot.week_number} so the family can play — works on Tuesday.`,
+    };
+  }
   return {
-    button: `Skip leftover Week ${leftover.week_number} / open this week`,
-    hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal and open this week so the family can play — works on Tuesday.`,
+    button: `Skip leftover Week ${leftover.week_number}`,
+    hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal — works on Tuesday.`,
   };
 }
 
@@ -147,12 +183,16 @@ export function skipScrubsViewedInPlace(
 /**
  * After skip, an existing next week is playable only when already open
  * without a leftover finalize stamp. Draft, locked, prematurely final,
- * or open-with-finalized_at next weeks must be reopened (and scrubbed).
+ * or open-with-finalized_at next weeks must be reopened (and scrubbed)
+ * — unless a newer week is already in play, in which case leftover skip
+ * just closes the leftover and leaves the family on that newer week.
  */
 export function shouldOpenExistingNextWeek<T extends WeekLike>(
   next: T | null | undefined,
+  weeks: readonly WeekLike[] = [],
 ): next is T {
-  return !!next && (next.status !== "open" || hasPrematureFinalizeLeftover(next));
+  if (!next || (next.status === "open" && !hasPrematureFinalizeLeftover(next))) return false;
+  return skipTouchesNextWeek(next, weeks);
 }
 
 /**

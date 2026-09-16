@@ -19,6 +19,7 @@ import {
   skipLockAfterAutofill,
   skipScrubsViewedInPlace,
   skipTargetWeek,
+  skipTouchesNextWeek,
   skipUnlocksCards,
   skipUnlocksCardsOnLockRefresh,
   weekAtSlot,
@@ -614,10 +615,13 @@ function Commissioner() {
       }
 
       // Open (or create) next first so a leftover-close failure still leaves a playable week.
+      // If a newer week is already in play, just close the leftover — do not reopen W2
+      // (or create a gap week) and bounce the family off W3.
       const next = weekAtSlot(weeks, slot);
       let nextId = next?.id ?? null;
+      const playNext = skipTouchesNextWeek(slot, weeks);
 
-      if (!nextId) {
+      if (playNext && !nextId) {
         const { data, error: cErr } = await db
           .from("weeks")
           .insert({
@@ -645,9 +649,9 @@ function Commissioner() {
             .eq("id", nextId);
           if (lockErr) throw lockErr;
         }
-      } else if (shouldOpenExistingNextWeek(next)) {
+      } else if (playNext && shouldOpenExistingNextWeek(next, weeks)) {
         await reopenAndScrub(next, nextId);
-      } else if (next) {
+      } else if (playNext && next?.status === "open") {
         try {
           await runAutoFill({ data: { weekId: nextId } });
         } catch {
@@ -676,15 +680,23 @@ function Commissioner() {
         .eq("id", leftover.id);
       if (skipErr) throw skipErr;
 
+      if (playNext && nextId) {
+        await refresh([
+          ["current-week", household.id],
+          ["games", nextId],
+          ["events", nextId],
+          ["cards", nextId],
+          ["season", household.id],
+        ]);
+        setViewWeekId(nextId);
+        return `Week ${skippedNumber} skipped — Week ${slot.week_number} is open for the family.`;
+      }
+
       await refresh([
         ["current-week", household.id],
-        ["games", nextId],
-        ["events", nextId],
-        ["cards", nextId],
         ["season", household.id],
       ]);
-      setViewWeekId(nextId);
-      return `Week ${skippedNumber} skipped — Week ${slot.week_number} is open for the family.`;
+      return `Week ${skippedNumber} skipped.`;
     }, "Week skipped — next week is open.");
 
   const toggleHold = (on: boolean) =>
@@ -739,7 +751,7 @@ function Commissioner() {
   const needsCall = events.filter((e) => e.result === null);
   const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(week?.status ?? "draft") + 1];
   const skipLeftover = skipTargetWeek(weeks, week);
-  const skipCopy = skipLeftover ? skipControlCopy(skipLeftover, week) : null;
+  const skipCopy = skipLeftover ? skipControlCopy(skipLeftover, week, weeks) : null;
 
   return (
     <AppShell>

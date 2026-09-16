@@ -14,6 +14,7 @@ import {
   skipLockNeedsRefresh,
   skipScrubsViewedInPlace,
   skipTargetWeek,
+  skipTouchesNextWeek,
   skipUnlocksCards,
   skipUnlocksCardsOnLockRefresh,
   weekAtSlot,
@@ -247,6 +248,42 @@ describe("selectActiveWeek", () => {
     expect(scrub.hint).toMatch(/marked finished too early/);
     expect(scrub.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
     expect(scrub.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const ahead = skipControlCopy(leftover, w(3, "draft"));
+    expect(ahead.button).toBe("Skip leftover Week 1 / open Week 2");
+    expect(ahead.hint).toMatch(/open Week 2/);
+    expect(ahead.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const stay = skipControlCopy(leftover, w(3, "open"), [leftover, w(2, "final"), w(3, "open")]);
+    expect(stay.button).toBe("Skip leftover Week 1");
+    expect(stay.button).not.toMatch(/open/);
+    expect(stay.hint).toMatch(/without Reveal/);
+  });
+
+  it("skip does not reopen next when a newer week is already in play", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    const open3 = w(3, "open");
+    const locked3 = w(3, "locked");
+    const draft3 = w(3, "draft");
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+
+    expect(skipTouchesNextWeek(premature, [leftover, premature])).toBe(true);
+    expect(skipTouchesNextWeek(premature, [leftover, premature, draft3])).toBe(true);
+    expect(skipTouchesNextWeek(premature, [leftover, premature, open3])).toBe(false);
+    expect(skipTouchesNextWeek(premature, [leftover, premature, locked3])).toBe(false);
+    expect(skipTouchesNextWeek({ season_year: 2026, week_number: 2 }, [leftover, open3])).toBe(false);
+
+    expect(shouldOpenExistingNextWeek(premature)).toBe(true);
+    expect(shouldOpenExistingNextWeek(premature, [leftover, premature])).toBe(true);
+    expect(shouldOpenExistingNextWeek(premature, [leftover, premature, open3])).toBe(false);
+    expect(shouldOpenExistingNextWeek(w(2, "draft"), [leftover, w(2, "draft"), open3])).toBe(false);
+    expect(shouldOpenExistingNextWeek(w(2, "locked"), [leftover, w(2, "locked")])).toBe(true);
+    expect(shouldOpenExistingNextWeek(w(2, "locked"), [leftover, w(2, "locked"), open3])).toBe(false);
+    expect(shouldOpenExistingNextWeek(dirtyOpen, [leftover, dirtyOpen])).toBe(true);
+    expect(shouldOpenExistingNextWeek(dirtyOpen, [leftover, dirtyOpen, open3])).toBe(false);
+
+    expect(selectActiveWeek([w(1, "final"), premature, open3])?.week_number).toBe(3);
+    expect(selectActiveWeek([w(1, "final"), w(2, "open"), open3])?.week_number).toBe(3);
+    expect(selectActiveWeek([leftover, premature, draft3])?.week_number).toBe(3);
   });
 
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
@@ -371,7 +408,8 @@ describe("useCurrentWeek production wiring", () => {
     expect(skipFn).toMatch(/skipScrubsViewedInPlace/);
     expect(skipFn).toMatch(/status:\s*"final"/);
     expect(skipFn).toMatch(/status:\s*"open"/);
-    expect(skipFn).toMatch(/shouldOpenExistingNextWeek/);
+    expect(skipFn).toMatch(/skipTouchesNextWeek/);
+    expect(skipFn).toMatch(/shouldOpenExistingNextWeek\(next,\s*weeks\)/);
     expect(skipFn).toMatch(/finalized_at:\s*null/);
     expect(skipFn).toMatch(/skipUnlocksCards/);
     expect(skipFn).toMatch(/skipUnlocksCardsOnLockRefresh/);

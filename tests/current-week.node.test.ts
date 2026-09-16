@@ -15,6 +15,7 @@ import {
   skipLockNeedsRefresh,
   skipScrubsViewedInPlace,
   skipTargetWeek,
+  skipTouchesNextWeek,
   skipUnlocksCards,
   skipUnlocksCardsOnLockRefresh,
   weekAtSlot,
@@ -248,6 +249,42 @@ describe("selectActiveWeek", () => {
     assert.match(scrub.hint, /marked finished too early/);
     assert.doesNotMatch(scrub.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
     assert.doesNotMatch(scrub.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const ahead = skipControlCopy(leftover, w(3, "draft"));
+    assert.equal(ahead.button, "Skip leftover Week 1 / open Week 2");
+    assert.match(ahead.hint, /open Week 2/);
+    assert.doesNotMatch(ahead.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const stay = skipControlCopy(leftover, w(3, "open"), [leftover, w(2, "final"), w(3, "open")]);
+    assert.equal(stay.button, "Skip leftover Week 1");
+    assert.doesNotMatch(stay.button, /open/);
+    assert.match(stay.hint, /without Reveal/);
+  });
+
+  it("skip does not reopen next when a newer week is already in play", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    const open3 = w(3, "open");
+    const locked3 = w(3, "locked");
+    const draft3 = w(3, "draft");
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+
+    assert.equal(skipTouchesNextWeek(premature, [leftover, premature]), true);
+    assert.equal(skipTouchesNextWeek(premature, [leftover, premature, draft3]), true);
+    assert.equal(skipTouchesNextWeek(premature, [leftover, premature, open3]), false);
+    assert.equal(skipTouchesNextWeek(premature, [leftover, premature, locked3]), false);
+    assert.equal(skipTouchesNextWeek({ season_year: 2026, week_number: 2 }, [leftover, open3]), false);
+
+    assert.equal(shouldOpenExistingNextWeek(premature), true);
+    assert.equal(shouldOpenExistingNextWeek(premature, [leftover, premature]), true);
+    assert.equal(shouldOpenExistingNextWeek(premature, [leftover, premature, open3]), false);
+    assert.equal(shouldOpenExistingNextWeek(w(2, "draft"), [leftover, w(2, "draft"), open3]), false);
+    assert.equal(shouldOpenExistingNextWeek(w(2, "locked"), [leftover, w(2, "locked")]), true);
+    assert.equal(shouldOpenExistingNextWeek(w(2, "locked"), [leftover, w(2, "locked"), open3]), false);
+    assert.equal(shouldOpenExistingNextWeek(dirtyOpen, [leftover, dirtyOpen]), true);
+    assert.equal(shouldOpenExistingNextWeek(dirtyOpen, [leftover, dirtyOpen, open3]), false);
+
+    assert.equal(selectActiveWeek([w(1, "final"), premature, open3])?.week_number, 3);
+    assert.equal(selectActiveWeek([w(1, "final"), w(2, "open"), open3])?.week_number, 3);
+    assert.equal(selectActiveWeek([leftover, premature, draft3])?.week_number, 3);
   });
 
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
@@ -373,7 +410,8 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(skipFn, /skipScrubsViewedInPlace/);
     assert.match(skipFn, /status:\s*"final"/);
     assert.match(skipFn, /status:\s*"open"/);
-    assert.match(skipFn, /shouldOpenExistingNextWeek/);
+    assert.match(skipFn, /skipTouchesNextWeek/);
+    assert.match(skipFn, /shouldOpenExistingNextWeek\(next,\s*weeks\)/);
     assert.match(skipFn, /finalized_at:\s*null/);
     assert.match(skipFn, /skipUnlocksCards/);
     assert.match(skipFn, /skipUnlocksCardsOnLockRefresh/);
