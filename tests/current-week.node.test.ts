@@ -11,6 +11,7 @@ import {
   shouldAutopilotFinalize,
   shouldAutopilotLockOpen,
   shouldAutopilotOpenDraft,
+  shouldAutopilotResolveScores,
   shouldOfferOpenCards,
   shouldOpenExistingNextWeek,
   skipClearsCalledMoments,
@@ -332,6 +333,32 @@ describe("selectActiveWeek", () => {
       false,
     );
     assert.equal(selectActiveWeek([leftover, premature])?.week_number, 1);
+    assert.equal(selectActiveWeek([leftover, w(2, "draft")])?.week_number, 1);
+  });
+
+  it("autopilot does not resolve leftover locked W1 behind a newer in-play week", () => {
+    const leftover = w(1, "locked");
+    const premature = w(2, "final");
+    assert.equal(shouldAutopilotResolveScores(leftover, [leftover, premature]), true);
+    assert.equal(shouldAutopilotResolveScores(leftover, [premature, leftover]), true);
+    assert.equal(shouldAutopilotResolveScores(leftover, [leftover, w(2, "open")]), false);
+    assert.equal(shouldAutopilotResolveScores(leftover, [leftover, w(2, "locked")]), false);
+    assert.equal(shouldAutopilotResolveScores(leftover, [leftover, w(2, "draft")]), true);
+    assert.equal(shouldAutopilotResolveScores(leftover, [leftover]), true);
+    assert.equal(shouldAutopilotResolveScores(w(1, "open"), [w(1, "open")]), false);
+    assert.equal(shouldAutopilotResolveScores(w(1, "draft"), [w(1, "draft")]), false);
+    assert.equal(shouldAutopilotResolveScores(w(2, "locked"), [w(1, "final"), w(2, "locked")]), true);
+    assert.equal(shouldAutopilotResolveScores(w(1, "locked"), [w(1, "locked"), w(2, "draft")]), true);
+    assert.equal(
+      shouldAutopilotResolveScores(w(18, "locked", 2025), [w(18, "locked", 2025), w(1, "open", 2026)]),
+      false,
+    );
+    assert.equal(
+      shouldAutopilotResolveScores(w(18, "locked", 2025), [w(18, "locked", 2025), w(1, "final", 2026)]),
+      true,
+    );
+    assert.equal(selectActiveWeek([leftover, premature])?.week_number, 1);
+    assert.equal(selectActiveWeek([leftover, w(2, "open")])?.week_number, 2);
     assert.equal(selectActiveWeek([leftover, w(2, "draft")])?.week_number, 1);
   });
 
@@ -1156,6 +1183,7 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(src, /shouldAutopilotOpenDraft/);
     assert.match(src, /shouldAutopilotLockOpen/);
     assert.match(src, /shouldAutopilotFinalize/);
+    assert.match(src, /shouldAutopilotResolveScores/);
     assert.match(src, /finalized_at/);
     const openFn = src.slice(
       src.indexOf('if (week.status === "draft")'),
@@ -1178,6 +1206,17 @@ describe("useCurrentWeek production wiring", () => {
     assert.ok(
       lockFn.indexOf("shouldAutopilotLockOpen") < lockFn.indexOf('status: "locked"'),
       "leftover-open guard must run before auto-lock",
+    );
+    const resolveFn = src.slice(
+      src.indexOf("// 3. Resolve"),
+      src.indexOf("// 4. Finalize"),
+    );
+    assert.match(resolveFn, /shouldAutopilotResolveScores\(week,/);
+    assert.match(resolveFn, /select\("season_year, week_number, status"\)/);
+    assert.doesNotMatch(resolveFn, /\.neq\("status", "final"\)/);
+    assert.ok(
+      resolveFn.indexOf("shouldAutopilotResolveScores") < resolveFn.indexOf("resolveWeekFromEspn"),
+      "leftover-locked resolve guard must run before calling leftover scores",
     );
     const finalizeFn = src.slice(
       src.indexOf("// 4. Finalize"),

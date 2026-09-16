@@ -117,6 +117,21 @@ export function shouldAutopilotFinalize(
 }
 
 /**
+ * Autopilot must not call leftover locked weeks behind a newer in-play
+ * week. Those scores settle leftover moments while the family is already
+ * on This Sunday (leftover locked W1 + open/locked W2). Skip closes that
+ * leftover without Reveal and does not clear locked-week results.
+ * Leftover locked W1 that is still This Sunday (newer week is draft or
+ * final) keeps live scores — in-play ranking has not moved the family.
+ */
+export function shouldAutopilotResolveScores(
+  week: WeekLike,
+  weeks: readonly WeekLike[] = [],
+): boolean {
+  return week.status === "locked" && !hasNewerInPlayThan(week, weeks);
+}
+
+/**
  * Draft→open is only safe when this draft is the newest week. Opening a
  * leftover draft behind a newer week would steal the family via in-play
  * ranking (Harper: leftover W1 behind final/open W2). Lock/finalize stay

@@ -10,6 +10,7 @@ import {
   shouldAutopilotFinalize,
   shouldAutopilotLockOpen,
   shouldAutopilotOpenDraft,
+  shouldAutopilotResolveScores,
   shouldOfferOpenCards,
   shouldOpenExistingNextWeek,
   skipClearsCalledMoments,
@@ -320,6 +321,30 @@ describe("selectActiveWeek", () => {
       shouldAutopilotFinalize(w(18, "locked", 2025), [w(18, "locked", 2025), w(1, "final", 2026)]),
     ).toBe(false);
     expect(selectActiveWeek([leftover, premature])?.week_number).toBe(1);
+    expect(selectActiveWeek([leftover, w(2, "draft")])?.week_number).toBe(1);
+  });
+
+  it("autopilot does not resolve leftover locked W1 behind a newer in-play week", () => {
+    const leftover = w(1, "locked");
+    const premature = w(2, "final");
+    expect(shouldAutopilotResolveScores(leftover, [leftover, premature])).toBe(true);
+    expect(shouldAutopilotResolveScores(leftover, [premature, leftover])).toBe(true);
+    expect(shouldAutopilotResolveScores(leftover, [leftover, w(2, "open")])).toBe(false);
+    expect(shouldAutopilotResolveScores(leftover, [leftover, w(2, "locked")])).toBe(false);
+    expect(shouldAutopilotResolveScores(leftover, [leftover, w(2, "draft")])).toBe(true);
+    expect(shouldAutopilotResolveScores(leftover, [leftover])).toBe(true);
+    expect(shouldAutopilotResolveScores(w(1, "open"), [w(1, "open")])).toBe(false);
+    expect(shouldAutopilotResolveScores(w(1, "draft"), [w(1, "draft")])).toBe(false);
+    expect(shouldAutopilotResolveScores(w(2, "locked"), [w(1, "final"), w(2, "locked")])).toBe(true);
+    expect(shouldAutopilotResolveScores(w(1, "locked"), [w(1, "locked"), w(2, "draft")])).toBe(true);
+    expect(
+      shouldAutopilotResolveScores(w(18, "locked", 2025), [w(18, "locked", 2025), w(1, "open", 2026)]),
+    ).toBe(false);
+    expect(
+      shouldAutopilotResolveScores(w(18, "locked", 2025), [w(18, "locked", 2025), w(1, "final", 2026)]),
+    ).toBe(true);
+    expect(selectActiveWeek([leftover, premature])?.week_number).toBe(1);
+    expect(selectActiveWeek([leftover, w(2, "open")])?.week_number).toBe(2);
     expect(selectActiveWeek([leftover, w(2, "draft")])?.week_number).toBe(1);
   });
 
@@ -1128,6 +1153,7 @@ describe("useCurrentWeek production wiring", () => {
     expect(src).toMatch(/shouldAutopilotOpenDraft/);
     expect(src).toMatch(/shouldAutopilotLockOpen/);
     expect(src).toMatch(/shouldAutopilotFinalize/);
+    expect(src).toMatch(/shouldAutopilotResolveScores/);
     expect(src).toMatch(/finalized_at/);
     const openFn = src.slice(
       src.indexOf('if (week.status === "draft")'),
@@ -1145,6 +1171,16 @@ describe("useCurrentWeek production wiring", () => {
     expect(lockFn).toMatch(/select\("season_year, week_number, status"\)/);
     expect(lockFn).not.toMatch(/\.neq\("status", "final"\)/);
     expect(lockFn.indexOf("shouldAutopilotLockOpen")).toBeLessThan(lockFn.indexOf('status: "locked"'));
+    const resolveFn = src.slice(
+      src.indexOf("// 3. Resolve"),
+      src.indexOf("// 4. Finalize"),
+    );
+    expect(resolveFn).toMatch(/shouldAutopilotResolveScores\(week,/);
+    expect(resolveFn).toMatch(/select\("season_year, week_number, status"\)/);
+    expect(resolveFn).not.toMatch(/\.neq\("status", "final"\)/);
+    expect(resolveFn.indexOf("shouldAutopilotResolveScores")).toBeLessThan(
+      resolveFn.indexOf("resolveWeekFromEspn"),
+    );
     const finalizeFn = src.slice(
       src.indexOf("// 4. Finalize"),
       src.indexOf("const out = await computeWeekScores"),

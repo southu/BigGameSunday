@@ -10,6 +10,7 @@ import {
   shouldAutopilotFinalize,
   shouldAutopilotLockOpen,
   shouldAutopilotOpenDraft,
+  shouldAutopilotResolveScores,
 } from "./current-week";
 
 type Db = { from: (table: string) => any };
@@ -278,13 +279,23 @@ async function advanceWeek(
   if (week.status !== "locked") return;
 
   // 3. Resolve scores while games are on (and after they end).
-  const res = await resolveWeekFromEspn(db, week);
-  if (res.momentsResolved || res.upsetsSettled) {
-    await record({
-      ...base,
-      action: "scores_resolved",
-      detail: `Week ${week.week_number}: called ${res.momentsResolved} moments and settled ${res.upsetsSettled} upset watches from the live scores.`,
-    });
+  // Sibling slots include in-play — leftover locked W1 must not call
+  // moments while the family is already on newer open/locked W2.
+  // This Sunday leftover locked W1 behind a newer final/draft still scores.
+  const { data: resolveSiblings, error: resolveSlotErr } = await db
+    .from("weeks")
+    .select("season_year, week_number, status")
+    .eq("household_id", week.household_id);
+  if (resolveSlotErr) throw resolveSlotErr;
+  if (shouldAutopilotResolveScores(week, resolveSiblings ?? [])) {
+    const res = await resolveWeekFromEspn(db, week);
+    if (res.momentsResolved || res.upsetsSettled) {
+      await record({
+        ...base,
+        action: "scores_resolved",
+        detail: `Week ${week.week_number}: called ${res.momentsResolved} moments and settled ${res.upsetsSettled} upset watches from the live scores.`,
+      });
+    }
   }
 
   // 4. Finalize Tuesday 6:00 AM ET after lock.
