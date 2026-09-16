@@ -4,9 +4,12 @@
  *   2. else newest week overall (highest season_year, then week_number),
  *      whether draft or final — never an older draft over a newer week
  */
-export type WeekLike = {
+export type WeekSlot = {
   season_year: number;
   week_number: number;
+};
+
+export type WeekLike = WeekSlot & {
   status: string;
   /** Ranking ignores this. Skip uses it to find a premature-finalize leftover. */
   finalized_at?: string | null;
@@ -16,14 +19,17 @@ export type WeekLike = {
 
 export type WeekRef = WeekLike & { id: string };
 
-export type WeekSlot = {
-  season_year: number;
-  week_number: number;
-};
-
-function recency(a: WeekLike, b: WeekLike): number {
+function recency(a: WeekSlot, b: WeekSlot): number {
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
+}
+
+function isNewerThan(week: WeekSlot, than: WeekSlot): boolean {
+  return recency(week, than) < 0;
+}
+
+function isOlderThan(week: WeekSlot, than: WeekSlot): boolean {
+  return recency(week, than) > 0;
 }
 
 function isInPlay(status: string): boolean {
@@ -31,11 +37,7 @@ function isInPlay(status: string): boolean {
 }
 
 export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
-  return (
-    w.status === "draft" &&
-    (w.season_year > active.season_year ||
-      (w.season_year === active.season_year && w.week_number > active.week_number))
-  );
+  return w.status === "draft" && isNewerThan(w, active);
 }
 
 /**
@@ -79,12 +81,7 @@ function isSameSlot(a: WeekSlot, b: WeekSlot): boolean {
 }
 
 function hasNewerInPlayThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
-  return weeks.some(
-    (w) =>
-      isInPlay(w.status) &&
-      (w.season_year > week.season_year ||
-        (w.season_year === week.season_year && w.week_number > week.week_number)),
-  );
+  return weeks.some((w) => isInPlay(w.status) && isNewerThan(w, week));
 }
 
 /**
@@ -166,13 +163,6 @@ export function skipControlCopy(
     button: `Skip leftover Week ${leftover.week_number}`,
     hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal — works on Tuesday.`,
   };
-}
-
-function isOlderThan(week: WeekLike, than: WeekLike): boolean {
-  return (
-    week.season_year < than.season_year ||
-    (week.season_year === than.season_year && week.week_number < than.week_number)
-  );
 }
 
 /**

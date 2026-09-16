@@ -124,6 +124,23 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([dirty, skipped])?.week_number).toBe(2);
   });
 
+  it("ranking ignores leftover finalize and lock stamps", () => {
+    const leftover = {
+      ...w(1, "draft"),
+      finalized_at: "2026-09-16T16:00:00.000Z",
+      lock_at: "2026-09-10T00:00:00.000Z",
+    };
+    const next = {
+      ...w(2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-17T00:15:00.000Z",
+    };
+    expect(selectActiveWeek([leftover, next])?.week_number).toBe(2);
+    expect(selectActiveWeek([next, leftover])?.week_number).toBe(2);
+    expect(selectActiveWeek([leftover, next])?.status).toBe("final");
+    expect(selectActiveWeek([leftover, { ...w(2, "open"), finalized_at: next.finalized_at }])?.week_number).toBe(2);
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -494,6 +511,16 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     expect(weekSwitcherLabel(locked, locked)).toBe("This Sunday");
     expect(weekSwitcherLabel(draft, locked)).toBe("Next week");
     expect(weekSwitcherLabel(older, locked)).toBe("Week 18");
+  });
+
+  it("labels Next week across the season wrap", () => {
+    const wrapLocked = wr("w18", 18, "locked", 2025);
+    const wrapDraft = wr("w1", 1, "draft", 2026);
+    const active = selectActiveWeek([wrapLocked, wrapDraft]);
+    expect(active?.id).toBe("w18");
+    expect(weekSwitcherLabel(wrapLocked, active)).toBe("This Sunday");
+    expect(weekSwitcherLabel(wrapDraft, active)).toBe("Next week");
+    expect(pickViewWeek([wrapLocked, wrapDraft], active, "next")?.id).toBe("w1");
   });
 
   it("defaults to the active week; next or an id reaches the newer draft", () => {

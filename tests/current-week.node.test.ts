@@ -125,6 +125,23 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([dirty, skipped])?.week_number, 2);
   });
 
+  it("ranking ignores leftover finalize and lock stamps", () => {
+    const leftover = {
+      ...w(1, "draft"),
+      finalized_at: "2026-09-16T16:00:00.000Z",
+      lock_at: "2026-09-10T00:00:00.000Z",
+    };
+    const next = {
+      ...w(2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-17T00:15:00.000Z",
+    };
+    assert.equal(selectActiveWeek([leftover, next])?.week_number, 2);
+    assert.equal(selectActiveWeek([next, leftover])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftover, next])?.status, "final");
+    assert.equal(selectActiveWeek([leftover, { ...w(2, "open"), finalized_at: next.finalized_at }])?.week_number, 2);
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -496,6 +513,16 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     assert.equal(weekSwitcherLabel(locked, locked), "This Sunday");
     assert.equal(weekSwitcherLabel(draft, locked), "Next week");
     assert.equal(weekSwitcherLabel(older, locked), "Week 18");
+  });
+
+  it("labels Next week across the season wrap", () => {
+    const wrapLocked = wr("w18", 18, "locked", 2025);
+    const wrapDraft = wr("w1", 1, "draft", 2026);
+    const active = selectActiveWeek([wrapLocked, wrapDraft]);
+    assert.equal(active?.id, "w18");
+    assert.equal(weekSwitcherLabel(wrapLocked, active), "This Sunday");
+    assert.equal(weekSwitcherLabel(wrapDraft, active), "Next week");
+    assert.equal(pickViewWeek([wrapLocked, wrapDraft], active, "next")?.id, "w1");
   });
 
   it("defaults to the active week; next or an id reaches the newer draft", () => {
