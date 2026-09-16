@@ -7,6 +7,7 @@ import {
   nextWeekSlot,
   pickViewWeek,
   selectActiveWeek,
+  shouldAutopilotOpenDraft,
   shouldOpenExistingNextWeek,
   skipClearsCalledMoments,
   skipClearsGameOutcomes,
@@ -130,6 +131,29 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([skipped, dirty])?.status, "open");
     assert.equal(selectActiveWeek([dirty, skipped])?.week_number, 2);
     assert.equal(weekSwitcherLabel(dirty, selectActiveWeek([skipped, dirty])), "This Sunday");
+  });
+
+  it("autopilot does not auto-open leftover draft W1 behind newer W2", () => {
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const premature = wr("52a42a9e", 2, "final");
+    assert.equal(shouldAutopilotOpenDraft(leftover, [leftover, premature]), false);
+    assert.equal(shouldAutopilotOpenDraft(leftover, [premature, leftover]), false);
+    assert.equal(shouldAutopilotOpenDraft(w(1, "draft"), [w(1, "draft"), w(2, "open")]), false);
+    assert.equal(shouldAutopilotOpenDraft(w(1, "draft"), [w(1, "draft"), w(2, "locked")]), false);
+    assert.equal(shouldAutopilotOpenDraft(w(1, "draft"), [w(1, "draft"), w(2, "draft")]), false);
+    assert.equal(shouldAutopilotOpenDraft(w(2, "draft"), [w(1, "open"), w(2, "draft")]), true);
+    assert.equal(shouldAutopilotOpenDraft(w(2, "draft"), [w(1, "final"), w(2, "draft")]), true);
+    assert.equal(shouldAutopilotOpenDraft(w(1, "draft"), [w(1, "draft")]), true);
+    assert.equal(shouldAutopilotOpenDraft(w(1, "open"), [w(1, "open"), w(2, "draft")]), false);
+    assert.equal(
+      shouldAutopilotOpenDraft(w(18, "draft", 2025), [w(18, "draft", 2025), w(1, "final", 2026)]),
+      false,
+    );
+    assert.equal(
+      shouldAutopilotOpenDraft(w(1, "draft", 2026), [w(18, "final", 2025), w(1, "draft", 2026)]),
+      true,
+    );
+    assert.equal(selectActiveWeek([w(1, "open"), w(2, "final")])?.week_number, 1);
   });
 
   it("Harper House: skipped W1 + dirty-open W2 is This Sunday, not leftover W1", () => {
@@ -870,6 +894,18 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(src, /ensureNextWeek/);
     assert.match(src, /\.neq\("status", "final"\)/);
     assert.match(src, /for \(const week of/);
+    assert.match(src, /shouldAutopilotOpenDraft/);
+    const openFn = src.slice(
+      src.indexOf('if (week.status === "draft")'),
+      src.indexOf('if (week.status === "open"'),
+    );
+    assert.match(openFn, /shouldAutopilotOpenDraft\(week,/);
+    assert.match(openFn, /select\("season_year, week_number, status"\)/);
+    assert.doesNotMatch(openFn, /\.neq\("status", "final"\)/);
+    assert.ok(
+      openFn.indexOf("shouldAutopilotOpenDraft") < openFn.indexOf('status: "open"'),
+      "leftover-draft guard must run before auto-open",
+    );
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
     assert.match(autofill, /auto_create_weeks/);
   });

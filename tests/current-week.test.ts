@@ -6,6 +6,7 @@ import {
   nextWeekSlot,
   pickViewWeek,
   selectActiveWeek,
+  shouldAutopilotOpenDraft,
   shouldOpenExistingNextWeek,
   skipClearsCalledMoments,
   skipClearsGameOutcomes,
@@ -129,6 +130,27 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([skipped, dirty])?.status).toBe("open");
     expect(selectActiveWeek([dirty, skipped])?.week_number).toBe(2);
     expect(weekSwitcherLabel(dirty, selectActiveWeek([skipped, dirty]))).toBe("This Sunday");
+  });
+
+  it("autopilot does not auto-open leftover draft W1 behind newer W2", () => {
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const premature = wr("52a42a9e", 2, "final");
+    expect(shouldAutopilotOpenDraft(leftover, [leftover, premature])).toBe(false);
+    expect(shouldAutopilotOpenDraft(leftover, [premature, leftover])).toBe(false);
+    expect(shouldAutopilotOpenDraft(w(1, "draft"), [w(1, "draft"), w(2, "open")])).toBe(false);
+    expect(shouldAutopilotOpenDraft(w(1, "draft"), [w(1, "draft"), w(2, "locked")])).toBe(false);
+    expect(shouldAutopilotOpenDraft(w(1, "draft"), [w(1, "draft"), w(2, "draft")])).toBe(false);
+    expect(shouldAutopilotOpenDraft(w(2, "draft"), [w(1, "open"), w(2, "draft")])).toBe(true);
+    expect(shouldAutopilotOpenDraft(w(2, "draft"), [w(1, "final"), w(2, "draft")])).toBe(true);
+    expect(shouldAutopilotOpenDraft(w(1, "draft"), [w(1, "draft")])).toBe(true);
+    expect(shouldAutopilotOpenDraft(w(1, "open"), [w(1, "open"), w(2, "draft")])).toBe(false);
+    expect(
+      shouldAutopilotOpenDraft(w(18, "draft", 2025), [w(18, "draft", 2025), w(1, "final", 2026)]),
+    ).toBe(false);
+    expect(
+      shouldAutopilotOpenDraft(w(1, "draft", 2026), [w(18, "final", 2025), w(1, "draft", 2026)]),
+    ).toBe(true);
+    expect(selectActiveWeek([w(1, "open"), w(2, "final")])?.week_number).toBe(1);
   });
 
   it("Harper House: skipped W1 + dirty-open W2 is This Sunday, not leftover W1", () => {
@@ -859,6 +881,15 @@ describe("useCurrentWeek production wiring", () => {
     expect(src).toMatch(/ensureNextWeek/);
     expect(src).toMatch(/\.neq\("status", "final"\)/);
     expect(src).toMatch(/for \(const week of/);
+    expect(src).toMatch(/shouldAutopilotOpenDraft/);
+    const openFn = src.slice(
+      src.indexOf('if (week.status === "draft")'),
+      src.indexOf('if (week.status === "open"'),
+    );
+    expect(openFn).toMatch(/shouldAutopilotOpenDraft\(week,/);
+    expect(openFn).toMatch(/select\("season_year, week_number, status"\)/);
+    expect(openFn).not.toMatch(/\.neq\("status", "final"\)/);
+    expect(openFn.indexOf("shouldAutopilotOpenDraft")).toBeLessThan(openFn.indexOf('status: "open"'));
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
     expect(autofill).toMatch(/auto_create_weeks/);
   });

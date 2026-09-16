@@ -78,6 +78,19 @@ export function canSkipWeek(week: WeekLike | null | undefined): boolean {
   return !!week && week.status !== "final";
 }
 
+/**
+ * Autopilot auto-opens a draft 24h after auto-create only when no newer week
+ * exists. Opening a leftover draft behind a newer week would trap the family
+ * on the skipped week via in-play ranking (Harper: leftover W1 + final W2).
+ */
+export function shouldAutopilotOpenDraft(
+  week: WeekLike,
+  weeks: readonly WeekLike[],
+): boolean {
+  if (week.status !== "draft") return false;
+  return !weeks.some((w) => isNewerThan(w, week));
+}
+
 function hasNewerInPlayThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
   return weeks.some((w) => isInPlay(w.status) && isNewerThan(w, week));
 }
