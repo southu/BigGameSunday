@@ -156,6 +156,10 @@ function hasNewerInPlayThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean
   return weeks.some((w) => isInPlay(w.status) && isNewerThan(w, week));
 }
 
+function hasOlderInPlayThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
+  return weeks.some((w) => isInPlay(w.status) && isOlderThan(w, week));
+}
+
 /** Newer open/locked/final week exists — this slot is leftover, not This Sunday. */
 function hasNewerNonDraftThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
   return weeks.some((w) => w.status !== "draft" && isNewerThan(w, week));
@@ -163,20 +167,26 @@ function hasNewerNonDraftThan(week: WeekSlot, weeks: readonly WeekLike[]): boole
 
 /**
  * Skip leftover may create/reopen/refresh next only when that slot is not
- * already in play and no newer week is in play. Otherwise just close the
- * leftover and leave the family on This Sunday (leftover locked W1 must
- * not unlock open/locked W2; auto-created W3 must not bounce them to W2).
- * Draft/final next still opens — leftover draft W1 + premature-final W2.
+ * already in play, no newer week is in play, and no older in-play week
+ * remains after leftover is closed. Otherwise just close the leftover
+ * and leave the family on This Sunday (leftover locked W1 must not unlock
+ * open/locked W2; skipping Next week must not open W3 and steal This Sunday;
+ * auto-created W3 must not bounce them to W2).
+ * Draft/final next still opens — leftover draft W1 + premature-final W2,
+ * and skip of This Sunday still opens Next week.
  * Empty `weeks` still touches (no sibling to inspect).
  */
 export function skipTouchesNextWeek(
   next: WeekSlot | null | undefined,
   weeks: readonly WeekLike[],
+  leftover?: WeekSlot | null,
 ): boolean {
   if (!next) return !weeks.some((w) => isInPlay(w.status));
   if (hasNewerInPlayThan(next, weeks)) return false;
   const existing = weekAtSlot(weeks, next);
   if (existing && isInPlay(existing.status)) return false;
+  const remaining = leftover ? weeks.filter((w) => !isSameSlot(w, leftover)) : weeks;
+  if (hasOlderInPlayThan(next, remaining)) return false;
   return true;
 }
 
@@ -189,6 +199,8 @@ function withStatus<T extends WeekLike>(week: T, status: string): T {
  * (existing next only — a newly created week is the caller's nextId).
  * If a newer week is already in play, land on the post-skip active week
  * so closing leftover W1 does not leave the panel stuck on that draft.
+ * If This Sunday remains in play, skip Next week stays there — do not open
+ * a farther week and steal the family.
  * Dirty-open leftover (open + leftover finalize stamp) and premature-final
  * leftover stay put — scrub in place, do not close it and jump to the next week.
  */
@@ -198,7 +210,7 @@ export function skipLandingWeek<T extends WeekLike>(weeks: readonly T[], leftove
   }
   const closed = weeks.map((w) => (isSameSlot(w, leftover) ? withStatus(w, "final") : w));
   const slot = nextWeekSlot(leftover);
-  if (!skipTouchesNextWeek(slot, weeks)) return selectActiveWeek(closed);
+  if (!skipTouchesNextWeek(slot, weeks, leftover)) return selectActiveWeek(closed);
   const next = weekAtSlot(weeks, slot);
   if (!next) return selectActiveWeek(closed);
   const opened = closed.map((w) => (isSameSlot(w, slot) ? withStatus(w, "open") : w));
@@ -208,7 +220,9 @@ export function skipLandingWeek<T extends WeekLike>(weeks: readonly T[], leftove
 /**
  * Button and hint for the commissioner skip control.
  * Do not promise "start next week" / "open this week" when skip will only
- * close the leftover because next (or a newer week) is already in play.
+ * close the leftover because next (or a newer week) is already in play,
+ * or because This Sunday would remain in play (skipping Next week must
+ * not open a farther week).
  */
 export function skipControlCopy(
   leftover: WeekLike,
@@ -228,7 +242,7 @@ export function skipControlCopy(
     };
   }
   const slot = nextWeekSlot(leftover);
-  const touchesNext = skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks);
+  const touchesNext = skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks, leftover);
   if (viewed && isSameSlot(leftover, viewed)) {
     if (!touchesNext) {
       return {
@@ -277,7 +291,7 @@ export function leftoverDraftNextStep(
   if (week.status !== "draft" || shouldAutopilotOpenDraft(week, weeks)) {
     if (!hasNewerNonDraftThan(week, weeks)) return null;
     const slot = nextWeekSlot(week);
-    const touchesNext = skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks);
+    const touchesNext = skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks, week);
     return {
       label: touchesNext
         ? "This leftover week is behind a newer week — skip it to start next week"
@@ -286,7 +300,7 @@ export function leftoverDraftNextStep(
     };
   }
   const slot = nextWeekSlot(week);
-  const touchesNext = skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks);
+  const touchesNext = skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks, week);
   return {
     label: touchesNext
       ? "This leftover draft will not auto-open — skip it to start next week"
@@ -422,16 +436,19 @@ export function skipScrubsViewedInPlace(
  * After skip, an existing next week is playable only when already open
  * without a leftover finalize stamp. Draft, locked, prematurely final,
  * or open-with-finalized_at next weeks must be reopened (and scrubbed)
- * — unless that next week (or a newer one) is already in play, in which
- * case leftover skip just closes the leftover and leaves the family on
- * This Sunday. Dirty-open next is already This Sunday; scrub it later.
+ * — unless that next week (or a newer one) is already in play, or This
+ * Sunday would remain in play after leftover is closed, in which case
+ * leftover skip just closes the leftover and leaves the family on This
+ * Sunday. Dirty-open next is already This Sunday; scrub it later.
+ * Pass leftover so skip of This Sunday can still open Next week.
  */
 export function shouldOpenExistingNextWeek<T extends WeekLike>(
   next: T | null | undefined,
   weeks: readonly WeekLike[] = [],
+  leftover?: WeekSlot | null,
 ): next is T {
   if (!next || (next.status === "open" && !hasPrematureFinalizeLeftover(next))) return false;
-  return skipTouchesNextWeek(next, weeks);
+  return skipTouchesNextWeek(next, weeks, leftover);
 }
 
 /**

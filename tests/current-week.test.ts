@@ -794,6 +794,8 @@ describe("selectActiveWeek", () => {
     expect(skipTouchesNextWeek(w(2, "draft"), [leftover, w(2, "draft")])).toBe(true);
     expect(skipTouchesNextWeek(w(2, "final"), [leftover, w(2, "final")])).toBe(true);
     expect(skipTouchesNextWeek(w(2, "locked"), [])).toBe(true);
+    expect(skipTouchesNextWeek(w(2, "draft"), [leftover, w(2, "draft")], leftover)).toBe(true);
+    expect(skipTouchesNextWeek(w(2, "final"), [leftover, w(2, "final")], leftover)).toBe(true);
 
     expect(shouldOpenExistingNextWeek(premature)).toBe(true);
     expect(shouldOpenExistingNextWeek(premature, [leftover, premature])).toBe(true);
@@ -836,6 +838,82 @@ describe("selectActiveWeek", () => {
     const only = skipLandingWeek([leftover], leftover);
     expect(only?.id).toBe("w1");
     expect(only?.status).toBe("final");
+  });
+
+  it("skip does not steal This Sunday when skipping Next week", () => {
+    const thisSunday = wr("w1", 1, "open");
+    const lockedSunday = wr("w1l", 1, "locked");
+    const nextDraft = wr("w2", 2, "draft");
+    const laterDraft = wr("w3", 3, "draft");
+    const weeks = [thisSunday, nextDraft];
+    const withLater = [thisSunday, nextDraft, laterDraft];
+    const wrapSunday = wr("w18", 18, "locked", 2025);
+    const wrapNext = wr("w1", 1, "draft", 2026);
+
+    expect(selectActiveWeek(weeks)?.id).toBe("w1");
+    expect(weekSwitcherLabel(thisSunday, selectActiveWeek(weeks))).toBe("This Sunday");
+    expect(weekSwitcherLabel(nextDraft, selectActiveWeek(weeks))).toBe("Next week");
+    expect(pickViewWeek(weeks, selectActiveWeek(weeks), "next")?.id).toBe("w2");
+    expect(selectActiveWeek([thisSunday, nextDraft])?.status).toBe("open");
+    expect(selectActiveWeek([lockedSunday, nextDraft])?.status).toBe("locked");
+
+    expect(skipTouchesNextWeek(nextDraft, weeks, thisSunday)).toBe(true);
+    expect(skipTouchesNextWeek(laterDraft, weeks, nextDraft)).toBe(false);
+    expect(skipTouchesNextWeek(laterDraft, withLater, nextDraft)).toBe(false);
+    expect(skipTouchesNextWeek(nextDraft, weeks)).toBe(false);
+    expect(shouldOpenExistingNextWeek(nextDraft, weeks, thisSunday)).toBe(true);
+    expect(shouldOpenExistingNextWeek(nextDraft, weeks)).toBe(false);
+    expect(shouldOpenExistingNextWeek(laterDraft, withLater, nextDraft)).toBe(false);
+
+    const skipThisSunday = skipLandingWeek(weeks, thisSunday);
+    expect(skipThisSunday?.id).toBe("w2");
+    expect(skipThisSunday?.status).toBe("open");
+    expect(weekSwitcherLabel(nextDraft, skipThisSunday)).toBe("This Sunday");
+
+    const skipNext = skipLandingWeek(weeks, nextDraft);
+    expect(skipNext?.id).toBe("w1");
+    expect(skipNext?.status).toBe("open");
+    expect(weekSwitcherLabel(thisSunday, skipNext)).toBe("This Sunday");
+    expect(skipLandingWeek(weeks, nextDraft)?.week_number).not.toBe(3);
+    expect(skipLandingWeek(withLater, nextDraft)?.id).toBe("w1");
+    expect(skipLandingWeek(withLater, nextDraft)?.status).toBe("open");
+    expect(skipLandingWeek([lockedSunday, nextDraft], nextDraft)?.id).toBe("w1l");
+    expect(skipLandingWeek([lockedSunday, nextDraft], nextDraft)?.status).toBe("locked");
+    expect(skipLandingWeek([lockedSunday, nextDraft], lockedSunday)?.id).toBe("w2");
+    expect(skipLandingWeek([lockedSunday, nextDraft], lockedSunday)?.status).toBe("open");
+
+    const onThisSunday = skipControlCopy(thisSunday, thisSunday, weeks);
+    expect(onThisSunday.button).toBe("Skip this week / start next week");
+    expect(onThisSunday.hint).toMatch(/without Reveal/);
+    expect(onThisSunday.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const onNext = skipControlCopy(nextDraft, nextDraft, weeks);
+    expect(onNext.button).toBe("Skip this week");
+    expect(onNext.button).not.toMatch(/next week|open/i);
+    expect(onNext.hint).toMatch(/without Reveal/);
+    expect(onNext.hint).not.toMatch(/open next/);
+    const onLater = skipControlCopy(nextDraft, laterDraft, withLater);
+    expect(onLater.button).toBe("Skip leftover Week 2");
+    expect(onLater.button).not.toMatch(/open/);
+    expect(onLater.hint).toMatch(/without Reveal/);
+    const gapStep = leftoverDraftNextStep(nextDraft, withLater);
+    expect(gapStep?.label).toMatch(/will not auto-open/);
+    expect(gapStep?.label).toMatch(/without Reveal/);
+    expect(gapStep?.label).not.toMatch(/start next week/);
+    expect(gapStep?.label).not.toMatch(/Open cards/);
+
+    const wrapWeeks = [wrapSunday, wrapNext];
+    expect(selectActiveWeek(wrapWeeks)?.id).toBe("w18");
+    expect(weekSwitcherLabel(wrapSunday, selectActiveWeek(wrapWeeks))).toBe("This Sunday");
+    expect(weekSwitcherLabel(wrapNext, selectActiveWeek(wrapWeeks))).toBe("Next week");
+    expect(skipTouchesNextWeek(wrapNext, wrapWeeks, wrapSunday)).toBe(true);
+    expect(skipTouchesNextWeek({ season_year: 2026, week_number: 2 }, wrapWeeks, wrapNext)).toBe(false);
+    expect(skipLandingWeek(wrapWeeks, wrapSunday)?.id).toBe("w1");
+    expect(skipLandingWeek(wrapWeeks, wrapSunday)?.status).toBe("open");
+    expect(skipLandingWeek(wrapWeeks, wrapNext)?.id).toBe("w18");
+    expect(skipLandingWeek(wrapWeeks, wrapNext)?.status).toBe("locked");
+    expect(skipControlCopy(wrapSunday, wrapSunday, wrapWeeks).button).toBe("Skip this week / start next week");
+    expect(skipControlCopy(wrapNext, wrapNext, wrapWeeks).button).toBe("Skip this week");
+    expect(skipControlCopy(wrapNext, wrapNext, wrapWeeks).button).not.toMatch(/next week|open/i);
   });
 
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
@@ -1114,8 +1192,11 @@ describe("useCurrentWeek production wiring", () => {
     expect(touchFn).toMatch(/hasNewerInPlayThan\(next, weeks\)/);
     expect(touchFn).toMatch(/weekAtSlot\(weeks,\s*next\)/);
     expect(touchFn).toMatch(/isInPlay\(existing\.status\)/);
+    expect(touchFn).toMatch(/leftover/);
+    expect(touchFn).toMatch(/hasOlderInPlayThan\(next, remaining\)/);
     expect(touchFn.indexOf("hasNewerInPlayThan")).toBeLessThan(touchFn.indexOf("weekAtSlot(weeks, next)"));
     expect(touchFn.indexOf("weekAtSlot(weeks, next)")).toBeLessThan(touchFn.indexOf("isInPlay(existing.status)"));
+    expect(touchFn.indexOf("isInPlay(existing.status)")).toBeLessThan(touchFn.indexOf("hasOlderInPlayThan"));
     const recoverFn = lib.slice(
       lib.indexOf("function recoverableFinishedWeek"),
       lib.indexOf("export function skipTargetWeek"),
@@ -1144,10 +1225,10 @@ describe("useCurrentWeek production wiring", () => {
     expect(skipFn.indexOf("skipScrubsViewedInPlace")).toBeLessThan(skipFn.indexOf("canSkipWeek"));
     expect(skipFn).toMatch(/status:\s*"final"/);
     expect(skipFn).toMatch(/status:\s*"open"/);
-    expect(skipFn).toMatch(/skipTouchesNextWeek/);
+    expect(skipFn).toMatch(/skipTouchesNextWeek\(slot,\s*weeks,\s*leftover\)/);
     expect(skipFn).toMatch(/skipLandingWeek\(weeks,\s*leftover\)/);
     expect(skipFn).toMatch(/setViewWeekId\(landing\.id\)/);
-    expect(skipFn).toMatch(/shouldOpenExistingNextWeek\(next,\s*weeks\)/);
+    expect(skipFn).toMatch(/shouldOpenExistingNextWeek\(next,\s*weeks,\s*leftover\)/);
     expect(skipFn).toMatch(/finalized_at:\s*null/);
     expect(skipFn).toMatch(/skipUnlocksCards/);
     expect(skipFn).toMatch(/skipUnlocksCardsOnLockRefresh/);

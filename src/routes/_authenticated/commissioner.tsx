@@ -620,11 +620,12 @@ function Commissioner() {
       if (!canSkipWeek(leftover)) throw new Error("This week is already finished.");
 
       // Open (or create) next first so a leftover-close failure still leaves a playable week.
-      // If a newer week is already in play, just close the leftover — do not reopen W2
-      // (or create a gap week) and bounce the family off W3.
+      // If a newer week is already in play, or This Sunday would remain in play,
+      // just close the leftover — do not reopen W2 (or create a gap week / W3)
+      // and bounce the family off This Sunday.
       const next = weekAtSlot(weeks, slot);
       let nextId = next?.id ?? null;
-      const playNext = skipTouchesNextWeek(slot, weeks);
+      const playNext = skipTouchesNextWeek(slot, weeks, leftover);
 
       if (playNext && !nextId) {
         const { data, error: cErr } = await db
@@ -654,7 +655,7 @@ function Commissioner() {
             .eq("id", nextId);
           if (lockErr) throw lockErr;
         }
-      } else if (playNext && shouldOpenExistingNextWeek(next, weeks)) {
+      } else if (playNext && shouldOpenExistingNextWeek(next, weeks, leftover)) {
         await reopenAndScrub(next, nextId);
       } else if (playNext && next?.status === "open") {
         try {
