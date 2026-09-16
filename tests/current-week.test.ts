@@ -10,6 +10,7 @@ import {
   skipControlCopy,
   skipLockNeedsRefresh,
   skipTargetWeek,
+  skipUnlocksCards,
   weekAtSlot,
   weekSwitcherLabel,
 } from "../src/lib/current-week";
@@ -73,6 +74,7 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([leftover, open])?.week_number).toBe(2);
     expect(selectActiveWeek([open, leftover])?.week_number).toBe(2);
     expect(selectActiveWeek([leftover, open])?.status).toBe("open");
+    expect(selectActiveWeek([leftover, w(2, "locked")])?.week_number).toBe(2);
   });
 
   it("c: open W1 + draft W2 → active W1, W2 labeled Next week", () => {
@@ -172,6 +174,10 @@ describe("selectActiveWeek", () => {
     expect(shouldOpenExistingNextWeek(w(2, "locked"))).toBe(true);
     expect(shouldOpenExistingNextWeek(w(2, "open"))).toBe(false);
     expect(shouldOpenExistingNextWeek(undefined)).toBe(false);
+    expect(skipUnlocksCards(premature)).toBe(true);
+    expect(skipUnlocksCards(w(2, "locked"))).toBe(true);
+    expect(skipUnlocksCards(w(2, "draft"))).toBe(false);
+    expect(skipUnlocksCards(w(2, "open"))).toBe(false);
     const after = [w(1, "final"), w(2, "open")];
     expect(selectActiveWeek(after)?.week_number).toBe(2);
     expect(selectActiveWeek(after)?.status).toBe("open");
@@ -288,6 +294,8 @@ describe("useCurrentWeek production wiring", () => {
     expect(skipFn).toMatch(/status:\s*"open"/);
     expect(skipFn).toMatch(/shouldOpenExistingNextWeek/);
     expect(skipFn).toMatch(/finalized_at:\s*null/);
+    expect(skipFn).toMatch(/skipUnlocksCards/);
+    expect(skipFn).toMatch(/locked_at:\s*null/);
     expect(skipFn).toMatch(/skipLockNeedsRefresh/);
     expect(skipFn).toMatch(/else if \(next && skipLockNeedsRefresh/);
     expect(skipFn).not.toMatch(/next\?\.status === "draft"/);

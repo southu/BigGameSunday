@@ -11,6 +11,7 @@ import {
   skipControlCopy,
   skipLockNeedsRefresh,
   skipTargetWeek,
+  skipUnlocksCards,
   weekAtSlot,
   weekSwitcherLabel,
 } from "../src/lib/current-week.ts";
@@ -74,6 +75,7 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([leftover, open])?.week_number, 2);
     assert.equal(selectActiveWeek([open, leftover])?.week_number, 2);
     assert.equal(selectActiveWeek([leftover, open])?.status, "open");
+    assert.equal(selectActiveWeek([leftover, w(2, "locked")])?.week_number, 2);
   });
 
   it("c: open W1 + draft W2 → active W1, W2 labeled Next week", () => {
@@ -172,6 +174,10 @@ describe("selectActiveWeek", () => {
     assert.equal(shouldOpenExistingNextWeek(w(2, "locked")), true);
     assert.equal(shouldOpenExistingNextWeek(w(2, "open")), false);
     assert.equal(shouldOpenExistingNextWeek(undefined), false);
+    assert.equal(skipUnlocksCards(premature), true);
+    assert.equal(skipUnlocksCards(w(2, "locked")), true);
+    assert.equal(skipUnlocksCards(w(2, "draft")), false);
+    assert.equal(skipUnlocksCards(w(2, "open")), false);
     const after = [w(1, "final"), w(2, "open")];
     assert.equal(selectActiveWeek(after)?.week_number, 2);
     assert.equal(selectActiveWeek(after)?.status, "open");
@@ -288,6 +294,8 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(skipFn, /status:\s*"open"/);
     assert.match(skipFn, /shouldOpenExistingNextWeek/);
     assert.match(skipFn, /finalized_at:\s*null/);
+    assert.match(skipFn, /skipUnlocksCards/);
+    assert.match(skipFn, /locked_at:\s*null/);
     assert.match(skipFn, /skipLockNeedsRefresh/);
     assert.match(skipFn, /else if \(next && skipLockNeedsRefresh/);
     assert.doesNotMatch(skipFn, /next\?\.status === "draft"/);

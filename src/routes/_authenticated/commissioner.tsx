@@ -16,6 +16,7 @@ import {
   skipControlCopy,
   skipLockNeedsRefresh,
   skipTargetWeek,
+  skipUnlocksCards,
   weekAtSlot,
   weekSwitcherLabel,
 } from "@/lib/current-week";
@@ -577,6 +578,13 @@ function Commissioner() {
         }
         const { error: openErr } = await db.from("weeks").update(patch).eq("id", nextId);
         if (openErr) throw openErr;
+        if (skipUnlocksCards(next)) {
+          const { error: unlockErr } = await db
+            .from("cards")
+            .update({ locked_at: null })
+            .eq("week_id", nextId);
+          if (unlockErr) throw unlockErr;
+        }
       } else if (next && skipLockNeedsRefresh(next.lock_at)) {
         const { error: lockErr } = await db
           .from("weeks")
@@ -589,6 +597,7 @@ function Commissioner() {
         ["current-week", household.id],
         ["games", nextId],
         ["events", nextId],
+        ["cards", nextId],
         ["season", household.id],
       ]);
       setViewWeekId(nextId);

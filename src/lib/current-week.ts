@@ -130,6 +130,15 @@ export function shouldOpenExistingNextWeek<T extends WeekLike>(
   return !!next && next.status !== "open";
 }
 
+/**
+ * Premature-final and locked next weeks may still have cards locked from
+ * Reveal or kickoff. Skip must clear those so the family can play Tuesday.
+ * A leftover draft has no week-level lock to lift.
+ */
+export function skipUnlocksCards(next: WeekLike | null | undefined): boolean {
+  return !!next && (next.status === "locked" || next.status === "final");
+}
+
 /** Past lock times would immediately re-lock a reopened week; refresh them on skip. */
 export function skipLockNeedsRefresh(lockAt: string | null | undefined, now = Date.now()): boolean {
   if (!lockAt) return false;
