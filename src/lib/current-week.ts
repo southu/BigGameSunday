@@ -168,13 +168,15 @@ function hasNewerNonDraftThan(week: WeekSlot, weeks: readonly WeekLike[]): boole
 
 /**
  * Skip leftover may create/reopen/refresh next only when that slot is not
- * already in play, no newer week is in play, and no older in-play week
- * remains after leftover is closed. Otherwise just close the leftover
+ * already in play, no newer week is open/locked/final, and no older in-play
+ * week remains after leftover is closed. Otherwise just close the leftover
  * and leave the family on This Sunday (leftover locked W1 must not unlock
  * open/locked W2; skipping Next week must not open W3 and steal This Sunday;
- * auto-created W3 must not bounce them to W2).
+ * leftover draft W1 behind leftover draft W2 and a newer final W3 must not
+ * open leftover W2; auto-created W3 must not bounce them to W2).
  * Draft/final next still opens — leftover draft W1 + premature-final W2,
- * and skip of This Sunday still opens Next week.
+ * skip of leftover W2 behind a newer final W3, and skip of This Sunday
+ * still opens Next week.
  * Empty `weeks` still touches (no sibling to inspect).
  */
 export function skipTouchesNextWeek(
@@ -183,7 +185,7 @@ export function skipTouchesNextWeek(
   leftover?: WeekSlot | null,
 ): boolean {
   if (!next) return !weeks.some((w) => isInPlay(w.status));
-  if (hasNewerInPlayThan(next, weeks)) return false;
+  if (hasNewerNonDraftThan(next, weeks)) return false;
   const existing = weekAtSlot(weeks, next);
   if (existing && isInPlay(existing.status)) return false;
   const remaining = leftover ? weeks.filter((w) => !isSameSlot(w, leftover)) : weeks;
@@ -198,8 +200,9 @@ function withStatus<T extends WeekLike>(week: T, status: string): T {
 /**
  * Commissioner view after skip. If skip opened/created next, land there
  * (existing next only — a newly created week is the caller's nextId).
- * If a newer week is already in play, land on the post-skip active week
- * so closing leftover W1 does not leave the panel stuck on that draft.
+ * If a newer week is already in play or final, land on the post-skip active
+ * week so closing leftover W1 does not open leftover W2 and steal the family
+ * via in-play ranking (leftover drafts W1+W2 behind final W3 stay on W3).
  * If This Sunday remains in play, skip Next week stays there — do not open
  * a farther week and steal the family.
  * Dirty-open leftover (open + leftover finalize stamp) and premature-final
@@ -221,9 +224,9 @@ export function skipLandingWeek<T extends WeekLike>(weeks: readonly T[], leftove
 /**
  * Button and hint for the commissioner skip control.
  * Do not promise "start next week" / "open this week" when skip will only
- * close the leftover because next (or a newer week) is already in play,
- * or because This Sunday would remain in play (skipping Next week must
- * not open a farther week).
+ * close the leftover because next (or a newer week) is already in play
+ * or final, or because This Sunday would remain in play (skipping Next
+ * week must not open a farther week).
  */
 export function skipControlCopy(
   leftover: WeekLike,
@@ -437,10 +440,10 @@ export function skipScrubsViewedInPlace(
  * After skip, an existing next week is playable only when already open
  * without a leftover finalize stamp. Draft, locked, prematurely final,
  * or open-with-finalized_at next weeks must be reopened (and scrubbed)
- * — unless that next week (or a newer one) is already in play, or This
- * Sunday would remain in play after leftover is closed, in which case
- * leftover skip just closes the leftover and leaves the family on This
- * Sunday. Dirty-open next is already This Sunday; scrub it later.
+ * — unless that next week (or a newer one) is already in play or final,
+ * or This Sunday would remain in play after leftover is closed, in which
+ * case leftover skip just closes the leftover and leaves the family on
+ * This Sunday. Dirty-open next is already This Sunday; scrub it later.
  * Pass leftover so skip of This Sunday can still open Next week.
  */
 export function shouldOpenExistingNextWeek<T extends WeekLike>(
