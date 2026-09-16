@@ -1,6 +1,6 @@
 /**
  * Active week for a household:
- *   1. latest open or locked (never hide these behind a newer draft)
+ *   1. latest open or locked (never hide these behind a newer draft or final)
  *   2. else newest week overall (highest season_year, then week_number),
  *      whether draft or final — never an older draft over a newer week
  */
@@ -50,12 +50,17 @@ function compareActiveWeek(a: WeekLike, b: WeekLike): number {
   return recency(a, b);
 }
 
+/** Latest in-play week, else the newest week overall (draft or final). */
 export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | null {
-  let active: T | null = null;
+  let latestInPlay: T | null = null;
+  let newest: T | null = null;
   for (const week of weeks) {
-    if (!active || compareActiveWeek(week, active) < 0) active = week;
+    if (isInPlay(week.status) && (!latestInPlay || compareActiveWeek(week, latestInPlay) < 0)) {
+      latestInPlay = week;
+    }
+    if (!newest || recency(week, newest) < 0) newest = week;
   }
-  return active;
+  return latestInPlay ?? newest;
 }
 
 /** Regular season wraps to week 1 of the next year after week 18. */

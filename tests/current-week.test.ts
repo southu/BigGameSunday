@@ -44,6 +44,17 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([w(2, "draft"), w(1, "open")])?.week_number).toBe(1);
   });
 
+  it("never hides an in-play week behind a newer final", () => {
+    expect(selectActiveWeek([w(1, "open"), w(2, "final")])?.week_number).toBe(1);
+    expect(selectActiveWeek([w(2, "final"), w(1, "open")])?.week_number).toBe(1);
+    expect(selectActiveWeek([w(1, "open"), w(2, "final")])?.status).toBe("open");
+    expect(selectActiveWeek([w(1, "locked"), w(2, "final")])?.week_number).toBe(1);
+    expect(selectActiveWeek([w(2, "final"), w(1, "locked")])?.week_number).toBe(1);
+    expect(selectActiveWeek([w(1, "locked"), w(2, "final")])?.status).toBe("locked");
+    expect(selectActiveWeek([w(18, "locked", 2025), w(1, "final", 2026)])?.season_year).toBe(2025);
+    expect(selectActiveWeek([w(1, "final", 2026), w(18, "locked", 2025)])?.status).toBe("locked");
+  });
+
   it("never selects a draft when any open or locked week exists", () => {
     const picked = selectActiveWeek([w(1, "locked"), w(2, "draft"), w(3, "draft")]);
     expect(picked?.status).not.toBe("draft");
@@ -452,6 +463,21 @@ describe("selectActiveWeek", () => {
     const picked = selectActiveWeek([w(18, "locked", 2025), w(1, "draft", 2026)]);
     expect(picked?.season_year).toBe(2025);
     expect(picked?.status).toBe("locked");
+  });
+
+  it("never prefers an older leftover draft over a newer week across seasons", () => {
+    const leftover = w(18, "draft", 2025);
+    const nextFinal = w(1, "final", 2026);
+    expect(selectActiveWeek([leftover, nextFinal])?.season_year).toBe(2026);
+    expect(selectActiveWeek([nextFinal, leftover])?.season_year).toBe(2026);
+    expect(selectActiveWeek([leftover, nextFinal])?.week_number).toBe(1);
+    expect(selectActiveWeek([leftover, w(1, "open", 2026)])?.season_year).toBe(2026);
+    expect(selectActiveWeek([leftover, w(1, "draft", 2026)])?.season_year).toBe(2026);
+    const newerDraft = w(1, "draft", 2026);
+    const priorFinal = w(18, "final", 2025);
+    expect(selectActiveWeek([newerDraft, priorFinal])?.season_year).toBe(2026);
+    expect(selectActiveWeek([priorFinal, newerDraft])?.season_year).toBe(2026);
+    expect(selectActiveWeek([newerDraft, priorFinal])?.week_number).toBe(1);
   });
 });
 
