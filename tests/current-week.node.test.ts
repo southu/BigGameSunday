@@ -145,10 +145,13 @@ describe("selectActiveWeek", () => {
 
   it("selectActiveWeek does not rank draft above final as a class", () => {
     const src = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
-    const start = src.indexOf("function compareActiveWeek");
+    const start = src.indexOf("export function selectActiveWeek");
     const end = src.indexOf("export function nextWeekSlot");
     assert.ok(start >= 0 && end > start);
     const body = src.slice(start, end);
+    assert.match(body, /return latestInPlay \?\? newest/);
+    assert.match(body, /recency\(week, latestInPlay\)/);
+    assert.match(body, /recency\(week, newest\)/);
     assert.doesNotMatch(body, /status === ["']draft["']/);
     assert.doesNotMatch(body, /status === ["']final["']/);
     assert.doesNotMatch(src, /ranked\.find\(\(w\) => w\.status === "draft"\)/);

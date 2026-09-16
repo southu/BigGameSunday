@@ -39,23 +39,15 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
 }
 
 /**
- * In-play (open/locked) always beats not-in-play. After that only recency
- * matters — draft vs final is not a rank, so an older leftover draft cannot
- * hide a newer week (Harper House: draft W1 + final W2 → W2).
+ * Latest open|locked (highest season_year, then week_number). Else newest
+ * week overall — draft vs final is not a rank, so leftover draft W1 cannot
+ * hide a newer final W2 (Harper House).
  */
-function compareActiveWeek(a: WeekLike, b: WeekLike): number {
-  const aPlay = isInPlay(a.status);
-  const bPlay = isInPlay(b.status);
-  if (aPlay !== bPlay) return aPlay ? -1 : 1;
-  return recency(a, b);
-}
-
-/** Latest in-play week, else the newest week overall (draft or final). */
 export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | null {
   let latestInPlay: T | null = null;
   let newest: T | null = null;
   for (const week of weeks) {
-    if (isInPlay(week.status) && (!latestInPlay || compareActiveWeek(week, latestInPlay) < 0)) {
+    if (isInPlay(week.status) && (!latestInPlay || recency(week, latestInPlay) < 0)) {
       latestInPlay = week;
     }
     if (!newest || recency(week, newest) < 0) newest = week;
