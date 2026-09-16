@@ -172,7 +172,7 @@ describe("selectActiveWeek", () => {
     assert.equal(canSkipWeek(leftover), true);
     assert.equal(skipTargetWeek([leftover, premature], leftover)?.week_number, 1);
     assert.equal(skipTargetWeek([leftover, premature], premature)?.week_number, 1);
-    assert.equal(skipTargetWeek([w(1, "final"), w(2, "final")], w(2, "final")), null);
+    assert.equal(skipTargetWeek([w(1, "final"), w(2, "final")], w(2, "final"))?.week_number, 2);
     assert.equal(skipTargetWeek([w(1, "open"), w(2, "final")], w(2, "final")), null);
     assert.equal(skipTargetWeek([w(1, "open"), w(2, "draft")], w(1, "open"))?.week_number, 1);
     assert.equal(skipTargetWeek([leftover, w(2, "open")], w(2, "open"))?.week_number, 1);
@@ -240,6 +240,50 @@ describe("selectActiveWeek", () => {
     assert.equal(skipTargetWeek([skipped, cleanOpen], skipped), null);
     assert.equal(skipLandingWeek([skipped, dirtyOpen], dirtyOpen)?.week_number, 2);
     assert.equal(skipLandingWeek([skipped, dirtyOpen], dirtyOpen)?.status, "open");
+  });
+
+  it("skip recovers a premature-final week after leftover is already skipped", () => {
+    const skipped = w(1, "final");
+    const premature = w(2, "final");
+    const weeks = [skipped, premature];
+    const draft3 = w(3, "draft");
+
+    assert.equal(skipTargetWeek(weeks, premature)?.week_number, 2);
+    assert.equal(skipTargetWeek(weeks, skipped)?.week_number, 2);
+    assert.equal(skipTargetWeek(weeks, premature)?.status, "final");
+    assert.equal(skipScrubsViewedInPlace(premature, premature), true);
+    assert.equal(skipScrubsViewedInPlace(premature, skipped), true);
+    assert.equal(skipLandingWeek(weeks, premature)?.week_number, 2);
+    assert.equal(skipLandingWeek(weeks, premature)?.status, "final");
+
+    assert.equal(skipTargetWeek([skipped], skipped), null);
+    assert.equal(skipTargetWeek([w(1, "open"), premature], premature), null);
+    assert.equal(skipTargetWeek([w(1, "locked"), premature], premature), null);
+    assert.equal(skipTargetWeek([skipped, premature, w(3, "open")], premature), null);
+
+    const leftover = w(1, "draft");
+    assert.equal(skipTargetWeek([leftover, premature], leftover)?.week_number, 1);
+    assert.equal(skipTargetWeek([leftover, premature], premature)?.week_number, 1);
+    assert.equal(skipScrubsViewedInPlace(leftover, leftover), false);
+
+    assert.equal(skipTargetWeek([skipped, premature, draft3], draft3)?.week_number, 2);
+    assert.equal(skipScrubsViewedInPlace(premature, draft3), true);
+    assert.equal(skipLandingWeek([skipped, premature, draft3], premature)?.week_number, 2);
+    assert.equal(skipLandingWeek([skipped, premature, draft3], premature)?.status, "final");
+
+    assert.equal(skipUnlocksCards(premature), true);
+    assert.equal(skipClearsCalledMoments(premature), true);
+    assert.equal(skipClearsGameOutcomes(premature), true);
+
+    const copy = skipControlCopy(premature, premature);
+    assert.equal(copy.button, "Clear leftover marks / open this week");
+    assert.match(copy.hint, /marked finished too early/);
+    assert.doesNotMatch(copy.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const fromSkipped = skipControlCopy(premature, skipped);
+    assert.equal(fromSkipped.button, "Clear leftover marks / open Week 2");
+    assert.match(fromSkipped.hint, /Week 2 was marked finished too early/);
+    const fromDraft3 = skipControlCopy(premature, draft3);
+    assert.equal(fromDraft3.button, "Clear leftover marks / open Week 2");
   });
 
   it("skip copy names leftover draft when viewing a premature-final week", () => {
@@ -452,6 +496,10 @@ describe("useCurrentWeek production wiring", () => {
     );
     assert.match(skipFn, /skipTargetWeek/);
     assert.match(skipFn, /skipScrubsViewedInPlace/);
+    assert.ok(
+      skipFn.indexOf("skipScrubsViewedInPlace") < skipFn.indexOf("canSkipWeek"),
+      "scrub premature-final leftover before canSkipWeek so Skip can reopen it",
+    );
     assert.match(skipFn, /status:\s*"final"/);
     assert.match(skipFn, /status:\s*"open"/);
     assert.match(skipFn, /skipTouchesNextWeek/);

@@ -110,11 +110,11 @@ function withStatus<T extends WeekLike>(week: T, status: string): T {
  * (existing next only — a newly created week is the caller's nextId).
  * If a newer week is already in play, land on the post-skip active week
  * so closing leftover W1 does not leave the panel stuck on that draft.
- * Dirty-open leftover (open + leftover finalize stamp) stays put — scrub
- * in place, do not close it and jump to the next week.
+ * Dirty-open leftover (open + leftover finalize stamp) and premature-final
+ * leftover stay put — scrub in place, do not close it and jump to the next week.
  */
 export function skipLandingWeek<T extends WeekLike>(weeks: readonly T[], leftover: T): T | null {
-  if (hasPrematureFinalizeLeftover(leftover)) {
+  if (skipScrubsLeftoverInPlace(leftover)) {
     return weekAtSlot(weeks, leftover) ?? leftover;
   }
   const closed = weeks.map((w) => (isSameSlot(w, leftover) ? withStatus(w, "final") : w));
@@ -177,10 +177,31 @@ function isOlderThan(week: WeekLike, than: WeekLike): boolean {
 }
 
 /**
+ * Newest finished week is recoverable when nothing is in play and an older
+ * week exists — Harper after leftover W1 is already skipped: final W1 +
+ * premature-final W2. Do not reopen a lone finished week, and do not reopen
+ * a finished week while another week is open or locked. Leftover drafts
+ * still close first (skipTargetWeek ranks those ahead).
+ */
+function recoverableFinishedWeek<T extends WeekLike>(weeks: readonly T[]): T | null {
+  if (weeks.some((w) => isInPlay(w.status))) return null;
+  const newest = [...weeks].sort(recency)[0];
+  if (!newest) return null;
+  if (weeks.some((w) => w.status === "draft" && isOlderThan(w, newest))) return null;
+  const finals = [...weeks].filter((w) => w.status === "final").sort(recency);
+  const target = finals[0];
+  if (!target) return null;
+  if (!weeks.some((w) => isOlderThan(w, target))) return null;
+  return target;
+}
+
+/**
  * Week the skip control closes.
  * Prefer an older leftover draft behind the viewed week (Harper: draft W1
  * sitting behind open/final W2) so Skip cannot close the week the family
- * is about to play. Otherwise close the viewed week when it is still playable.
+ * is about to play. Otherwise recover a premature-final week when nothing
+ * is in play and an older week exists (Harper: skipped W1 + premature-final
+ * W2). Otherwise close the viewed week when it is still playable.
  * If the viewed week is already finished, still target a leftover open week
  * with a premature finalize stamp so Skip can scrub it in place (Harper:
  * skipped W1 + dirty-open W2, commissioner looking at W1).
@@ -194,6 +215,8 @@ export function skipTargetWeek<T extends WeekLike>(
     .filter((w) => w.status === "draft" && isOlderThan(w, viewed))
     .sort(recency);
   if (olderDrafts[0]) return olderDrafts[0];
+  const recoverable = recoverableFinishedWeek(weeks);
+  if (recoverable) return recoverable;
   if (canSkipWeek(viewed)) return viewed;
   const dirtyOpen = [...weeks].filter(hasPrematureFinalizeLeftover).sort(recency);
   return dirtyOpen[0] ?? null;
@@ -204,16 +227,22 @@ function hasPrematureFinalizeLeftover(week: WeekLike | null | undefined): boolea
   return !!week && week.status === "open" && !!week.finalized_at;
 }
 
+/** Premature-final or dirty-open leftover: reopen/scrub this week, do not skip to the next. */
+function skipScrubsLeftoverInPlace(leftover: WeekLike): boolean {
+  return leftover.status === "final" || hasPrematureFinalizeLeftover(leftover);
+}
+
 /**
- * After leftover W1 is already closed, Harper House still sits on open W2 with a
- * stale finalized_at. Scrub that leftover in place — do not skip it to W3 —
+ * After leftover W1 is already closed, Harper House still sits on W2 that
+ * was marked finished too early (premature-final, or open with a stale
+ * finalized_at). Scrub that leftover in place — do not skip it to W3 —
  * even if the commissioner is looking at the already-skipped week.
  */
 export function skipScrubsViewedInPlace(
   leftover: WeekLike,
   viewed: WeekLike | null | undefined,
 ): boolean {
-  return !!viewed && hasPrematureFinalizeLeftover(leftover);
+  return !!viewed && skipScrubsLeftoverInPlace(leftover);
 }
 
 /**

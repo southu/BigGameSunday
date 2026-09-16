@@ -533,7 +533,7 @@ function Commissioner() {
       if (!household) throw new Error("No household yet.");
       if (!week) throw new Error("Create a week first.");
       const leftover = skipTargetWeek(weeks, week);
-      if (!leftover || !canSkipWeek(leftover)) throw new Error("This week is already finished.");
+      if (!leftover) throw new Error("This week is already finished.");
 
       const skippedNumber = leftover.week_number;
       const slot = nextWeekSlot(leftover);
@@ -614,6 +614,8 @@ function Commissioner() {
         setViewWeekId(leftover.id);
         return `Week ${leftover.week_number} is open for the family.`;
       }
+
+      if (!canSkipWeek(leftover)) throw new Error("This week is already finished.");
 
       // Open (or create) next first so a leftover-close failure still leaves a playable week.
       // If a newer week is already in play, just close the leftover — do not reopen W2
