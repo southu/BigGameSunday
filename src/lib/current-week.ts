@@ -32,6 +32,10 @@ function isOlderThan(week: WeekSlot, than: WeekSlot): boolean {
   return recency(week, than) > 0;
 }
 
+function isSameSlot(a: WeekSlot, b: WeekSlot): boolean {
+  return recency(a, b) === 0;
+}
+
 function isInPlay(status: string): boolean {
   return status === "open" || status === "locked";
 }
@@ -66,18 +70,12 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
 }
 
 export function weekAtSlot<T extends WeekSlot>(weeks: readonly T[], slot: WeekSlot): T | undefined {
-  return weeks.find(
-    (w) => w.season_year === slot.season_year && w.week_number === slot.week_number,
-  );
+  return weeks.find((w) => isSameSlot(w, slot));
 }
 
 /** Skip closes a leftover week without Reveal; finished weeks stay put. */
 export function canSkipWeek(week: WeekLike | null | undefined): boolean {
   return !!week && week.status !== "final";
-}
-
-function isSameSlot(a: WeekSlot, b: WeekSlot): boolean {
-  return a.season_year === b.season_year && a.week_number === b.week_number;
 }
 
 function hasNewerInPlayThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {

@@ -112,16 +112,55 @@ describe("selectActiveWeek", () => {
   });
 
   it("e: skip path: final/skipped W1 + open W2 → W2", () => {
-    const skipped = w(1, "final");
-    const open = w(2, "open");
+    const skipped = wr("w1", 1, "final");
+    const open = wr("w2", 2, "open");
     const picked = selectActiveWeek([skipped, open]);
     expect(picked?.week_number).toBe(2);
     expect(picked?.status).toBe("open");
+    expect(picked?.id).toBe("w2");
     expect(selectActiveWeek([open, skipped])?.week_number).toBe(2);
+    expect(weekSwitcherLabel(open, picked)).toBe("This Sunday");
+    expect(weekSwitcherLabel(skipped, picked)).toBe("Week 1");
+    expect(weekSwitcherLabel(skipped, picked)).not.toBe("Next week");
+    expect(pickViewWeek([skipped, open], picked, null)?.id).toBe("w2");
+    expect(pickViewWeek([skipped, open], picked, "next")?.id).toBe("w2");
     const dirty = { ...open, finalized_at: "2026-09-15T19:04:43.880Z" };
     expect(selectActiveWeek([skipped, dirty])?.week_number).toBe(2);
     expect(selectActiveWeek([skipped, dirty])?.status).toBe("open");
     expect(selectActiveWeek([dirty, skipped])?.week_number).toBe(2);
+    expect(weekSwitcherLabel(dirty, selectActiveWeek([skipped, dirty]))).toBe("This Sunday");
+  });
+
+  it("Harper House: skipped W1 + dirty-open W2 is This Sunday, not leftover W1", () => {
+    const skipped = {
+      ...wr("3e3aeeeb", 1, "final"),
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00.000Z",
+    };
+    const dirtyOpen = {
+      ...wr("52a42a9e", 2, "open"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const weeks = [skipped, dirtyOpen];
+    const reverse = [dirtyOpen, skipped];
+    const active = selectActiveWeek(weeks);
+    expect(active?.id).toBe("52a42a9e");
+    expect(active?.week_number).toBe(2);
+    expect(active?.status).toBe("open");
+    expect(selectActiveWeek(reverse)?.id).toBe("52a42a9e");
+    expect(weekSwitcherLabel(dirtyOpen, active)).toBe("This Sunday");
+    expect(weekSwitcherLabel(skipped, active)).toBe("Week 1");
+    expect(weekSwitcherLabel(skipped, active)).not.toBe("Next week");
+    expect(pickViewWeek(weeks, active, null)?.id).toBe("52a42a9e");
+    expect(pickViewWeek(weeks, active, "next")?.id).toBe("52a42a9e");
+    expect(skipTargetWeek(weeks, dirtyOpen)?.week_number).toBe(2);
+    expect(skipTargetWeek(weeks, skipped)?.week_number).toBe(2);
+    const leftover = skipTargetWeek(weeks, skipped);
+    expect(skipLandingWeek(weeks, leftover!)?.week_number).toBe(2);
+    expect(skipLandingWeek(weeks, leftover!)?.status).toBe("open");
+    expect(skipLandingWeek(weeks, dirtyOpen)?.week_number).toBe(2);
+    expect(skipLandingWeek(weeks, dirtyOpen)?.status).toBe("open");
   });
 
   it("ranking ignores leftover finalize and lock stamps", () => {
@@ -173,6 +212,8 @@ describe("selectActiveWeek", () => {
     expect(body).not.toMatch(/status === ["']final["']/);
     expect(src).not.toMatch(/ranked\.find\(\(w\) => w\.status === "draft"\)/);
     expect(src).not.toMatch(/else latest draft/);
+    expect(src).toMatch(/function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
+    expect(src).toMatch(/weeks\.find\(\(w\) => isSameSlot\(w, slot\)\)/);
   });
 
   it("does not label This Sunday when the active week is a newer final", () => {

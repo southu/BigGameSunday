@@ -113,16 +113,55 @@ describe("selectActiveWeek", () => {
   });
 
   it("e: skip path: final/skipped W1 + open W2 → W2", () => {
-    const skipped = w(1, "final");
-    const open = w(2, "open");
+    const skipped = wr("w1", 1, "final");
+    const open = wr("w2", 2, "open");
     const picked = selectActiveWeek([skipped, open]);
     assert.equal(picked?.week_number, 2);
     assert.equal(picked?.status, "open");
+    assert.equal(picked?.id, "w2");
     assert.equal(selectActiveWeek([open, skipped])?.week_number, 2);
+    assert.equal(weekSwitcherLabel(open, picked), "This Sunday");
+    assert.equal(weekSwitcherLabel(skipped, picked), "Week 1");
+    assert.notEqual(weekSwitcherLabel(skipped, picked), "Next week");
+    assert.equal(pickViewWeek([skipped, open], picked, null)?.id, "w2");
+    assert.equal(pickViewWeek([skipped, open], picked, "next")?.id, "w2");
     const dirty = { ...open, finalized_at: "2026-09-15T19:04:43.880Z" };
     assert.equal(selectActiveWeek([skipped, dirty])?.week_number, 2);
     assert.equal(selectActiveWeek([skipped, dirty])?.status, "open");
     assert.equal(selectActiveWeek([dirty, skipped])?.week_number, 2);
+    assert.equal(weekSwitcherLabel(dirty, selectActiveWeek([skipped, dirty])), "This Sunday");
+  });
+
+  it("Harper House: skipped W1 + dirty-open W2 is This Sunday, not leftover W1", () => {
+    const skipped = {
+      ...wr("3e3aeeeb", 1, "final"),
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00.000Z",
+    };
+    const dirtyOpen = {
+      ...wr("52a42a9e", 2, "open"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const weeks = [skipped, dirtyOpen];
+    const reverse = [dirtyOpen, skipped];
+    const active = selectActiveWeek(weeks);
+    assert.equal(active?.id, "52a42a9e");
+    assert.equal(active?.week_number, 2);
+    assert.equal(active?.status, "open");
+    assert.equal(selectActiveWeek(reverse)?.id, "52a42a9e");
+    assert.equal(weekSwitcherLabel(dirtyOpen, active), "This Sunday");
+    assert.equal(weekSwitcherLabel(skipped, active), "Week 1");
+    assert.notEqual(weekSwitcherLabel(skipped, active), "Next week");
+    assert.equal(pickViewWeek(weeks, active, null)?.id, "52a42a9e");
+    assert.equal(pickViewWeek(weeks, active, "next")?.id, "52a42a9e");
+    assert.equal(skipTargetWeek(weeks, dirtyOpen)?.week_number, 2);
+    assert.equal(skipTargetWeek(weeks, skipped)?.week_number, 2);
+    const leftover = skipTargetWeek(weeks, skipped);
+    assert.equal(skipLandingWeek(weeks, leftover!)?.week_number, 2);
+    assert.equal(skipLandingWeek(weeks, leftover!)?.status, "open");
+    assert.equal(skipLandingWeek(weeks, dirtyOpen)?.week_number, 2);
+    assert.equal(skipLandingWeek(weeks, dirtyOpen)?.status, "open");
   });
 
   it("ranking ignores leftover finalize and lock stamps", () => {
@@ -173,6 +212,8 @@ describe("selectActiveWeek", () => {
     assert.doesNotMatch(body, /status === ["']final["']/);
     assert.doesNotMatch(src, /ranked\.find\(\(w\) => w\.status === "draft"\)/);
     assert.doesNotMatch(src, /else latest draft/);
+    assert.match(src, /function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
+    assert.match(src, /weeks\.find\(\(w\) => isSameSlot\(w, slot\)\)/);
   });
 
   it("does not label This Sunday when the active week is a newer final", () => {
