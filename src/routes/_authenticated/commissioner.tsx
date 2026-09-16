@@ -14,6 +14,7 @@ import {
   pickViewWeek,
   shouldOpenExistingNextWeek,
   skipClearsCalledMoments,
+  skipClearsGameOutcomes,
   skipControlCopy,
   skipLockNeedsRefresh,
   skipTargetWeek,
@@ -601,6 +602,13 @@ function Commissioner() {
               .in("card_id", cardIds);
             if (scoreErr) throw scoreErr;
           }
+        }
+        if (skipClearsGameOutcomes(next)) {
+          const { error: gameErr } = await db
+            .from("games")
+            .update({ home_score: null, away_score: null, upset_won: null })
+            .eq("week_id", nextId);
+          if (gameErr) throw gameErr;
         }
       } else if (next && skipLockNeedsRefresh(next.lock_at)) {
         const { error: lockErr } = await db

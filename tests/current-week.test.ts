@@ -8,6 +8,7 @@ import {
   selectActiveWeek,
   shouldOpenExistingNextWeek,
   skipClearsCalledMoments,
+  skipClearsGameOutcomes,
   skipControlCopy,
   skipLockNeedsRefresh,
   skipTargetWeek,
@@ -183,6 +184,10 @@ describe("selectActiveWeek", () => {
     expect(skipClearsCalledMoments(w(2, "locked"))).toBe(false);
     expect(skipClearsCalledMoments(w(2, "draft"))).toBe(false);
     expect(skipClearsCalledMoments(w(2, "open"))).toBe(false);
+    expect(skipClearsGameOutcomes(premature)).toBe(true);
+    expect(skipClearsGameOutcomes(w(2, "locked"))).toBe(false);
+    expect(skipClearsGameOutcomes(w(2, "draft"))).toBe(false);
+    expect(skipClearsGameOutcomes(w(2, "open"))).toBe(false);
     const after = [w(1, "final"), w(2, "open")];
     expect(selectActiveWeek(after)?.week_number).toBe(2);
     expect(selectActiveWeek(after)?.status).toBe("open");
@@ -305,6 +310,10 @@ describe("useCurrentWeek production wiring", () => {
     expect(skipFn).toMatch(/skipClearsCalledMoments/);
     expect(skipFn).toMatch(/result:\s*null/);
     expect(skipFn).toMatch(/weekly_scores/);
+    expect(skipFn).toMatch(/skipClearsGameOutcomes/);
+    expect(skipFn).toMatch(/home_score:\s*null/);
+    expect(skipFn).toMatch(/away_score:\s*null/);
+    expect(skipFn).toMatch(/upset_won:\s*null/);
     expect(skipFn.indexOf("shouldOpenExistingNextWeek")).toBeLessThan(
       skipFn.lastIndexOf("leftover.id"),
     );

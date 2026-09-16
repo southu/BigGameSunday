@@ -148,6 +148,16 @@ export function skipClearsCalledMoments(next: WeekLike | null | undefined): bool
   return !!next && next.status === "final";
 }
 
+/**
+ * Premature finalize / live scoring may write game scores and settle upset
+ * watches. Skip must clear those so Tuesday play is not already decided
+ * (finalize treats a non-null upset_won as the game being over).
+ * A locked week may have real Sunday results — leave those alone.
+ */
+export function skipClearsGameOutcomes(next: WeekLike | null | undefined): boolean {
+  return !!next && next.status === "final";
+}
+
 /** Past lock times would immediately re-lock a reopened week; refresh them on skip. */
 export function skipLockNeedsRefresh(lockAt: string | null | undefined, now = Date.now()): boolean {
   if (!lockAt) return false;

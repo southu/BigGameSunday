@@ -9,6 +9,7 @@ import {
   selectActiveWeek,
   shouldOpenExistingNextWeek,
   skipClearsCalledMoments,
+  skipClearsGameOutcomes,
   skipControlCopy,
   skipLockNeedsRefresh,
   skipTargetWeek,
@@ -183,6 +184,10 @@ describe("selectActiveWeek", () => {
     assert.equal(skipClearsCalledMoments(w(2, "locked")), false);
     assert.equal(skipClearsCalledMoments(w(2, "draft")), false);
     assert.equal(skipClearsCalledMoments(w(2, "open")), false);
+    assert.equal(skipClearsGameOutcomes(premature), true);
+    assert.equal(skipClearsGameOutcomes(w(2, "locked")), false);
+    assert.equal(skipClearsGameOutcomes(w(2, "draft")), false);
+    assert.equal(skipClearsGameOutcomes(w(2, "open")), false);
     const after = [w(1, "final"), w(2, "open")];
     assert.equal(selectActiveWeek(after)?.week_number, 2);
     assert.equal(selectActiveWeek(after)?.status, "open");
@@ -305,6 +310,10 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(skipFn, /skipClearsCalledMoments/);
     assert.match(skipFn, /result:\s*null/);
     assert.match(skipFn, /weekly_scores/);
+    assert.match(skipFn, /skipClearsGameOutcomes/);
+    assert.match(skipFn, /home_score:\s*null/);
+    assert.match(skipFn, /away_score:\s*null/);
+    assert.match(skipFn, /upset_won:\s*null/);
     assert.ok(
       skipFn.indexOf("shouldOpenExistingNextWeek") < skipFn.lastIndexOf("leftover.id"),
       "open next before closing leftover so a leftover-close failure still leaves a playable week",
