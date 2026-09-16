@@ -195,6 +195,31 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek(after)?.status, "open");
   });
 
+  it("skip scrubs premature finalize leftovers on an already-open next week", () => {
+    const leftover = w(1, "draft");
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const cleanOpen = w(2, "open");
+    const lockedWithStamp = { ...w(2, "locked"), finalized_at: "2026-09-15T19:04:43.880Z" };
+
+    assert.equal(shouldOpenExistingNextWeek(dirtyOpen), true);
+    assert.equal(shouldOpenExistingNextWeek(cleanOpen), false);
+    assert.equal(skipUnlocksCards(dirtyOpen), true);
+    assert.equal(skipUnlocksCards(cleanOpen), false);
+    assert.equal(skipClearsCalledMoments(dirtyOpen), true);
+    assert.equal(skipClearsCalledMoments(cleanOpen), false);
+    assert.equal(skipClearsCalledMoments(w(2, "locked")), false);
+    assert.equal(skipClearsCalledMoments(lockedWithStamp), false);
+    assert.equal(skipClearsGameOutcomes(dirtyOpen), true);
+    assert.equal(skipClearsGameOutcomes(cleanOpen), false);
+    assert.equal(skipClearsGameOutcomes(w(2, "locked")), false);
+    assert.equal(skipClearsGameOutcomes(lockedWithStamp), false);
+
+    assert.equal(skipTargetWeek([leftover, dirtyOpen], dirtyOpen)?.week_number, 1);
+    const after = [w(1, "final"), dirtyOpen];
+    assert.equal(selectActiveWeek(after)?.week_number, 2);
+    assert.equal(selectActiveWeek(after)?.status, "open");
+  });
+
   it("skip copy names leftover draft when viewing a premature-final week", () => {
     const leftover = w(1, "draft");
     const premature = w(2, "final");

@@ -8,6 +8,8 @@ export type WeekLike = {
   season_year: number;
   week_number: number;
   status: string;
+  /** Ranking ignores this. Skip uses it to find a premature-finalize leftover. */
+  finalized_at?: string | null;
 };
 
 export type WeekRef = WeekLike & { id: string };
@@ -120,42 +122,54 @@ export function skipTargetWeek<T extends WeekLike>(
   return null;
 }
 
+/** Open + leftover finalize stamp: skip must reopen/scrub, not take the already-open path. */
+function hasPrematureFinalizeLeftover(week: WeekLike | null | undefined): boolean {
+  return !!week && week.status === "open" && !!week.finalized_at;
+}
+
 /**
- * After skip, an existing next week is playable only when already open.
- * Draft, locked, or prematurely final next weeks must be reopened.
+ * After skip, an existing next week is playable only when already open
+ * without a leftover finalize stamp. Draft, locked, prematurely final,
+ * or open-with-finalized_at next weeks must be reopened (and scrubbed).
  */
 export function shouldOpenExistingNextWeek<T extends WeekLike>(
   next: T | null | undefined,
 ): next is T {
-  return !!next && next.status !== "open";
+  return !!next && (next.status !== "open" || hasPrematureFinalizeLeftover(next));
 }
 
 /**
  * Premature-final and locked next weeks may still have cards locked from
  * Reveal or kickoff. Skip must clear those so the family can play Tuesday.
- * A leftover draft has no week-level lock to lift.
+ * An already-open week with leftover finalized_at may too. A leftover draft
+ * has no week-level lock to lift.
  */
 export function skipUnlocksCards(next: WeekLike | null | undefined): boolean {
-  return !!next && (next.status === "locked" || next.status === "final");
+  return (
+    !!next &&
+    (next.status === "locked" || next.status === "final" || hasPrematureFinalizeLeftover(next))
+  );
 }
 
 /**
  * Premature finalize marks uncalled moments miss and writes weekly scores.
- * Skip must uncall those so Tuesday play is not already "called".
+ * Skip must uncall those so Tuesday play is not already "called" — including
+ * an already-open week that still has finalized_at from that premature pass.
  * A locked week may have real Sunday results — leave those alone.
  */
 export function skipClearsCalledMoments(next: WeekLike | null | undefined): boolean {
-  return !!next && next.status === "final";
+  return !!next && (next.status === "final" || hasPrematureFinalizeLeftover(next));
 }
 
 /**
  * Premature finalize / live scoring may write game scores and settle upset
  * watches. Skip must clear those so Tuesday play is not already decided
- * (finalize treats a non-null upset_won as the game being over).
+ * (finalize treats a non-null upset_won as the game being over) — including
+ * an already-open week that still has finalized_at from that premature pass.
  * A locked week may have real Sunday results — leave those alone.
  */
 export function skipClearsGameOutcomes(next: WeekLike | null | undefined): boolean {
-  return !!next && next.status === "final";
+  return !!next && (next.status === "final" || hasPrematureFinalizeLeftover(next));
 }
 
 /** Past lock times would immediately re-lock a reopened week; refresh them on skip. */

@@ -195,6 +195,31 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek(after)?.status).toBe("open");
   });
 
+  it("skip scrubs premature finalize leftovers on an already-open next week", () => {
+    const leftover = w(1, "draft");
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const cleanOpen = w(2, "open");
+    const lockedWithStamp = { ...w(2, "locked"), finalized_at: "2026-09-15T19:04:43.880Z" };
+
+    expect(shouldOpenExistingNextWeek(dirtyOpen)).toBe(true);
+    expect(shouldOpenExistingNextWeek(cleanOpen)).toBe(false);
+    expect(skipUnlocksCards(dirtyOpen)).toBe(true);
+    expect(skipUnlocksCards(cleanOpen)).toBe(false);
+    expect(skipClearsCalledMoments(dirtyOpen)).toBe(true);
+    expect(skipClearsCalledMoments(cleanOpen)).toBe(false);
+    expect(skipClearsCalledMoments(w(2, "locked"))).toBe(false);
+    expect(skipClearsCalledMoments(lockedWithStamp)).toBe(false);
+    expect(skipClearsGameOutcomes(dirtyOpen)).toBe(true);
+    expect(skipClearsGameOutcomes(cleanOpen)).toBe(false);
+    expect(skipClearsGameOutcomes(w(2, "locked"))).toBe(false);
+    expect(skipClearsGameOutcomes(lockedWithStamp)).toBe(false);
+
+    expect(skipTargetWeek([leftover, dirtyOpen], dirtyOpen)?.week_number).toBe(1);
+    const after = [w(1, "final"), dirtyOpen];
+    expect(selectActiveWeek(after)?.week_number).toBe(2);
+    expect(selectActiveWeek(after)?.status).toBe("open");
+  });
+
   it("skip copy names leftover draft when viewing a premature-final week", () => {
     const leftover = w(1, "draft");
     const premature = w(2, "final");
