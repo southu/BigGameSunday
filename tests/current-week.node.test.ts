@@ -91,6 +91,18 @@ describe("selectActiveWeek", () => {
     assert.equal(forward?.status, "final");
     assert.equal(reverse?.week_number, 2);
     assert.equal(reverse?.status, "final");
+    const harperDraft = wr("3e3aeeeb", 1, "draft");
+    const harperFinal = wr("52a42a9e", 2, "final");
+    const harper = selectActiveWeek([harperDraft, harperFinal]);
+    assert.equal(harper?.id, "52a42a9e");
+    assert.equal(harper?.week_number, 2);
+    assert.equal(harper?.status, "final");
+    assert.equal(selectActiveWeek([harperFinal, harperDraft])?.id, "52a42a9e");
+    assert.equal(weekSwitcherLabel(harperDraft, harper), "Week 1");
+    assert.notEqual(weekSwitcherLabel(harperDraft, harper), "This Sunday");
+    assert.notEqual(weekSwitcherLabel(harperDraft, harper), "Next week");
+    assert.equal(weekSwitcherLabel(harperFinal, harper), "Week 2");
+    assert.equal(pickViewWeek([harperDraft, harperFinal], harper, null)?.id, "52a42a9e");
   });
 
   it("b: draft W1 + open W2 → active W2", () => {
@@ -100,6 +112,14 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([open, leftover])?.week_number, 2);
     assert.equal(selectActiveWeek([leftover, open])?.status, "open");
     assert.equal(selectActiveWeek([leftover, w(2, "locked")])?.week_number, 2);
+    const harperDraft = wr("3e3aeeeb", 1, "draft");
+    const harperOpen = wr("52a42a9e", 2, "open");
+    const harper = selectActiveWeek([harperDraft, harperOpen]);
+    assert.equal(harper?.id, "52a42a9e");
+    assert.equal(harper?.status, "open");
+    assert.equal(weekSwitcherLabel(harperOpen, harper), "This Sunday");
+    assert.equal(weekSwitcherLabel(harperDraft, harper), "Week 1");
+    assert.notEqual(weekSwitcherLabel(harperDraft, harper), "This Sunday");
   });
 
   it("c: open W1 + draft W2 → active W1, W2 labeled Next week", () => {

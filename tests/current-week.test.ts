@@ -90,6 +90,18 @@ describe("selectActiveWeek", () => {
     expect(forward?.status).toBe("final");
     expect(reverse?.week_number).toBe(2);
     expect(reverse?.status).toBe("final");
+    const harperDraft = wr("3e3aeeeb", 1, "draft");
+    const harperFinal = wr("52a42a9e", 2, "final");
+    const harper = selectActiveWeek([harperDraft, harperFinal]);
+    expect(harper?.id).toBe("52a42a9e");
+    expect(harper?.week_number).toBe(2);
+    expect(harper?.status).toBe("final");
+    expect(selectActiveWeek([harperFinal, harperDraft])?.id).toBe("52a42a9e");
+    expect(weekSwitcherLabel(harperDraft, harper)).toBe("Week 1");
+    expect(weekSwitcherLabel(harperDraft, harper)).not.toBe("This Sunday");
+    expect(weekSwitcherLabel(harperDraft, harper)).not.toBe("Next week");
+    expect(weekSwitcherLabel(harperFinal, harper)).toBe("Week 2");
+    expect(pickViewWeek([harperDraft, harperFinal], harper, null)?.id).toBe("52a42a9e");
   });
 
   it("b: draft W1 + open W2 → active W2", () => {
@@ -99,6 +111,14 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([open, leftover])?.week_number).toBe(2);
     expect(selectActiveWeek([leftover, open])?.status).toBe("open");
     expect(selectActiveWeek([leftover, w(2, "locked")])?.week_number).toBe(2);
+    const harperDraft = wr("3e3aeeeb", 1, "draft");
+    const harperOpen = wr("52a42a9e", 2, "open");
+    const harper = selectActiveWeek([harperDraft, harperOpen]);
+    expect(harper?.id).toBe("52a42a9e");
+    expect(harper?.status).toBe("open");
+    expect(weekSwitcherLabel(harperOpen, harper)).toBe("This Sunday");
+    expect(weekSwitcherLabel(harperDraft, harper)).toBe("Week 1");
+    expect(weekSwitcherLabel(harperDraft, harper)).not.toBe("This Sunday");
   });
 
   it("c: open W1 + draft W2 → active W1, W2 labeled Next week", () => {

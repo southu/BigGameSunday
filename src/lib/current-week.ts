@@ -50,6 +50,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * hide a newer final W2 (Harper House).
  */
 export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | null {
+  if (weeks.length === 0) return null;
   let latestInPlay: T | null = null;
   let newest: T | null = null;
   for (const week of weeks) {
