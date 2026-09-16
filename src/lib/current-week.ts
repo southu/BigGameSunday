@@ -350,17 +350,20 @@ export function skipUnlocksCardsOnLockRefresh(
   return typeof lockFallback === "string" && lockFallback.length > 0;
 }
 
-/** This Sunday = in-play active slot; Next week = newer draft the commish can open. */
+/** This Sunday = in-play active slot; Next week = the next slot when it is a newer draft. */
 export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
   if (!active) return `Week ${w.week_number}`;
   if (isInPlay(active.status) && isSameSlot(w, active)) return "This Sunday";
-  if (isInPlay(active.status) && isNewerDraft(w, active)) return "Next week";
+  if (isInPlay(active.status) && isNewerDraft(w, active) && isSameSlot(w, nextWeekSlot(active))) {
+    return "Next week";
+  }
   return `Week ${w.week_number}`;
 }
 
 /**
  * Commissioner view: default is the active (open/locked) week.
  * `next` or a week id reaches the auto-created draft without changing selectActiveWeek.
+ * Prefer the next slot's draft so a later leftover draft cannot steal "next".
  */
 export function pickViewWeek<T extends WeekRef>(
   weeks: readonly T[],
@@ -368,8 +371,9 @@ export function pickViewWeek<T extends WeekRef>(
   requested?: string | null,
 ): T | null {
   if (requested === "next" && active) {
-    const ranked = [...weeks].sort(recency);
-    const next = ranked.find((w) => isNewerDraft(w, active));
+    const slotDraft = weekAtSlot(weeks, nextWeekSlot(active));
+    if (slotDraft && isNewerDraft(slotDraft, active)) return slotDraft;
+    const next = [...weeks].sort((a, b) => recency(b, a)).find((w) => isNewerDraft(w, active));
     if (next) return next;
   }
   if (requested && requested !== "next") {

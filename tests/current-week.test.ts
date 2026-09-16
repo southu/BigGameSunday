@@ -599,6 +599,22 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     expect(pickViewWeek(weeks, active, "w2")?.id).toBe("w2");
     expect(selectActiveWeek(weeks)?.status).toBe("locked");
   });
+
+  it("labels Next week only on the next slot so a later draft cannot steal it", () => {
+    const open = wr("w1", 1, "open");
+    const nextDraft = wr("w2", 2, "draft");
+    const laterDraft = wr("w3", 3, "draft");
+    const weeksWithLater = [open, nextDraft, laterDraft];
+    const active = selectActiveWeek(weeksWithLater);
+    expect(active?.id).toBe("w1");
+    expect(weekSwitcherLabel(open, active)).toBe("This Sunday");
+    expect(weekSwitcherLabel(nextDraft, active)).toBe("Next week");
+    expect(weekSwitcherLabel(laterDraft, active)).toBe("Week 3");
+    expect(weekSwitcherLabel(laterDraft, active)).not.toBe("Next week");
+    expect(pickViewWeek(weeksWithLater, active, "next")?.id).toBe("w2");
+    expect(pickViewWeek([open, laterDraft], active, "next")?.id).toBe("w3");
+    expect(weekSwitcherLabel(laterDraft, selectActiveWeek([open, laterDraft]))).toBe("Week 3");
+  });
 });
 
 describe("useCurrentWeek production wiring", () => {

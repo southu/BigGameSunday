@@ -600,6 +600,22 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     assert.equal(pickViewWeek(weeks, active, "w2")?.id, "w2");
     assert.equal(selectActiveWeek(weeks)?.status, "locked");
   });
+
+  it("labels Next week only on the next slot so a later draft cannot steal it", () => {
+    const open = wr("w1", 1, "open");
+    const nextDraft = wr("w2", 2, "draft");
+    const laterDraft = wr("w3", 3, "draft");
+    const weeksWithLater = [open, nextDraft, laterDraft];
+    const active = selectActiveWeek(weeksWithLater);
+    assert.equal(active?.id, "w1");
+    assert.equal(weekSwitcherLabel(open, active), "This Sunday");
+    assert.equal(weekSwitcherLabel(nextDraft, active), "Next week");
+    assert.equal(weekSwitcherLabel(laterDraft, active), "Week 3");
+    assert.notEqual(weekSwitcherLabel(laterDraft, active), "Next week");
+    assert.equal(pickViewWeek(weeksWithLater, active, "next")?.id, "w2");
+    assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w3");
+    assert.equal(weekSwitcherLabel(laterDraft, selectActiveWeek([open, laterDraft])), "Week 3");
+  });
 });
 
 describe("useCurrentWeek production wiring", () => {
