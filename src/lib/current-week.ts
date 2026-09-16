@@ -162,16 +162,22 @@ function hasNewerNonDraftThan(week: WeekSlot, weeks: readonly WeekLike[]): boole
 }
 
 /**
- * Skip leftover may create/reopen/refresh next only when no newer week is
- * already in play. Otherwise just close the leftover and leave the family
- * on that newer week (auto-created W3 must not bounce them back to W2).
+ * Skip leftover may create/reopen/refresh next only when that slot is not
+ * already in play and no newer week is in play. Otherwise just close the
+ * leftover and leave the family on This Sunday (leftover locked W1 must
+ * not unlock open/locked W2; auto-created W3 must not bounce them to W2).
+ * Draft/final next still opens — leftover draft W1 + premature-final W2.
+ * Empty `weeks` still touches (no sibling to inspect).
  */
 export function skipTouchesNextWeek(
   next: WeekSlot | null | undefined,
   weeks: readonly WeekLike[],
 ): boolean {
   if (!next) return !weeks.some((w) => isInPlay(w.status));
-  return !hasNewerInPlayThan(next, weeks);
+  if (hasNewerInPlayThan(next, weeks)) return false;
+  const existing = weekAtSlot(weeks, next);
+  if (existing && isInPlay(existing.status)) return false;
+  return true;
 }
 
 function withStatus<T extends WeekLike>(week: T, status: string): T {
@@ -202,7 +208,7 @@ export function skipLandingWeek<T extends WeekLike>(weeks: readonly T[], leftove
 /**
  * Button and hint for the commissioner skip control.
  * Do not promise "start next week" / "open this week" when skip will only
- * close the leftover because a newer week is already in play.
+ * close the leftover because next (or a newer week) is already in play.
  */
 export function skipControlCopy(
   leftover: WeekLike,
@@ -416,8 +422,9 @@ export function skipScrubsViewedInPlace(
  * After skip, an existing next week is playable only when already open
  * without a leftover finalize stamp. Draft, locked, prematurely final,
  * or open-with-finalized_at next weeks must be reopened (and scrubbed)
- * — unless a newer week is already in play, in which case leftover skip
- * just closes the leftover and leaves the family on that newer week.
+ * — unless that next week (or a newer one) is already in play, in which
+ * case leftover skip just closes the leftover and leaves the family on
+ * This Sunday. Dirty-open next is already This Sunday; scrub it later.
  */
 export function shouldOpenExistingNextWeek<T extends WeekLike>(
   next: T | null | undefined,
