@@ -92,14 +92,26 @@ export function shouldAutopilotOpenDraft(
 }
 
 /**
+ * Autopilot must not lock a leftover-open week that still has a premature
+ * finalize stamp. Locking would freeze leftover miss marks; skip scrubs
+ * those so the family can play Tuesday (Harper: dirty-open W2).
+ */
+export function shouldAutopilotLockOpen(week: WeekLike): boolean {
+  return week.status === "open" && !hasPrematureFinalizeLeftover(week);
+}
+
+/**
  * Draft→open is only safe when this draft is the newest week. Opening a
  * leftover draft behind a newer week would steal the family via in-play
- * ranking (Harper: leftover W1 behind final/open W2). Lock/finalize stay.
+ * ranking (Harper: leftover W1 behind final/open W2). Lock/finalize stay
+ * unless this week still has leftover marks from a premature finish —
+ * skip scrubs those; locking would freeze them.
  */
 export function shouldOfferOpenCards(
   week: WeekLike,
   weeks: readonly WeekLike[],
 ): boolean {
+  if (skipScrubsLeftoverInPlace(week, weeks)) return false;
   if (week.status !== "draft") return true;
   return shouldAutopilotOpenDraft(week, weeks);
 }
@@ -201,13 +213,19 @@ export function skipControlCopy(
 }
 
 /**
- * Autopilot next-step for a leftover draft behind a newer week. Do not
- * promise "Open cards for the family" — skip is the Tuesday path.
+ * Autopilot next-step for a leftover week. Do not promise "Open cards"
+ * or "Lock the cards" — skip/scrub is the Tuesday path.
  */
 export function leftoverDraftNextStep(
   week: WeekLike,
   weeks: readonly WeekLike[],
 ): { label: string; at: null } | null {
+  if (skipScrubsLeftoverInPlace(week, weeks)) {
+    return {
+      label: "This week still has leftover marks — clear them so the family can play",
+      at: null,
+    };
+  }
   if (week.status !== "draft" || shouldAutopilotOpenDraft(week, weeks)) return null;
   const slot = nextWeekSlot(week);
   const touchesNext = skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks);

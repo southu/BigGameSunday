@@ -7,6 +7,7 @@ import {
   nextWeekSlot,
   pickViewWeek,
   selectActiveWeek,
+  shouldAutopilotLockOpen,
   shouldAutopilotOpenDraft,
   shouldOfferOpenCards,
   shouldOpenExistingNextWeek,
@@ -168,8 +169,20 @@ describe("selectActiveWeek", () => {
     expect(shouldOfferOpenCards(w(1, "draft"), [w(1, "draft")])).toBe(true);
     expect(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "draft")])).toBe(true);
     expect(shouldOfferOpenCards(w(1, "locked"), [w(1, "locked")])).toBe(true);
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const skipped = w(1, "final");
+    expect(shouldOfferOpenCards(dirtyOpen, [skipped, dirtyOpen])).toBe(false);
+    expect(shouldOfferOpenCards(dirtyOpen, [dirtyOpen, skipped])).toBe(false);
+    expect(shouldOfferOpenCards(w(2, "open"), [skipped, w(2, "open")])).toBe(true);
+    expect(
+      shouldOfferOpenCards(
+        { ...w(2, "final"), finalized_at: "2026-09-15T19:04:43.880Z", lock_at: "2026-09-18T00:15:00.000Z" },
+        [skipped, { ...w(2, "final"), finalized_at: "2026-09-15T19:04:43.880Z", lock_at: "2026-09-18T00:15:00.000Z" }],
+      ),
+    ).toBe(false);
     expect(selectActiveWeek([leftover, premature])?.week_number).toBe(2);
     expect(selectActiveWeek([{ ...leftover, status: "open" }, premature])?.week_number).toBe(1);
+    expect(selectActiveWeek([skipped, dirtyOpen])?.week_number).toBe(2);
   });
 
   it("leftover draft next step does not promise Open cards behind a newer week", () => {
@@ -195,6 +208,38 @@ describe("selectActiveWeek", () => {
     expect(behindNewerInPlay?.label).not.toMatch(/start next week/);
     expect(behindNewerInPlay?.label).not.toMatch(/Open cards/);
     expect(behindNewerInPlay?.label).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const skipped = w(1, "final");
+    const dirtyStep = leftoverDraftNextStep(dirtyOpen, [skipped, dirtyOpen]);
+    expect(dirtyStep?.label).toMatch(/leftover marks/);
+    expect(dirtyStep?.label).toMatch(/family can play/);
+    expect(dirtyStep?.at).toBeNull();
+    expect(dirtyStep?.label).not.toMatch(/Open cards/);
+    expect(dirtyStep?.label).not.toMatch(/Lock the cards/);
+    expect(dirtyStep?.label).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const premature = {
+      ...w(2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const prematureStep = leftoverDraftNextStep(premature, [skipped, premature]);
+    expect(prematureStep?.label).toMatch(/leftover marks/);
+    expect(prematureStep?.label).not.toMatch(/Open cards/);
+    expect(leftoverDraftNextStep(w(2, "open"), [skipped, w(2, "open")])).toBeNull();
+  });
+
+  it("autopilot does not lock a dirty-open leftover week", () => {
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    expect(shouldAutopilotLockOpen(dirtyOpen)).toBe(false);
+    expect(shouldAutopilotLockOpen(w(2, "open"))).toBe(true);
+    expect(shouldAutopilotLockOpen(w(2, "draft"))).toBe(false);
+    expect(shouldAutopilotLockOpen(w(2, "locked"))).toBe(false);
+    expect(shouldAutopilotLockOpen(w(2, "final"))).toBe(false);
+    expect(
+      shouldAutopilotLockOpen({ ...w(2, "locked"), finalized_at: "2026-09-15T19:04:43.880Z" }),
+    ).toBe(false);
+    expect(selectActiveWeek([w(1, "final"), dirtyOpen])?.week_number).toBe(2);
+    expect(selectActiveWeek([w(1, "final"), dirtyOpen])?.status).toBe("open");
   });
 
   it("Harper House: skipped W1 + dirty-open W2 is This Sunday, not leftover W1", () => {
@@ -227,6 +272,10 @@ describe("selectActiveWeek", () => {
     expect(skipLandingWeek(weeks, leftover!)?.status).toBe("open");
     expect(skipLandingWeek(weeks, dirtyOpen)?.week_number).toBe(2);
     expect(skipLandingWeek(weeks, dirtyOpen)?.status).toBe("open");
+    expect(shouldOfferOpenCards(dirtyOpen, weeks)).toBe(false);
+    expect(shouldAutopilotLockOpen(dirtyOpen)).toBe(false);
+    expect(leftoverDraftNextStep(dirtyOpen, weeks)?.label).toMatch(/leftover marks/);
+    expect(leftoverDraftNextStep(dirtyOpen, weeks)?.label).not.toMatch(/Lock the cards/);
   });
 
   it("ranking ignores leftover finalize and lock stamps", () => {
@@ -933,13 +982,20 @@ describe("useCurrentWeek production wiring", () => {
       lib.indexOf("export function shouldOfferOpenCards"),
       lib.indexOf("function hasNewerInPlayThan"),
     );
+    expect(offerFn).toMatch(/skipScrubsLeftoverInPlace\(week,\s*weeks\)/);
+    expect(offerFn.indexOf("skipScrubsLeftoverInPlace")).toBeLessThan(
+      offerFn.indexOf("shouldAutopilotOpenDraft"),
+    );
     expect(offerFn).toMatch(/shouldAutopilotOpenDraft\(week,\s*weeks\)/);
     const stepFn = lib.slice(
       lib.indexOf("export function leftoverDraftNextStep"),
       lib.indexOf("function recoverableFinishedWeek"),
     );
+    expect(stepFn).toMatch(/skipScrubsLeftoverInPlace\(week,\s*weeks\)/);
+    expect(stepFn).toMatch(/leftover marks/);
     expect(stepFn).toMatch(/will not auto-open/);
     expect(stepFn).not.toMatch(/Open cards for the family/);
+    expect(stepFn).not.toMatch(/Lock the cards/);
     expect(stepFn).toMatch(/skipTouchesNextWeek/);
   });
 
@@ -957,14 +1013,22 @@ describe("useCurrentWeek production wiring", () => {
     expect(src).toMatch(/\.neq\("status", "final"\)/);
     expect(src).toMatch(/for \(const week of/);
     expect(src).toMatch(/shouldAutopilotOpenDraft/);
+    expect(src).toMatch(/shouldAutopilotLockOpen/);
+    expect(src).toMatch(/finalized_at/);
     const openFn = src.slice(
       src.indexOf('if (week.status === "draft")'),
-      src.indexOf('if (week.status === "open"'),
+      src.indexOf("// 2. Auto-lock"),
     );
     expect(openFn).toMatch(/shouldAutopilotOpenDraft\(week,/);
     expect(openFn).toMatch(/select\("season_year, week_number, status"\)/);
     expect(openFn).not.toMatch(/\.neq\("status", "final"\)/);
     expect(openFn.indexOf("shouldAutopilotOpenDraft")).toBeLessThan(openFn.indexOf('status: "open"'));
+    const lockFn = src.slice(
+      src.indexOf("// 2. Auto-lock"),
+      src.indexOf('if (week.status !== "locked")'),
+    );
+    expect(lockFn).toMatch(/shouldAutopilotLockOpen\(week\)/);
+    expect(lockFn.indexOf("shouldAutopilotLockOpen")).toBeLessThan(lockFn.indexOf('status: "locked"'));
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
     expect(autofill).toMatch(/auto_create_weeks/);
   });

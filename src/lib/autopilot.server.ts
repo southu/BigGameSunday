@@ -6,7 +6,7 @@ import { computeWeekScores } from "./finalize";
 import { fetchEspnScores, fetchFirstScoreWasTouchdown } from "./espn.server";
 import { ensureNextWeek } from "./autofill.server";
 import { DAY_MS, tuesdaySixAmEtAfter } from "./autopilot-schedule";
-import { shouldAutopilotOpenDraft } from "./current-week";
+import { shouldAutopilotLockOpen, shouldAutopilotOpenDraft } from "./current-week";
 
 type Db = { from: (table: string) => any };
 
@@ -25,6 +25,7 @@ type WeekRow = {
   week_number: number;
   status: string;
   lock_at: string | null;
+  finalized_at: string | null;
   auto_created_at: string | null;
   commissioner_edited_at: string | null;
   autopilot_hold: boolean;
@@ -188,7 +189,7 @@ export async function runAutopilot(
     const { data: weeks, error: wErr } = await db
       .from("weeks")
       .select(
-        "id, household_id, season_year, week_number, status, lock_at, auto_created_at, commissioner_edited_at, autopilot_hold",
+        "id, household_id, season_year, week_number, status, lock_at, finalized_at, auto_created_at, commissioner_edited_at, autopilot_hold",
       )
       .eq("household_id", hid)
       .neq("status", "final");
@@ -246,7 +247,12 @@ async function advanceWeek(
   }
 
   // 2. Auto-lock by timestamp, no button needed.
-  if (week.status === "open" && week.lock_at && now >= new Date(week.lock_at).getTime()) {
+  if (
+    week.status === "open" &&
+    week.lock_at &&
+    now >= new Date(week.lock_at).getTime() &&
+    shouldAutopilotLockOpen(week)
+  ) {
     const stamp = new Date().toISOString();
     const { error } = await db
       .from("weeks")

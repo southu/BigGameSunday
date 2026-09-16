@@ -8,6 +8,7 @@ import {
   nextWeekSlot,
   pickViewWeek,
   selectActiveWeek,
+  shouldAutopilotLockOpen,
   shouldAutopilotOpenDraft,
   shouldOfferOpenCards,
   shouldOpenExistingNextWeek,
@@ -171,8 +172,21 @@ describe("selectActiveWeek", () => {
     assert.equal(shouldOfferOpenCards(w(1, "draft"), [w(1, "draft")]), true);
     assert.equal(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "draft")]), true);
     assert.equal(shouldOfferOpenCards(w(1, "locked"), [w(1, "locked")]), true);
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const skipped = w(1, "final");
+    assert.equal(shouldOfferOpenCards(dirtyOpen, [skipped, dirtyOpen]), false);
+    assert.equal(shouldOfferOpenCards(dirtyOpen, [dirtyOpen, skipped]), false);
+    assert.equal(shouldOfferOpenCards(w(2, "open"), [skipped, w(2, "open")]), true);
+    assert.equal(
+      shouldOfferOpenCards(
+        { ...w(2, "final"), finalized_at: "2026-09-15T19:04:43.880Z", lock_at: "2026-09-18T00:15:00.000Z" },
+        [skipped, { ...w(2, "final"), finalized_at: "2026-09-15T19:04:43.880Z", lock_at: "2026-09-18T00:15:00.000Z" }],
+      ),
+      false,
+    );
     assert.equal(selectActiveWeek([leftover, premature])?.week_number, 2);
     assert.equal(selectActiveWeek([{ ...leftover, status: "open" }, premature])?.week_number, 1);
+    assert.equal(selectActiveWeek([skipped, dirtyOpen])?.week_number, 2);
   });
 
   it("leftover draft next step does not promise Open cards behind a newer week", () => {
@@ -201,6 +215,39 @@ describe("selectActiveWeek", () => {
       behindNewerInPlay?.label ?? "",
       /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i,
     );
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const skipped = w(1, "final");
+    const dirtyStep = leftoverDraftNextStep(dirtyOpen, [skipped, dirtyOpen]);
+    assert.match(dirtyStep?.label ?? "", /leftover marks/);
+    assert.match(dirtyStep?.label ?? "", /family can play/);
+    assert.equal(dirtyStep?.at, null);
+    assert.doesNotMatch(dirtyStep?.label ?? "", /Open cards/);
+    assert.doesNotMatch(dirtyStep?.label ?? "", /Lock the cards/);
+    assert.doesNotMatch(dirtyStep?.label ?? "", /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const premature = {
+      ...w(2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const prematureStep = leftoverDraftNextStep(premature, [skipped, premature]);
+    assert.match(prematureStep?.label ?? "", /leftover marks/);
+    assert.doesNotMatch(prematureStep?.label ?? "", /Open cards/);
+    assert.equal(leftoverDraftNextStep(w(2, "open"), [skipped, w(2, "open")]), null);
+  });
+
+  it("autopilot does not lock a dirty-open leftover week", () => {
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    assert.equal(shouldAutopilotLockOpen(dirtyOpen), false);
+    assert.equal(shouldAutopilotLockOpen(w(2, "open")), true);
+    assert.equal(shouldAutopilotLockOpen(w(2, "draft")), false);
+    assert.equal(shouldAutopilotLockOpen(w(2, "locked")), false);
+    assert.equal(shouldAutopilotLockOpen(w(2, "final")), false);
+    assert.equal(
+      shouldAutopilotLockOpen({ ...w(2, "locked"), finalized_at: "2026-09-15T19:04:43.880Z" }),
+      false,
+    );
+    assert.equal(selectActiveWeek([w(1, "final"), dirtyOpen])?.week_number, 2);
+    assert.equal(selectActiveWeek([w(1, "final"), dirtyOpen])?.status, "open");
   });
 
   it("Harper House: skipped W1 + dirty-open W2 is This Sunday, not leftover W1", () => {
@@ -233,6 +280,10 @@ describe("selectActiveWeek", () => {
     assert.equal(skipLandingWeek(weeks, leftover!)?.status, "open");
     assert.equal(skipLandingWeek(weeks, dirtyOpen)?.week_number, 2);
     assert.equal(skipLandingWeek(weeks, dirtyOpen)?.status, "open");
+    assert.equal(shouldOfferOpenCards(dirtyOpen, weeks), false);
+    assert.equal(shouldAutopilotLockOpen(dirtyOpen), false);
+    assert.match(leftoverDraftNextStep(dirtyOpen, weeks)?.label ?? "", /leftover marks/);
+    assert.doesNotMatch(leftoverDraftNextStep(dirtyOpen, weeks)?.label ?? "", /Lock the cards/);
   });
 
   it("ranking ignores leftover finalize and lock stamps", () => {
@@ -952,13 +1003,21 @@ describe("useCurrentWeek production wiring", () => {
       lib.indexOf("export function shouldOfferOpenCards"),
       lib.indexOf("function hasNewerInPlayThan"),
     );
+    assert.match(offerFn, /skipScrubsLeftoverInPlace\(week,\s*weeks\)/);
+    assert.ok(
+      offerFn.indexOf("skipScrubsLeftoverInPlace") < offerFn.indexOf("shouldAutopilotOpenDraft"),
+      "leftover-marks guard must hide Lock before leftover-draft Open is considered",
+    );
     assert.match(offerFn, /shouldAutopilotOpenDraft\(week,\s*weeks\)/);
     const stepFn = lib.slice(
       lib.indexOf("export function leftoverDraftNextStep"),
       lib.indexOf("function recoverableFinishedWeek"),
     );
+    assert.match(stepFn, /skipScrubsLeftoverInPlace\(week,\s*weeks\)/);
+    assert.match(stepFn, /leftover marks/);
     assert.match(stepFn, /will not auto-open/);
     assert.doesNotMatch(stepFn, /Open cards for the family/);
+    assert.doesNotMatch(stepFn, /Lock the cards/);
     assert.match(stepFn, /skipTouchesNextWeek/);
   });
 
@@ -976,9 +1035,11 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(src, /\.neq\("status", "final"\)/);
     assert.match(src, /for \(const week of/);
     assert.match(src, /shouldAutopilotOpenDraft/);
+    assert.match(src, /shouldAutopilotLockOpen/);
+    assert.match(src, /finalized_at/);
     const openFn = src.slice(
       src.indexOf('if (week.status === "draft")'),
-      src.indexOf('if (week.status === "open"'),
+      src.indexOf("// 2. Auto-lock"),
     );
     assert.match(openFn, /shouldAutopilotOpenDraft\(week,/);
     assert.match(openFn, /select\("season_year, week_number, status"\)/);
@@ -986,6 +1047,15 @@ describe("useCurrentWeek production wiring", () => {
     assert.ok(
       openFn.indexOf("shouldAutopilotOpenDraft") < openFn.indexOf('status: "open"'),
       "leftover-draft guard must run before auto-open",
+    );
+    const lockFn = src.slice(
+      src.indexOf("// 2. Auto-lock"),
+      src.indexOf('if (week.status !== "locked")'),
+    );
+    assert.match(lockFn, /shouldAutopilotLockOpen\(week\)/);
+    assert.ok(
+      lockFn.indexOf("shouldAutopilotLockOpen") < lockFn.indexOf('status: "locked"'),
+      "dirty-open leftover guard must run before auto-lock",
     );
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
     assert.match(autofill, /auto_create_weeks/);
