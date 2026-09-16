@@ -101,6 +101,26 @@ export function skipTouchesNextWeek(
   return !hasNewerInPlayThan(next, weeks);
 }
 
+function withStatus<T extends WeekLike>(week: T, status: string): T {
+  return { ...week, status };
+}
+
+/**
+ * Commissioner view after skip. If skip opened/created next, land there
+ * (existing next only — a newly created week is the caller's nextId).
+ * If a newer week is already in play, land on the post-skip active week
+ * so closing leftover W1 does not leave the panel stuck on that draft.
+ */
+export function skipLandingWeek<T extends WeekLike>(weeks: readonly T[], leftover: T): T | null {
+  const closed = weeks.map((w) => (isSameSlot(w, leftover) ? withStatus(w, "final") : w));
+  const slot = nextWeekSlot(leftover);
+  if (!skipTouchesNextWeek(slot, weeks)) return selectActiveWeek(closed);
+  const next = weekAtSlot(weeks, slot);
+  if (!next) return selectActiveWeek(closed);
+  const opened = closed.map((w) => (isSameSlot(w, slot) ? withStatus(w, "open") : w));
+  return selectActiveWeek(opened);
+}
+
 /** Button and hint for the commissioner skip control. */
 export function skipControlCopy(
   leftover: WeekLike,

@@ -10,6 +10,7 @@ import {
   skipClearsCalledMoments,
   skipClearsGameOutcomes,
   skipControlCopy,
+  skipLandingWeek,
   skipLockAfterAutofill,
   skipLockNeedsRefresh,
   skipScrubsViewedInPlace,
@@ -286,6 +287,34 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([leftover, premature, draft3])?.week_number).toBe(3);
   });
 
+  it("skip landing jumps to the post-skip active week instead of staying on leftover", () => {
+    const leftover = wr("w1", 1, "draft");
+    const premature = wr("w2", 2, "final");
+    const open3 = wr("w3", 3, "open");
+    const locked3 = wr("w3", 3, "locked");
+    const draft3 = wr("w3", 3, "draft");
+    const open2 = wr("w2", 2, "open");
+
+    expect(skipLandingWeek([leftover, premature, open3], leftover)?.id).toBe("w3");
+    expect(skipLandingWeek([leftover, premature, locked3], leftover)?.id).toBe("w3");
+    expect(skipLandingWeek([leftover, premature, open3], leftover)?.status).toBe("open");
+
+    const reopen = skipLandingWeek([leftover, premature], leftover);
+    expect(reopen?.id).toBe("w2");
+    expect(reopen?.status).toBe("open");
+
+    expect(skipLandingWeek([leftover, open2], leftover)?.id).toBe("w2");
+    expect(skipLandingWeek([leftover, open2], leftover)?.status).toBe("open");
+
+    const reopenWithDraft3 = skipLandingWeek([leftover, premature, draft3], leftover);
+    expect(reopenWithDraft3?.id).toBe("w2");
+    expect(reopenWithDraft3?.status).toBe("open");
+
+    const only = skipLandingWeek([leftover], leftover);
+    expect(only?.id).toBe("w1");
+    expect(only?.status).toBe("final");
+  });
+
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
     const now = Date.parse("2026-09-15T16:00:00.000Z");
     expect(skipLockNeedsRefresh("2026-09-13T17:00:00.000Z", now)).toBe(true);
@@ -409,6 +438,8 @@ describe("useCurrentWeek production wiring", () => {
     expect(skipFn).toMatch(/status:\s*"final"/);
     expect(skipFn).toMatch(/status:\s*"open"/);
     expect(skipFn).toMatch(/skipTouchesNextWeek/);
+    expect(skipFn).toMatch(/skipLandingWeek\(weeks,\s*leftover\)/);
+    expect(skipFn).toMatch(/setViewWeekId\(landing\.id\)/);
     expect(skipFn).toMatch(/shouldOpenExistingNextWeek\(next,\s*weeks\)/);
     expect(skipFn).toMatch(/finalized_at:\s*null/);
     expect(skipFn).toMatch(/skipUnlocksCards/);

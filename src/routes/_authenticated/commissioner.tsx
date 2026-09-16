@@ -16,6 +16,7 @@ import {
   skipClearsCalledMoments,
   skipClearsGameOutcomes,
   skipControlCopy,
+  skipLandingWeek,
   skipLockAfterAutofill,
   skipScrubsViewedInPlace,
   skipTargetWeek,
@@ -696,6 +697,8 @@ function Commissioner() {
         ["current-week", household.id],
         ["season", household.id],
       ]);
+      const landing = skipLandingWeek(weeks, leftover);
+      if (landing) setViewWeekId(landing.id);
       return `Week ${skippedNumber} skipped.`;
     }, "Week skipped — next week is open.");
 

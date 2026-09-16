@@ -11,6 +11,7 @@ import {
   skipClearsCalledMoments,
   skipClearsGameOutcomes,
   skipControlCopy,
+  skipLandingWeek,
   skipLockAfterAutofill,
   skipLockNeedsRefresh,
   skipScrubsViewedInPlace,
@@ -287,6 +288,34 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([leftover, premature, draft3])?.week_number, 3);
   });
 
+  it("skip landing jumps to the post-skip active week instead of staying on leftover", () => {
+    const leftover = wr("w1", 1, "draft");
+    const premature = wr("w2", 2, "final");
+    const open3 = wr("w3", 3, "open");
+    const locked3 = wr("w3", 3, "locked");
+    const draft3 = wr("w3", 3, "draft");
+    const open2 = wr("w2", 2, "open");
+
+    assert.equal(skipLandingWeek([leftover, premature, open3], leftover)?.id, "w3");
+    assert.equal(skipLandingWeek([leftover, premature, locked3], leftover)?.id, "w3");
+    assert.equal(skipLandingWeek([leftover, premature, open3], leftover)?.status, "open");
+
+    const reopen = skipLandingWeek([leftover, premature], leftover);
+    assert.equal(reopen?.id, "w2");
+    assert.equal(reopen?.status, "open");
+
+    assert.equal(skipLandingWeek([leftover, open2], leftover)?.id, "w2");
+    assert.equal(skipLandingWeek([leftover, open2], leftover)?.status, "open");
+
+    const reopenWithDraft3 = skipLandingWeek([leftover, premature, draft3], leftover);
+    assert.equal(reopenWithDraft3?.id, "w2");
+    assert.equal(reopenWithDraft3?.status, "open");
+
+    const only = skipLandingWeek([leftover], leftover);
+    assert.equal(only?.id, "w1");
+    assert.equal(only?.status, "final");
+  });
+
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
     const now = Date.parse("2026-09-15T16:00:00.000Z");
     assert.equal(skipLockNeedsRefresh("2026-09-13T17:00:00.000Z", now), true);
@@ -411,6 +440,8 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(skipFn, /status:\s*"final"/);
     assert.match(skipFn, /status:\s*"open"/);
     assert.match(skipFn, /skipTouchesNextWeek/);
+    assert.match(skipFn, /skipLandingWeek\(weeks,\s*leftover\)/);
+    assert.match(skipFn, /setViewWeekId\(landing\.id\)/);
     assert.match(skipFn, /shouldOpenExistingNextWeek\(next,\s*weeks\)/);
     assert.match(skipFn, /finalized_at:\s*null/);
     assert.match(skipFn, /skipUnlocksCards/);
