@@ -14,6 +14,7 @@ import {
   skipLockNeedsRefresh,
   skipTargetWeek,
   skipUnlocksCards,
+  skipUnlocksCardsOnLockRefresh,
   weekAtSlot,
   weekSwitcherLabel,
 } from "../src/lib/current-week";
@@ -225,6 +226,21 @@ describe("selectActiveWeek", () => {
     expect(skipLockAfterAutofill(null, sunday, now)).toBeUndefined();
   });
 
+  it("skip unlocks cards when a past lock is refreshed, not when ESPN kickoff is kept", () => {
+    const now = Date.parse("2026-09-15T16:00:00.000Z");
+    const sunday = "2026-09-20T17:00:00.000Z";
+    const thursday = "2026-09-17T00:15:00.000Z";
+    expect(skipUnlocksCards(w(2, "open"))).toBe(false);
+    expect(skipUnlocksCardsOnLockRefresh(skipLockAfterAutofill("2026-09-13T17:00:00.000Z", sunday, now))).toBe(
+      true,
+    );
+    expect(skipUnlocksCardsOnLockRefresh(skipLockAfterAutofill(thursday, sunday, now))).toBe(false);
+    expect(skipUnlocksCardsOnLockRefresh(undefined)).toBe(false);
+    expect(skipUnlocksCardsOnLockRefresh(null)).toBe(false);
+    expect(skipUnlocksCardsOnLockRefresh("")).toBe(false);
+    expect(skipUnlocksCardsOnLockRefresh(sunday)).toBe(true);
+  });
+
   it("returns null for an empty list", () => {
     expect(selectActiveWeek([])).toBeNull();
   });
@@ -316,6 +332,7 @@ describe("useCurrentWeek production wiring", () => {
     expect(skipFn).toMatch(/shouldOpenExistingNextWeek/);
     expect(skipFn).toMatch(/finalized_at:\s*null/);
     expect(skipFn).toMatch(/skipUnlocksCards/);
+    expect(skipFn).toMatch(/skipUnlocksCardsOnLockRefresh/);
     expect(skipFn).toMatch(/locked_at:\s*null/);
     expect(skipFn).toMatch(/auto_locked_at:\s*null/);
     expect(skipFn).toMatch(/skipClearsCalledMoments/);

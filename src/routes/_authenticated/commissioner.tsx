@@ -19,6 +19,7 @@ import {
   skipLockAfterAutofill,
   skipTargetWeek,
   skipUnlocksCards,
+  skipUnlocksCardsOnLockRefresh,
   weekAtSlot,
   weekSwitcherLabel,
 } from "@/lib/current-week";
@@ -594,7 +595,7 @@ function Commissioner() {
         if (lockFallback) patch.lock_at = lockFallback;
         const { error: openErr } = await db.from("weeks").update(patch).eq("id", nextId);
         if (openErr) throw openErr;
-        if (skipUnlocksCards(next)) {
+        if (skipUnlocksCards(next) || skipUnlocksCardsOnLockRefresh(lockFallback)) {
           const { error: unlockErr } = await db
             .from("cards")
             .update({ locked_at: null })
@@ -641,6 +642,13 @@ function Commissioner() {
             .update({ lock_at: lockFallback })
             .eq("id", nextId);
           if (lockErr) throw lockErr;
+        }
+        if (skipUnlocksCardsOnLockRefresh(lockFallback)) {
+          const { error: unlockErr } = await db
+            .from("cards")
+            .update({ locked_at: null })
+            .eq("week_id", nextId);
+          if (unlockErr) throw unlockErr;
         }
       }
 

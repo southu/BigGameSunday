@@ -179,6 +179,17 @@ export function skipLockAfterAutofill(
   return sundayKickoff;
 }
 
+/**
+ * When skip refreshes a past lock_at on an already-open week, cards may still
+ * have locked_at from last Sunday. Clear those so Tuesday play is not frozen.
+ * A future ESPN kickoff (no fallback) leaves cards as they are.
+ */
+export function skipUnlocksCardsOnLockRefresh(
+  lockFallback: string | null | undefined,
+): boolean {
+  return typeof lockFallback === "string" && lockFallback.length > 0;
+}
+
 /** This Sunday = in-play active week; Next week = newer draft the commish can open. */
 export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
   if (!active) return `Week ${w.week_number}`;

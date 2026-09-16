@@ -15,6 +15,7 @@ import {
   skipLockNeedsRefresh,
   skipTargetWeek,
   skipUnlocksCards,
+  skipUnlocksCardsOnLockRefresh,
   weekAtSlot,
   weekSwitcherLabel,
 } from "../src/lib/current-week.ts";
@@ -225,6 +226,22 @@ describe("selectActiveWeek", () => {
     assert.equal(skipLockAfterAutofill(null, sunday, now), undefined);
   });
 
+  it("skip unlocks cards when a past lock is refreshed, not when ESPN kickoff is kept", () => {
+    const now = Date.parse("2026-09-15T16:00:00.000Z");
+    const sunday = "2026-09-20T17:00:00.000Z";
+    const thursday = "2026-09-17T00:15:00.000Z";
+    assert.equal(skipUnlocksCards(w(2, "open")), false);
+    assert.equal(
+      skipUnlocksCardsOnLockRefresh(skipLockAfterAutofill("2026-09-13T17:00:00.000Z", sunday, now)),
+      true,
+    );
+    assert.equal(skipUnlocksCardsOnLockRefresh(skipLockAfterAutofill(thursday, sunday, now)), false);
+    assert.equal(skipUnlocksCardsOnLockRefresh(undefined), false);
+    assert.equal(skipUnlocksCardsOnLockRefresh(null), false);
+    assert.equal(skipUnlocksCardsOnLockRefresh(""), false);
+    assert.equal(skipUnlocksCardsOnLockRefresh(sunday), true);
+  });
+
   it("returns null for an empty list", () => {
     assert.equal(selectActiveWeek([]), null);
   });
@@ -316,6 +333,7 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(skipFn, /shouldOpenExistingNextWeek/);
     assert.match(skipFn, /finalized_at:\s*null/);
     assert.match(skipFn, /skipUnlocksCards/);
+    assert.match(skipFn, /skipUnlocksCardsOnLockRefresh/);
     assert.match(skipFn, /locked_at:\s*null/);
     assert.match(skipFn, /auto_locked_at:\s*null/);
     assert.match(skipFn, /skipClearsCalledMoments/);
