@@ -365,7 +365,8 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
  * `next` or a week id reaches the auto-created draft without changing selectActiveWeek.
  * Prefer the next slot's draft. If that slot already exists as final/open/locked,
  * stay on the active week so a later leftover draft cannot steal "next".
- * Only when the next slot is missing does a leftover later draft count as next.
+ * Only when the next slot is missing does a leftover later draft count as next —
+ * the nearest leftover, so a farther draft cannot skip over it.
  */
 export function pickViewWeek<T extends WeekRef>(
   weeks: readonly T[],
@@ -376,7 +377,11 @@ export function pickViewWeek<T extends WeekRef>(
     const slotDraft = weekAtSlot(weeks, nextWeekSlot(active));
     if (slotDraft && isNewerDraft(slotDraft, active)) return slotDraft;
     if (!slotDraft) {
-      const next = [...weeks].sort((a, b) => recency(b, a)).find((w) => isNewerDraft(w, active));
+      let next: T | undefined;
+      for (const w of weeks) {
+        if (!isNewerDraft(w, active)) continue;
+        if (!next || isOlderThan(w, next)) next = w;
+      }
       if (next) return next;
     }
   }

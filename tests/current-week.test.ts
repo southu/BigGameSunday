@@ -631,6 +631,10 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     expect(weekSwitcherLabel(premature, active)).toBe("Week 2");
     expect(pickViewWeek([open, wr("w2d", 2, "draft"), laterDraft], active, "next")?.id).toBe("w2d");
     expect(pickViewWeek([open, laterDraft], active, "next")?.id).toBe("w3");
+    const fartherDraft = wr("w4", 4, "draft");
+    expect(pickViewWeek([open, laterDraft, fartherDraft], active, "next")?.id).toBe("w3");
+    expect(pickViewWeek([open, fartherDraft, laterDraft], active, "next")?.id).toBe("w3");
+    expect(pickViewWeek([open, fartherDraft], active, "next")?.id).toBe("w4");
     expect(selectActiveWeek([open, lockedNext, laterDraft])?.id).toBe("w2l");
     expect(
       pickViewWeek([open, lockedNext, laterDraft], selectActiveWeek([open, lockedNext, laterDraft]), "next")

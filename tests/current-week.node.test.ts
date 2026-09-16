@@ -632,6 +632,10 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     assert.equal(weekSwitcherLabel(premature, active), "Week 2");
     assert.equal(pickViewWeek([open, wr("w2d", 2, "draft"), laterDraft], active, "next")?.id, "w2d");
     assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w3");
+    const fartherDraft = wr("w4", 4, "draft");
+    assert.equal(pickViewWeek([open, laterDraft, fartherDraft], active, "next")?.id, "w3");
+    assert.equal(pickViewWeek([open, fartherDraft, laterDraft], active, "next")?.id, "w3");
+    assert.equal(pickViewWeek([open, fartherDraft], active, "next")?.id, "w4");
     assert.equal(selectActiveWeek([open, lockedNext, laterDraft])?.id, "w2l");
     assert.equal(
       pickViewWeek([open, lockedNext, laterDraft], selectActiveWeek([open, lockedNext, laterDraft]), "next")
