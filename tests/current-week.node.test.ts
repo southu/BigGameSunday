@@ -108,6 +108,10 @@ describe("selectActiveWeek", () => {
     assert.equal(picked?.week_number, 2);
     assert.equal(picked?.status, "open");
     assert.equal(selectActiveWeek([open, skipped])?.week_number, 2);
+    const dirty = { ...open, finalized_at: "2026-09-15T19:04:43.880Z" };
+    assert.equal(selectActiveWeek([skipped, dirty])?.week_number, 2);
+    assert.equal(selectActiveWeek([skipped, dirty])?.status, "open");
+    assert.equal(selectActiveWeek([dirty, skipped])?.week_number, 2);
   });
 
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
@@ -230,6 +234,12 @@ describe("selectActiveWeek", () => {
       skipScrubsViewedInPlace(skipTargetWeek([w(1, "final"), dirtyOpen], dirtyOpen)!, dirtyOpen),
       true,
     );
+    const skipped = w(1, "final");
+    assert.equal(skipTargetWeek([skipped, dirtyOpen], skipped)?.week_number, 2);
+    assert.equal(skipScrubsViewedInPlace(dirtyOpen, skipped), true);
+    assert.equal(skipTargetWeek([skipped, cleanOpen], skipped), null);
+    assert.equal(skipLandingWeek([skipped, dirtyOpen], dirtyOpen)?.week_number, 2);
+    assert.equal(skipLandingWeek([skipped, dirtyOpen], dirtyOpen)?.status, "open");
   });
 
   it("skip copy names leftover draft when viewing a premature-final week", () => {
@@ -250,6 +260,11 @@ describe("selectActiveWeek", () => {
     assert.match(scrub.hint, /marked finished too early/);
     assert.doesNotMatch(scrub.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
     assert.doesNotMatch(scrub.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const scrubFromSkipped = skipControlCopy(dirtyOpen, w(1, "final"));
+    assert.equal(scrubFromSkipped.button, "Clear leftover marks / open Week 2");
+    assert.match(scrubFromSkipped.hint, /Week 2 was marked finished too early/);
+    assert.doesNotMatch(scrubFromSkipped.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    assert.doesNotMatch(scrubFromSkipped.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
     const ahead = skipControlCopy(leftover, w(3, "draft"));
     assert.equal(ahead.button, "Skip leftover Week 1 / open Week 2");
     assert.match(ahead.hint, /open Week 2/);

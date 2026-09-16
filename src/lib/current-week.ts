@@ -110,8 +110,13 @@ function withStatus<T extends WeekLike>(week: T, status: string): T {
  * (existing next only — a newly created week is the caller's nextId).
  * If a newer week is already in play, land on the post-skip active week
  * so closing leftover W1 does not leave the panel stuck on that draft.
+ * Dirty-open leftover (open + leftover finalize stamp) stays put — scrub
+ * in place, do not close it and jump to the next week.
  */
 export function skipLandingWeek<T extends WeekLike>(weeks: readonly T[], leftover: T): T | null {
+  if (hasPrematureFinalizeLeftover(leftover)) {
+    return weekAtSlot(weeks, leftover) ?? leftover;
+  }
   const closed = weeks.map((w) => (isSameSlot(w, leftover) ? withStatus(w, "final") : w));
   const slot = nextWeekSlot(leftover);
   if (!skipTouchesNextWeek(slot, weeks)) return selectActiveWeek(closed);
@@ -128,9 +133,15 @@ export function skipControlCopy(
   weeks: readonly WeekLike[] = [],
 ): { button: string; hint: string } {
   if (skipScrubsViewedInPlace(leftover, viewed)) {
+    if (viewed && isSameSlot(leftover, viewed)) {
+      return {
+        button: "Clear leftover marks / open this week",
+        hint: "This week was marked finished too early. Clear leftover marks so the family can play — works on Tuesday.",
+      };
+    }
     return {
-      button: "Clear leftover marks / open this week",
-      hint: "This week was marked finished too early. Clear leftover marks so the family can play — works on Tuesday.",
+      button: `Clear leftover marks / open Week ${leftover.week_number}`,
+      hint: `Week ${leftover.week_number} was marked finished too early. Clear leftover marks so the family can play — works on Tuesday.`,
     };
   }
   if (viewed && isSameSlot(leftover, viewed)) {
@@ -170,6 +181,9 @@ function isOlderThan(week: WeekLike, than: WeekLike): boolean {
  * Prefer an older leftover draft behind the viewed week (Harper: draft W1
  * sitting behind open/final W2) so Skip cannot close the week the family
  * is about to play. Otherwise close the viewed week when it is still playable.
+ * If the viewed week is already finished, still target a leftover open week
+ * with a premature finalize stamp so Skip can scrub it in place (Harper:
+ * skipped W1 + dirty-open W2, commissioner looking at W1).
  */
 export function skipTargetWeek<T extends WeekLike>(
   weeks: readonly T[],
@@ -181,7 +195,8 @@ export function skipTargetWeek<T extends WeekLike>(
     .sort(recency);
   if (olderDrafts[0]) return olderDrafts[0];
   if (canSkipWeek(viewed)) return viewed;
-  return null;
+  const dirtyOpen = [...weeks].filter(hasPrematureFinalizeLeftover).sort(recency);
+  return dirtyOpen[0] ?? null;
 }
 
 /** Open + leftover finalize stamp: skip must reopen/scrub, not take the already-open path. */
@@ -191,13 +206,14 @@ function hasPrematureFinalizeLeftover(week: WeekLike | null | undefined): boolea
 
 /**
  * After leftover W1 is already closed, Harper House still sits on open W2 with a
- * stale finalized_at. Scrub that viewed week in place — do not skip it to W3.
+ * stale finalized_at. Scrub that leftover in place — do not skip it to W3 —
+ * even if the commissioner is looking at the already-skipped week.
  */
 export function skipScrubsViewedInPlace(
   leftover: WeekLike,
   viewed: WeekLike | null | undefined,
 ): boolean {
-  return !!viewed && isSameSlot(leftover, viewed) && hasPrematureFinalizeLeftover(leftover);
+  return !!viewed && hasPrematureFinalizeLeftover(leftover);
 }
 
 /**

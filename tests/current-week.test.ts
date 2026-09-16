@@ -107,6 +107,10 @@ describe("selectActiveWeek", () => {
     expect(picked?.week_number).toBe(2);
     expect(picked?.status).toBe("open");
     expect(selectActiveWeek([open, skipped])?.week_number).toBe(2);
+    const dirty = { ...open, finalized_at: "2026-09-15T19:04:43.880Z" };
+    expect(selectActiveWeek([skipped, dirty])?.week_number).toBe(2);
+    expect(selectActiveWeek([skipped, dirty])?.status).toBe("open");
+    expect(selectActiveWeek([dirty, skipped])?.week_number).toBe(2);
   });
 
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
@@ -229,6 +233,12 @@ describe("selectActiveWeek", () => {
     expect(skipScrubsViewedInPlace(skipTargetWeek([w(1, "final"), dirtyOpen], dirtyOpen)!, dirtyOpen)).toBe(
       true,
     );
+    const skipped = w(1, "final");
+    expect(skipTargetWeek([skipped, dirtyOpen], skipped)?.week_number).toBe(2);
+    expect(skipScrubsViewedInPlace(dirtyOpen, skipped)).toBe(true);
+    expect(skipTargetWeek([skipped, cleanOpen], skipped)).toBeNull();
+    expect(skipLandingWeek([skipped, dirtyOpen], dirtyOpen)?.week_number).toBe(2);
+    expect(skipLandingWeek([skipped, dirtyOpen], dirtyOpen)?.status).toBe("open");
   });
 
   it("skip copy names leftover draft when viewing a premature-final week", () => {
@@ -249,6 +259,11 @@ describe("selectActiveWeek", () => {
     expect(scrub.hint).toMatch(/marked finished too early/);
     expect(scrub.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
     expect(scrub.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const scrubFromSkipped = skipControlCopy(dirtyOpen, w(1, "final"));
+    expect(scrubFromSkipped.button).toBe("Clear leftover marks / open Week 2");
+    expect(scrubFromSkipped.hint).toMatch(/Week 2 was marked finished too early/);
+    expect(scrubFromSkipped.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    expect(scrubFromSkipped.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
     const ahead = skipControlCopy(leftover, w(3, "draft"));
     expect(ahead.button).toBe("Skip leftover Week 1 / open Week 2");
     expect(ahead.hint).toMatch(/open Week 2/);
