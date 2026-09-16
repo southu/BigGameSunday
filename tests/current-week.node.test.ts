@@ -103,6 +103,10 @@ describe("selectActiveWeek", () => {
     assert.notEqual(weekSwitcherLabel(harperDraft, harper), "Next week");
     assert.equal(weekSwitcherLabel(harperFinal, harper), "Week 2");
     assert.equal(pickViewWeek([harperDraft, harperFinal], harper, null)?.id, "52a42a9e");
+    assert.equal(pickViewWeek([harperDraft, harperFinal], harper, "next")?.id, "52a42a9e");
+    assert.equal(pickViewWeek([harperFinal, harperDraft], harper, "next")?.id, "52a42a9e");
+    assert.notEqual(pickViewWeek([harperDraft, harperFinal], harper, "next")?.id, "3e3aeeeb");
+    assert.equal(pickViewWeek([harperDraft, harperFinal], harper, "3e3aeeeb")?.id, "3e3aeeeb");
   });
 
   it("b: draft W1 + open W2 → active W2", () => {
@@ -120,6 +124,11 @@ describe("selectActiveWeek", () => {
     assert.equal(weekSwitcherLabel(harperOpen, harper), "This Sunday");
     assert.equal(weekSwitcherLabel(harperDraft, harper), "Week 1");
     assert.notEqual(weekSwitcherLabel(harperDraft, harper), "This Sunday");
+    assert.notEqual(weekSwitcherLabel(harperDraft, harper), "Next week");
+    assert.equal(pickViewWeek([harperDraft, harperOpen], harper, null)?.id, "52a42a9e");
+    assert.equal(pickViewWeek([harperDraft, harperOpen], harper, "next")?.id, "52a42a9e");
+    assert.equal(pickViewWeek([harperOpen, harperDraft], harper, "next")?.id, "52a42a9e");
+    assert.notEqual(pickViewWeek([harperDraft, harperOpen], harper, "next")?.id, "3e3aeeeb");
   });
 
   it("c: open W1 + draft W2 → active W1, W2 labeled Next week", () => {
@@ -568,6 +577,12 @@ describe("selectActiveWeek", () => {
     assert.match(pickBody, /requested === "next"/);
     assert.match(pickBody, /weekAtSlot\(weeks, nextWeekSlot\(active\)\)/);
     assert.match(pickBody, /isNewerDraft\(slotDraft, active\)/);
+    assert.match(pickBody, /return slotDraft;/);
+    assert.match(pickBody, /return active;/);
+    assert.ok(
+      pickBody.indexOf("return slotDraft") < pickBody.indexOf("return active;"),
+      "next must return the next-slot draft or stay on active — never fall through to a leftover id",
+    );
     assert.doesNotMatch(pickBody, /if \(!slotDraft\)/);
   });
 

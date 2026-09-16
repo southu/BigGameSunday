@@ -102,6 +102,10 @@ describe("selectActiveWeek", () => {
     expect(weekSwitcherLabel(harperDraft, harper)).not.toBe("Next week");
     expect(weekSwitcherLabel(harperFinal, harper)).toBe("Week 2");
     expect(pickViewWeek([harperDraft, harperFinal], harper, null)?.id).toBe("52a42a9e");
+    expect(pickViewWeek([harperDraft, harperFinal], harper, "next")?.id).toBe("52a42a9e");
+    expect(pickViewWeek([harperFinal, harperDraft], harper, "next")?.id).toBe("52a42a9e");
+    expect(pickViewWeek([harperDraft, harperFinal], harper, "next")?.id).not.toBe("3e3aeeeb");
+    expect(pickViewWeek([harperDraft, harperFinal], harper, "3e3aeeeb")?.id).toBe("3e3aeeeb");
   });
 
   it("b: draft W1 + open W2 → active W2", () => {
@@ -119,6 +123,11 @@ describe("selectActiveWeek", () => {
     expect(weekSwitcherLabel(harperOpen, harper)).toBe("This Sunday");
     expect(weekSwitcherLabel(harperDraft, harper)).toBe("Week 1");
     expect(weekSwitcherLabel(harperDraft, harper)).not.toBe("This Sunday");
+    expect(weekSwitcherLabel(harperDraft, harper)).not.toBe("Next week");
+    expect(pickViewWeek([harperDraft, harperOpen], harper, null)?.id).toBe("52a42a9e");
+    expect(pickViewWeek([harperDraft, harperOpen], harper, "next")?.id).toBe("52a42a9e");
+    expect(pickViewWeek([harperOpen, harperDraft], harper, "next")?.id).toBe("52a42a9e");
+    expect(pickViewWeek([harperDraft, harperOpen], harper, "next")?.id).not.toBe("3e3aeeeb");
   });
 
   it("c: open W1 + draft W2 → active W1, W2 labeled Next week", () => {
@@ -550,6 +559,9 @@ describe("selectActiveWeek", () => {
     expect(pickBody).toMatch(/requested === "next"/);
     expect(pickBody).toMatch(/weekAtSlot\(weeks, nextWeekSlot\(active\)\)/);
     expect(pickBody).toMatch(/isNewerDraft\(slotDraft, active\)/);
+    expect(pickBody).toMatch(/return slotDraft;/);
+    expect(pickBody).toMatch(/return active;/);
+    expect(pickBody.indexOf("return slotDraft")).toBeLessThan(pickBody.indexOf("return active;"));
     expect(pickBody).not.toMatch(/if \(!slotDraft\)/);
   });
 

@@ -535,6 +535,8 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
  * If that slot is missing or already final/open/locked, stay on the active week
  * so a later leftover cannot steal "next" — including through an empty gap
  * (skipped or never-created weeks between This Sunday and a farther draft).
+ * An older leftover draft behind the active week is never "next" (Harper: leftover
+ * draft W1 sitting behind final/open W2 must not steal a ?week=next bookmark).
  */
 export function pickViewWeek<T extends WeekRef>(
   weeks: readonly T[],
@@ -544,6 +546,7 @@ export function pickViewWeek<T extends WeekRef>(
   if (requested === "next" && active) {
     const slotDraft = weekAtSlot(weeks, nextWeekSlot(active));
     if (slotDraft && isNewerDraft(slotDraft, active)) return slotDraft;
+    return active;
   }
   if (requested && requested !== "next") {
     const found = weeks.find((w) => w.id === requested);
