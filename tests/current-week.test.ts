@@ -172,7 +172,7 @@ describe("selectActiveWeek", () => {
     expect(canSkipWeek(leftover)).toBe(true);
     expect(skipTargetWeek([leftover, premature], leftover)?.week_number).toBe(1);
     expect(skipTargetWeek([leftover, premature], premature)?.week_number).toBe(1);
-    expect(skipTargetWeek([w(1, "final"), w(2, "final")], w(2, "final"))?.week_number).toBe(2);
+    expect(skipTargetWeek([w(1, "final"), w(2, "final")], w(2, "final"))).toBeNull();
     expect(skipTargetWeek([w(1, "open"), w(2, "final")], w(2, "final"))).toBeNull();
     expect(skipTargetWeek([w(1, "open"), w(2, "draft")], w(1, "open"))?.week_number).toBe(1);
     expect(skipTargetWeek([leftover, w(2, "open")], w(2, "open"))?.week_number).toBe(1);
@@ -242,16 +242,20 @@ describe("selectActiveWeek", () => {
   });
 
   it("skip recovers a premature-final week after leftover is already skipped", () => {
-    const skipped = w(1, "final");
-    const premature = w(2, "final");
+    const skipped = { ...w(1, "final"), finalized_at: "2026-09-16T16:00:00.000Z" };
+    const premature = {
+      ...w(2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-17T00:15:00.000Z",
+    };
     const weeks = [skipped, premature];
     const draft3 = w(3, "draft");
 
     expect(skipTargetWeek(weeks, premature)?.week_number).toBe(2);
     expect(skipTargetWeek(weeks, skipped)?.week_number).toBe(2);
     expect(skipTargetWeek(weeks, premature)?.status).toBe("final");
-    expect(skipScrubsViewedInPlace(premature, premature)).toBe(true);
-    expect(skipScrubsViewedInPlace(premature, skipped)).toBe(true);
+    expect(skipScrubsViewedInPlace(premature, premature, weeks)).toBe(true);
+    expect(skipScrubsViewedInPlace(premature, skipped, weeks)).toBe(true);
     expect(skipLandingWeek(weeks, premature)?.week_number).toBe(2);
     expect(skipLandingWeek(weeks, premature)?.status).toBe("final");
 
@@ -266,7 +270,7 @@ describe("selectActiveWeek", () => {
     expect(skipScrubsViewedInPlace(leftover, leftover)).toBe(false);
 
     expect(skipTargetWeek([skipped, premature, draft3], draft3)?.week_number).toBe(2);
-    expect(skipScrubsViewedInPlace(premature, draft3)).toBe(true);
+    expect(skipScrubsViewedInPlace(premature, draft3, [skipped, premature, draft3])).toBe(true);
     expect(skipLandingWeek([skipped, premature, draft3], premature)?.week_number).toBe(2);
     expect(skipLandingWeek([skipped, premature, draft3], premature)?.status).toBe("final");
 
@@ -274,15 +278,49 @@ describe("selectActiveWeek", () => {
     expect(skipClearsCalledMoments(premature)).toBe(true);
     expect(skipClearsGameOutcomes(premature)).toBe(true);
 
-    const copy = skipControlCopy(premature, premature);
+    const copy = skipControlCopy(premature, premature, weeks);
     expect(copy.button).toBe("Clear leftover marks / open this week");
     expect(copy.hint).toMatch(/marked finished too early/);
     expect(copy.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
-    const fromSkipped = skipControlCopy(premature, skipped);
+    const fromSkipped = skipControlCopy(premature, skipped, weeks);
     expect(fromSkipped.button).toBe("Clear leftover marks / open Week 2");
     expect(fromSkipped.hint).toMatch(/Week 2 was marked finished too early/);
-    const fromDraft3 = skipControlCopy(premature, draft3);
+    const fromDraft3 = skipControlCopy(premature, draft3, [skipped, premature, draft3]);
     expect(fromDraft3.button).toBe("Clear leftover marks / open Week 2");
+  });
+
+  it("does not recover a legitimately completed newest week", () => {
+    const played1 = { ...w(1, "final"), finalized_at: "2026-09-08T10:00:00.000Z" };
+    const played2 = {
+      ...w(2, "final"),
+      finalized_at: "2026-09-15T10:00:00.000Z",
+      lock_at: "2026-09-13T17:00:00.000Z",
+    };
+    const weeks = [played1, played2];
+
+    expect(skipTargetWeek(weeks, played2)).toBeNull();
+    expect(skipTargetWeek(weeks, played1)).toBeNull();
+    expect(skipTargetWeek([w(1, "final"), w(2, "final")], w(2, "final"))).toBeNull();
+    expect(skipScrubsViewedInPlace(played2, played2, weeks)).toBe(false);
+    expect(skipScrubsViewedInPlace(played2, played1, weeks)).toBe(false);
+    expect(skipLandingWeek(weeks, played2)?.week_number).toBe(2);
+    expect(skipLandingWeek(weeks, played2)?.status).toBe("final");
+
+    const outOfOrder = {
+      ...w(2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+    };
+    const skippedLater = { ...w(1, "final"), finalized_at: "2026-09-16T16:00:00.000Z" };
+    expect(skipTargetWeek([skippedLater, outOfOrder], outOfOrder)?.week_number).toBe(2);
+    expect(skipScrubsViewedInPlace(outOfOrder, outOfOrder, [skippedLater, outOfOrder])).toBe(true);
+
+    const beforeLock = {
+      ...w(2, "final"),
+      finalized_at: "2026-09-15T12:00:00.000Z",
+      lock_at: "2026-09-17T00:15:00.000Z",
+    };
+    const skippedNoStamp = w(1, "final");
+    expect(skipTargetWeek([skippedNoStamp, beforeLock], beforeLock)?.week_number).toBe(2);
   });
 
   it("skip copy names leftover draft when viewing a premature-final week", () => {
@@ -488,12 +526,23 @@ describe("useCurrentWeek production wiring", () => {
     expect(lib).toMatch(/Skip leftover Week/);
     expect(lib).toMatch(/without Reveal/);
     expect(lib).toMatch(/Clear leftover marks \/ open this week/);
+    const recoverFn = lib.slice(
+      lib.indexOf("function recoverableFinishedWeek"),
+      lib.indexOf("export function skipTargetWeek"),
+    );
+    expect(recoverFn).toMatch(/isPrematureFinalWeek\(target, weeks\)/);
+    const scrubFn = lib.slice(
+      lib.indexOf("function skipScrubsLeftoverInPlace"),
+      lib.indexOf("export function skipScrubsViewedInPlace"),
+    );
+    expect(scrubFn).not.toMatch(/leftover\.status === ["']final["']/);
+    expect(scrubFn).toMatch(/isPrematureFinalWeek\(leftover, weeks\)/);
     const skipFn = src.slice(
       src.indexOf("const skipAndStartNext"),
       src.indexOf("const toggleHold"),
     );
     expect(skipFn).toMatch(/skipTargetWeek/);
-    expect(skipFn).toMatch(/skipScrubsViewedInPlace/);
+    expect(skipFn).toMatch(/skipScrubsViewedInPlace\(leftover,\s*week,\s*weeks\)/);
     expect(skipFn.indexOf("skipScrubsViewedInPlace")).toBeLessThan(skipFn.indexOf("canSkipWeek"));
     expect(skipFn).toMatch(/status:\s*"final"/);
     expect(skipFn).toMatch(/status:\s*"open"/);

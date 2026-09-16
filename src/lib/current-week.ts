@@ -10,6 +10,8 @@ export type WeekLike = {
   status: string;
   /** Ranking ignores this. Skip uses it to find a premature-finalize leftover. */
   finalized_at?: string | null;
+  /** Ranking ignores this. Finalize-before-lock is premature. */
+  lock_at?: string | null;
 };
 
 export type WeekRef = WeekLike & { id: string };
@@ -114,7 +116,7 @@ function withStatus<T extends WeekLike>(week: T, status: string): T {
  * leftover stay put — scrub in place, do not close it and jump to the next week.
  */
 export function skipLandingWeek<T extends WeekLike>(weeks: readonly T[], leftover: T): T | null {
-  if (skipScrubsLeftoverInPlace(leftover)) {
+  if (skipScrubsLeftoverInPlace(leftover, weeks)) {
     return weekAtSlot(weeks, leftover) ?? leftover;
   }
   const closed = weeks.map((w) => (isSameSlot(w, leftover) ? withStatus(w, "final") : w));
@@ -132,7 +134,7 @@ export function skipControlCopy(
   viewed: WeekLike | null | undefined,
   weeks: readonly WeekLike[] = [],
 ): { button: string; hint: string } {
-  if (skipScrubsViewedInPlace(leftover, viewed)) {
+  if (skipScrubsViewedInPlace(leftover, viewed, weeks)) {
     if (viewed && isSameSlot(leftover, viewed)) {
       return {
         button: "Clear leftover marks / open this week",
@@ -177,11 +179,12 @@ function isOlderThan(week: WeekLike, than: WeekLike): boolean {
 }
 
 /**
- * Newest finished week is recoverable when nothing is in play and an older
- * week exists — Harper after leftover W1 is already skipped: final W1 +
- * premature-final W2. Do not reopen a lone finished week, and do not reopen
- * a finished week while another week is open or locked. Leftover drafts
- * still close first (skipTargetWeek ranks those ahead).
+ * Newest finished week is recoverable only with evidence it was marked
+ * finished too early (finalized before lock, or finalized before an older
+ * sibling was marked final). Ordinary completed weeks — newest final after
+ * older finals — are not recoverable. Do not reopen a lone finished week,
+ * and do not reopen a finished week while another week is open or locked.
+ * Leftover drafts still close first (skipTargetWeek ranks those ahead).
  */
 function recoverableFinishedWeek<T extends WeekLike>(weeks: readonly T[]): T | null {
   if (weeks.some((w) => isInPlay(w.status))) return null;
@@ -192,6 +195,7 @@ function recoverableFinishedWeek<T extends WeekLike>(weeks: readonly T[]): T | n
   const target = finals[0];
   if (!target) return null;
   if (!weeks.some((w) => isOlderThan(w, target))) return null;
+  if (!isPrematureFinalWeek(target, weeks)) return null;
   return target;
 }
 
@@ -204,7 +208,8 @@ function recoverableFinishedWeek<T extends WeekLike>(weeks: readonly T[]): T | n
  * W2). Otherwise close the viewed week when it is still playable.
  * If the viewed week is already finished, still target a leftover open week
  * with a premature finalize stamp so Skip can scrub it in place (Harper:
- * skipped W1 + dirty-open W2, commissioner looking at W1).
+ * skipped W1 + dirty-open W2, commissioner looking at W1). A newest final
+ * without premature evidence is left alone.
  */
 export function skipTargetWeek<T extends WeekLike>(
   weeks: readonly T[],
@@ -227,9 +232,42 @@ function hasPrematureFinalizeLeftover(week: WeekLike | null | undefined): boolea
   return !!week && week.status === "open" && !!week.finalized_at;
 }
 
+function stampMs(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/** Finalized before kickoff — the week was marked finished too early. */
+function finalizedBeforeLock(week: WeekLike): boolean {
+  const finalized = stampMs(week.finalized_at);
+  const lock = stampMs(week.lock_at);
+  return finalized != null && lock != null && finalized < lock;
+}
+
+/**
+ * This week was marked final before an older sibling was — leftover skip
+ * after a premature finalize (W2 finished, then leftover W1 closed later).
+ * In-order finals (older first) do not match.
+ */
+function finalizedBeforeOlderSibling(week: WeekLike, weeks: readonly WeekLike[]): boolean {
+  const finalized = stampMs(week.finalized_at);
+  if (finalized == null) return false;
+  return weeks.some((other) => {
+    if (!isOlderThan(other, week) || other.status !== "final") return false;
+    const older = stampMs(other.finalized_at);
+    return older != null && older > finalized;
+  });
+}
+
+function isPrematureFinalWeek(week: WeekLike, weeks: readonly WeekLike[] = []): boolean {
+  if (week.status !== "final") return false;
+  return finalizedBeforeLock(week) || finalizedBeforeOlderSibling(week, weeks);
+}
+
 /** Premature-final or dirty-open leftover: reopen/scrub this week, do not skip to the next. */
-function skipScrubsLeftoverInPlace(leftover: WeekLike): boolean {
-  return leftover.status === "final" || hasPrematureFinalizeLeftover(leftover);
+function skipScrubsLeftoverInPlace(leftover: WeekLike, weeks: readonly WeekLike[] = []): boolean {
+  return hasPrematureFinalizeLeftover(leftover) || isPrematureFinalWeek(leftover, weeks);
 }
 
 /**
@@ -241,8 +279,9 @@ function skipScrubsLeftoverInPlace(leftover: WeekLike): boolean {
 export function skipScrubsViewedInPlace(
   leftover: WeekLike,
   viewed: WeekLike | null | undefined,
+  weeks: readonly WeekLike[] = [],
 ): boolean {
-  return !!viewed && skipScrubsLeftoverInPlace(leftover);
+  return !!viewed && skipScrubsLeftoverInPlace(leftover, weeks);
 }
 
 /**

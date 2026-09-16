@@ -602,7 +602,7 @@ function Commissioner() {
         }
       };
 
-      if (skipScrubsViewedInPlace(leftover, week)) {
+      if (skipScrubsViewedInPlace(leftover, week, weeks)) {
         await reopenAndScrub(leftover, leftover.id);
         await refresh([
           ["current-week", household.id],
