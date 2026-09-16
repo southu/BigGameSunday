@@ -350,10 +350,10 @@ export function skipUnlocksCardsOnLockRefresh(
   return typeof lockFallback === "string" && lockFallback.length > 0;
 }
 
-/** This Sunday = in-play active week; Next week = newer draft the commish can open. */
+/** This Sunday = in-play active slot; Next week = newer draft the commish can open. */
 export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
   if (!active) return `Week ${w.week_number}`;
-  if (isInPlay(active.status) && w.id === active.id) return "This Sunday";
+  if (isInPlay(active.status) && isSameSlot(w, active)) return "This Sunday";
   if (isInPlay(active.status) && isNewerDraft(w, active)) return "Next week";
   return `Week ${w.week_number}`;
 }

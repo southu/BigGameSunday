@@ -214,6 +214,17 @@ describe("selectActiveWeek", () => {
     assert.doesNotMatch(src, /else latest draft/);
     assert.match(src, /function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
     assert.match(src, /weeks\.find\(\(w\) => isSameSlot\(w, slot\)\)/);
+    const labelStart = src.indexOf("export function weekSwitcherLabel");
+    const labelEnd = src.indexOf("export function pickViewWeek");
+    assert.ok(labelStart >= 0 && labelEnd > labelStart);
+    const labelBody = src.slice(labelStart, labelEnd);
+    assert.match(labelBody, /isInPlay\(active\.status\) && isSameSlot\(w, active\)/);
+    assert.match(labelBody, /isInPlay\(active\.status\) && isNewerDraft\(w, active\)/);
+    assert.doesNotMatch(labelBody, /w\.id === active\.id/);
+    const pickStart = src.indexOf("export function pickViewWeek");
+    const pickBody = src.slice(pickStart, pickStart + 700);
+    assert.match(pickBody, /requested === "next"/);
+    assert.match(pickBody, /isNewerDraft\(w, active\)/);
   });
 
   it("does not label This Sunday when the active week is a newer final", () => {
@@ -554,6 +565,21 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     assert.equal(weekSwitcherLabel(locked, locked), "This Sunday");
     assert.equal(weekSwitcherLabel(draft, locked), "Next week");
     assert.equal(weekSwitcherLabel(older, locked), "Week 18");
+  });
+
+  it("labels This Sunday by recency slot so a leftover draft cannot steal it", () => {
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const open = wr("52a42a9e", 2, "open");
+    const sameSlotCopy = wr("other-w2", 2, "open");
+    const active = selectActiveWeek([leftover, open]);
+    assert.equal(active?.id, "52a42a9e");
+    assert.equal(weekSwitcherLabel(open, active), "This Sunday");
+    assert.equal(weekSwitcherLabel(sameSlotCopy, active), "This Sunday");
+    assert.equal(weekSwitcherLabel(leftover, active), "Week 1");
+    assert.notEqual(weekSwitcherLabel(leftover, active), "This Sunday");
+    assert.notEqual(weekSwitcherLabel(leftover, active), "Next week");
+    assert.equal(weekSwitcherLabel(wr("copy-w1", 1, "open"), wr("w1", 1, "open")), "This Sunday");
+    assert.equal(weekSwitcherLabel(leftover, leftover), "Week 1");
   });
 
   it("labels Next week across the season wrap", () => {

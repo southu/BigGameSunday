@@ -214,6 +214,18 @@ describe("selectActiveWeek", () => {
     expect(src).not.toMatch(/else latest draft/);
     expect(src).toMatch(/function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
     expect(src).toMatch(/weeks\.find\(\(w\) => isSameSlot\(w, slot\)\)/);
+    const labelStart = src.indexOf("export function weekSwitcherLabel");
+    const labelEnd = src.indexOf("export function pickViewWeek");
+    expect(labelStart).toBeGreaterThanOrEqual(0);
+    expect(labelEnd).toBeGreaterThan(labelStart);
+    const labelBody = src.slice(labelStart, labelEnd);
+    expect(labelBody).toMatch(/isInPlay\(active\.status\) && isSameSlot\(w, active\)/);
+    expect(labelBody).toMatch(/isInPlay\(active\.status\) && isNewerDraft\(w, active\)/);
+    expect(labelBody).not.toMatch(/w\.id === active\.id/);
+    const pickStart = src.indexOf("export function pickViewWeek");
+    const pickBody = src.slice(pickStart, pickStart + 700);
+    expect(pickBody).toMatch(/requested === "next"/);
+    expect(pickBody).toMatch(/isNewerDraft\(w, active\)/);
   });
 
   it("does not label This Sunday when the active week is a newer final", () => {
@@ -552,6 +564,21 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     expect(weekSwitcherLabel(locked, locked)).toBe("This Sunday");
     expect(weekSwitcherLabel(draft, locked)).toBe("Next week");
     expect(weekSwitcherLabel(older, locked)).toBe("Week 18");
+  });
+
+  it("labels This Sunday by recency slot so a leftover draft cannot steal it", () => {
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const open = wr("52a42a9e", 2, "open");
+    const sameSlotCopy = wr("other-w2", 2, "open");
+    const active = selectActiveWeek([leftover, open]);
+    expect(active?.id).toBe("52a42a9e");
+    expect(weekSwitcherLabel(open, active)).toBe("This Sunday");
+    expect(weekSwitcherLabel(sameSlotCopy, active)).toBe("This Sunday");
+    expect(weekSwitcherLabel(leftover, active)).toBe("Week 1");
+    expect(weekSwitcherLabel(leftover, active)).not.toBe("This Sunday");
+    expect(weekSwitcherLabel(leftover, active)).not.toBe("Next week");
+    expect(weekSwitcherLabel(wr("copy-w1", 1, "open"), wr("w1", 1, "open"))).toBe("This Sunday");
+    expect(weekSwitcherLabel(leftover, leftover)).toBe("Week 1");
   });
 
   it("labels Next week across the season wrap", () => {
