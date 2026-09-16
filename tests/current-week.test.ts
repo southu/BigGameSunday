@@ -7,6 +7,7 @@ import {
   pickViewWeek,
   selectActiveWeek,
   shouldOpenExistingNextWeek,
+  skipClearsCalledMoments,
   skipControlCopy,
   skipLockNeedsRefresh,
   skipTargetWeek,
@@ -178,6 +179,10 @@ describe("selectActiveWeek", () => {
     expect(skipUnlocksCards(w(2, "locked"))).toBe(true);
     expect(skipUnlocksCards(w(2, "draft"))).toBe(false);
     expect(skipUnlocksCards(w(2, "open"))).toBe(false);
+    expect(skipClearsCalledMoments(premature)).toBe(true);
+    expect(skipClearsCalledMoments(w(2, "locked"))).toBe(false);
+    expect(skipClearsCalledMoments(w(2, "draft"))).toBe(false);
+    expect(skipClearsCalledMoments(w(2, "open"))).toBe(false);
     const after = [w(1, "final"), w(2, "open")];
     expect(selectActiveWeek(after)?.week_number).toBe(2);
     expect(selectActiveWeek(after)?.status).toBe("open");
@@ -296,6 +301,13 @@ describe("useCurrentWeek production wiring", () => {
     expect(skipFn).toMatch(/finalized_at:\s*null/);
     expect(skipFn).toMatch(/skipUnlocksCards/);
     expect(skipFn).toMatch(/locked_at:\s*null/);
+    expect(skipFn).toMatch(/auto_locked_at:\s*null/);
+    expect(skipFn).toMatch(/skipClearsCalledMoments/);
+    expect(skipFn).toMatch(/result:\s*null/);
+    expect(skipFn).toMatch(/weekly_scores/);
+    expect(skipFn.indexOf("shouldOpenExistingNextWeek")).toBeLessThan(
+      skipFn.lastIndexOf("leftover.id"),
+    );
     expect(skipFn).toMatch(/skipLockNeedsRefresh/);
     expect(skipFn).toMatch(/else if \(next && skipLockNeedsRefresh/);
     expect(skipFn).not.toMatch(/next\?\.status === "draft"/);

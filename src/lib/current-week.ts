@@ -139,6 +139,15 @@ export function skipUnlocksCards(next: WeekLike | null | undefined): boolean {
   return !!next && (next.status === "locked" || next.status === "final");
 }
 
+/**
+ * Premature finalize marks uncalled moments miss and writes weekly scores.
+ * Skip must uncall those so Tuesday play is not already "called".
+ * A locked week may have real Sunday results — leave those alone.
+ */
+export function skipClearsCalledMoments(next: WeekLike | null | undefined): boolean {
+  return !!next && next.status === "final";
+}
+
 /** Past lock times would immediately re-lock a reopened week; refresh them on skip. */
 export function skipLockNeedsRefresh(lockAt: string | null | undefined, now = Date.now()): boolean {
   if (!lockAt) return false;

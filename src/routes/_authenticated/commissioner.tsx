@@ -13,6 +13,7 @@ import {
   nextWeekSlot,
   pickViewWeek,
   shouldOpenExistingNextWeek,
+  skipClearsCalledMoments,
   skipControlCopy,
   skipLockNeedsRefresh,
   skipTargetWeek,
@@ -533,12 +534,7 @@ function Commissioner() {
       const slot = nextWeekSlot(leftover);
       const now = new Date().toISOString();
 
-      const { error: skipErr } = await db
-        .from("weeks")
-        .update({ status: "final", finalized_at: now })
-        .eq("id", leftover.id);
-      if (skipErr) throw skipErr;
-
+      // Open (or create) next first so a leftover-close failure still leaves a playable week.
       const next = weekAtSlot(weeks, slot);
       let nextId = next?.id ?? null;
 
@@ -572,6 +568,7 @@ function Commissioner() {
           status: "open",
           auto_opened_at: now,
           finalized_at: null,
+          auto_locked_at: null,
         };
         if (skipLockNeedsRefresh(next.lock_at)) {
           patch.lock_at = nextSundayKickoff().toISOString();
@@ -585,6 +582,26 @@ function Commissioner() {
             .eq("week_id", nextId);
           if (unlockErr) throw unlockErr;
         }
+        if (skipClearsCalledMoments(next)) {
+          const { error: evErr } = await db
+            .from("events")
+            .update({ result: null, resolved_at: null })
+            .eq("week_id", nextId);
+          if (evErr) throw evErr;
+          const { data: scored, error: cardErr } = await db
+            .from("cards")
+            .select("id")
+            .eq("week_id", nextId);
+          if (cardErr) throw cardErr;
+          const cardIds = (scored ?? []).map((c) => c.id as string);
+          if (cardIds.length) {
+            const { error: scoreErr } = await db
+              .from("weekly_scores")
+              .delete()
+              .in("card_id", cardIds);
+            if (scoreErr) throw scoreErr;
+          }
+        }
       } else if (next && skipLockNeedsRefresh(next.lock_at)) {
         const { error: lockErr } = await db
           .from("weeks")
@@ -592,6 +609,12 @@ function Commissioner() {
           .eq("id", nextId);
         if (lockErr) throw lockErr;
       }
+
+      const { error: skipErr } = await db
+        .from("weeks")
+        .update({ status: "final", finalized_at: now })
+        .eq("id", leftover.id);
+      if (skipErr) throw skipErr;
 
       await refresh([
         ["current-week", household.id],
