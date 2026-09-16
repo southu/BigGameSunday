@@ -172,6 +172,10 @@ describe("selectActiveWeek", () => {
     assert.equal(shouldOfferOpenCards(w(1, "draft"), [w(1, "draft")]), true);
     assert.equal(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "draft")]), true);
     assert.equal(shouldOfferOpenCards(w(1, "locked"), [w(1, "locked")]), true);
+    assert.equal(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "final")]), false);
+    assert.equal(shouldOfferOpenCards(w(1, "locked"), [w(1, "locked"), w(2, "final")]), false);
+    assert.equal(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "open")]), false);
+    assert.equal(shouldOfferOpenCards(w(2, "open"), [w(1, "open"), w(2, "open")]), true);
     const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
     const skipped = w(1, "final");
     assert.equal(shouldOfferOpenCards(dirtyOpen, [skipped, dirtyOpen]), false);
@@ -208,6 +212,12 @@ describe("selectActiveWeek", () => {
     assert.equal(shouldOfferOpenCards(w(1, "locked"), [w(1, "locked")]), true);
     assert.equal(shouldOfferOpenCards(w(2, "open"), [skipped, w(2, "open")]), true);
     assert.equal(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "draft")]), true);
+    assert.equal(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "final")]), false);
+    assert.equal(shouldOfferOpenCards(w(1, "locked"), [w(1, "locked"), w(2, "final")]), false);
+    assert.equal(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "open")]), false);
+    assert.equal(shouldOfferOpenCards(w(2, "open"), [w(1, "open"), w(2, "open")]), true);
+    assert.equal(selectActiveWeek([w(1, "open"), w(2, "final")])?.week_number, 1);
+    assert.equal(selectActiveWeek([w(1, "locked"), w(2, "final")])?.week_number, 1);
   });
 
   it("leftover draft next step does not promise Open cards behind a newer week", () => {
@@ -254,6 +264,19 @@ describe("selectActiveWeek", () => {
     assert.match(prematureStep?.label ?? "", /leftover marks/);
     assert.doesNotMatch(prematureStep?.label ?? "", /Open cards/);
     assert.equal(leftoverDraftNextStep(w(2, "open"), [skipped, w(2, "open")]), null);
+    const leftoverOpen = leftoverDraftNextStep(w(1, "open"), [w(1, "open"), w(2, "final")]);
+    assert.match(leftoverOpen?.label ?? "", /behind a newer week/);
+    assert.match(leftoverOpen?.label ?? "", /skip it to start next week/);
+    assert.doesNotMatch(leftoverOpen?.label ?? "", /Lock the cards/);
+    assert.doesNotMatch(leftoverOpen?.label ?? "", /Open cards/);
+    assert.doesNotMatch(leftoverOpen?.label ?? "", /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const leftoverLocked = leftoverDraftNextStep(w(1, "locked"), [w(1, "locked"), w(2, "final")]);
+    assert.match(leftoverLocked?.label ?? "", /behind a newer week/);
+    assert.doesNotMatch(leftoverLocked?.label ?? "", /Finalize/);
+    assert.match(
+      leftoverDraftNextStep(w(1, "open"), [w(1, "open"), w(2, "open")])?.label ?? "",
+      /behind a newer week/,
+    );
   });
 
   it("autopilot does not lock a dirty-open leftover week", () => {
@@ -1029,6 +1052,11 @@ describe("useCurrentWeek production wiring", () => {
       offerFn.indexOf("skipScrubsLeftoverInPlace") < offerFn.indexOf("shouldAutopilotOpenDraft"),
       "leftover-marks guard must hide Lock before leftover-draft Open is considered",
     );
+    assert.match(offerFn, /hasNewerNonDraftThan\(week,\s*weeks\)/);
+    assert.ok(
+      offerFn.indexOf("hasNewerNonDraftThan") < offerFn.indexOf("shouldAutopilotOpenDraft"),
+      "leftover in-play behind a newer final must hide Lock/Finalize before leftover-draft Open",
+    );
     assert.match(offerFn, /shouldAutopilotOpenDraft\(week,\s*weeks\)/);
     const stepFn = lib.slice(
       lib.indexOf("export function leftoverDraftNextStep"),
@@ -1037,6 +1065,7 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(stepFn, /skipScrubsLeftoverInPlace\(week,\s*weeks\)/);
     assert.match(stepFn, /leftover marks/);
     assert.match(stepFn, /will not auto-open/);
+    assert.match(stepFn, /behind a newer week/);
     assert.doesNotMatch(stepFn, /Open cards for the family/);
     assert.doesNotMatch(stepFn, /Lock the cards/);
     assert.match(stepFn, /skipTouchesNextWeek/);

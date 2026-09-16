@@ -104,21 +104,30 @@ export function shouldAutopilotLockOpen(week: WeekLike): boolean {
  * Draft→open is only safe when this draft is the newest week. Opening a
  * leftover draft behind a newer week would steal the family via in-play
  * ranking (Harper: leftover W1 behind final/open W2). Lock/finalize stay
- * unless this week still has leftover marks from a premature finish —
- * skip scrubs those; locking or Finalize would freeze leftover misses
- * and force Reveal, which skip does not require.
+ * on This Sunday (in-play + next-week draft). They do not stay on a leftover
+ * in-play week behind a newer final/open/locked week — skip closes that
+ * leftover without Reveal. Lock/finalize also stay off weeks that still
+ * have leftover marks from a premature finish — skip scrubs those; locking
+ * or Finalize would freeze leftover misses and force Reveal, which skip
+ * does not require.
  */
 export function shouldOfferOpenCards(
   week: WeekLike,
   weeks: readonly WeekLike[],
 ): boolean {
   if (skipScrubsLeftoverInPlace(week, weeks)) return false;
+  if (hasNewerNonDraftThan(week, weeks)) return false;
   if (week.status !== "draft") return true;
   return shouldAutopilotOpenDraft(week, weeks);
 }
 
 function hasNewerInPlayThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
   return weeks.some((w) => isInPlay(w.status) && isNewerThan(w, week));
+}
+
+/** Newer open/locked/final week exists — this slot is leftover, not This Sunday. */
+function hasNewerNonDraftThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
+  return weeks.some((w) => w.status !== "draft" && isNewerThan(w, week));
 }
 
 /**
@@ -227,7 +236,17 @@ export function leftoverDraftNextStep(
       at: null,
     };
   }
-  if (week.status !== "draft" || shouldAutopilotOpenDraft(week, weeks)) return null;
+  if (week.status !== "draft" || shouldAutopilotOpenDraft(week, weeks)) {
+    if (!hasNewerNonDraftThan(week, weeks)) return null;
+    const slot = nextWeekSlot(week);
+    const touchesNext = skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks);
+    return {
+      label: touchesNext
+        ? "This leftover week is behind a newer week — skip it to start next week"
+        : "This leftover week is behind a newer week — skip it without Reveal",
+      at: null,
+    };
+  }
   const slot = nextWeekSlot(week);
   const touchesNext = skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks);
   return {
