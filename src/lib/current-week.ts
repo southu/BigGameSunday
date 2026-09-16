@@ -366,7 +366,9 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
  * Prefer the next slot's draft. If that slot already exists as final/open/locked,
  * stay on the active week so a later leftover draft cannot steal "next".
  * Only when the next slot is missing does a leftover later draft count as next —
- * the nearest leftover, so a farther draft cannot skip over it.
+ * the nearest leftover, so a farther draft cannot skip over it. If a nearer week
+ * already sits in that gap (a final between This Sunday and the leftover), stay
+ * on the in-play week so that leftover still cannot steal "next".
  */
 export function pickViewWeek<T extends WeekRef>(
   weeks: readonly T[],
@@ -382,7 +384,9 @@ export function pickViewWeek<T extends WeekRef>(
         if (!isNewerDraft(w, active)) continue;
         if (!next || isOlderThan(w, next)) next = w;
       }
-      if (next) return next;
+      if (next && !weeks.some((w) => isOlderThan(active, w) && isOlderThan(w, next))) {
+        return next;
+      }
     }
   }
   if (requested && requested !== "next") {

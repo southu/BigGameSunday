@@ -641,6 +641,33 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
         ?.id,
     ).toBe("w3");
   });
+
+  it("pickViewWeek next stays on the in-play week when a nearer leftover sits in the gap", () => {
+    const open = wr("w1", 1, "open");
+    const gapFinal = wr("w3", 3, "final");
+    const laterDraft = wr("w4", 4, "draft");
+    const weeks = [open, gapFinal, laterDraft];
+    const reverse = [laterDraft, gapFinal, open];
+    const active = selectActiveWeek(weeks);
+    expect(active?.id).toBe("w1");
+    expect(selectActiveWeek(reverse)?.id).toBe("w1");
+    expect(pickViewWeek(weeks, active, "next")?.id).toBe("w1");
+    expect(pickViewWeek(reverse, active, "next")?.id).toBe("w1");
+    expect(pickViewWeek(weeks, active, "next")?.id).not.toBe("w4");
+    expect(weekSwitcherLabel(gapFinal, active)).toBe("Week 3");
+    expect(weekSwitcherLabel(laterDraft, active)).toBe("Week 4");
+    expect(weekSwitcherLabel(laterDraft, active)).not.toBe("Next week");
+    expect(pickViewWeek([open, laterDraft], active, "next")?.id).toBe("w4");
+    expect(pickViewWeek([open, wr("w3d", 3, "draft"), laterDraft], active, "next")?.id).toBe("w3d");
+    const wrapLocked = wr("w18", 18, "locked", 2025);
+    const wrapFinal = wr("w2", 2, "final", 2026);
+    const wrapDraft = wr("w3", 3, "draft", 2026);
+    const wrapActive = selectActiveWeek([wrapLocked, wrapFinal, wrapDraft]);
+    expect(wrapActive?.id).toBe("w18");
+    expect(pickViewWeek([wrapLocked, wrapFinal, wrapDraft], wrapActive, "next")?.id).toBe("w18");
+    expect(pickViewWeek([wrapLocked, wrapFinal, wrapDraft], wrapActive, "next")?.id).not.toBe("w3");
+    expect(pickViewWeek([wrapLocked, wrapDraft], wrapActive, "next")?.id).toBe("w3");
+  });
 });
 
 describe("useCurrentWeek production wiring", () => {

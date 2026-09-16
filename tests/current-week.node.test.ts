@@ -643,6 +643,33 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
       "w3",
     );
   });
+
+  it("pickViewWeek next stays on the in-play week when a nearer leftover sits in the gap", () => {
+    const open = wr("w1", 1, "open");
+    const gapFinal = wr("w3", 3, "final");
+    const laterDraft = wr("w4", 4, "draft");
+    const weeks = [open, gapFinal, laterDraft];
+    const reverse = [laterDraft, gapFinal, open];
+    const active = selectActiveWeek(weeks);
+    assert.equal(active?.id, "w1");
+    assert.equal(selectActiveWeek(reverse)?.id, "w1");
+    assert.equal(pickViewWeek(weeks, active, "next")?.id, "w1");
+    assert.equal(pickViewWeek(reverse, active, "next")?.id, "w1");
+    assert.notEqual(pickViewWeek(weeks, active, "next")?.id, "w4");
+    assert.equal(weekSwitcherLabel(gapFinal, active), "Week 3");
+    assert.equal(weekSwitcherLabel(laterDraft, active), "Week 4");
+    assert.notEqual(weekSwitcherLabel(laterDraft, active), "Next week");
+    assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w4");
+    assert.equal(pickViewWeek([open, wr("w3d", 3, "draft"), laterDraft], active, "next")?.id, "w3d");
+    const wrapLocked = wr("w18", 18, "locked", 2025);
+    const wrapFinal = wr("w2", 2, "final", 2026);
+    const wrapDraft = wr("w3", 3, "draft", 2026);
+    const wrapActive = selectActiveWeek([wrapLocked, wrapFinal, wrapDraft]);
+    assert.equal(wrapActive?.id, "w18");
+    assert.equal(pickViewWeek([wrapLocked, wrapFinal, wrapDraft], wrapActive, "next")?.id, "w18");
+    assert.notEqual(pickViewWeek([wrapLocked, wrapFinal, wrapDraft], wrapActive, "next")?.id, "w3");
+    assert.equal(pickViewWeek([wrapLocked, wrapDraft], wrapActive, "next")?.id, "w3");
+  });
 });
 
 describe("useCurrentWeek production wiring", () => {
