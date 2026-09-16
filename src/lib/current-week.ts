@@ -182,7 +182,9 @@ function hasNewerThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
  * reopen leftover W2; auto-created W3 must not bounce them to W2).
  * Draft/final next still opens — leftover draft W1 + premature-final W2,
  * skip of leftover W2 behind a newer final W3, and skip of This Sunday
- * still opens Next week.
+ * still opens Next week, even when a farther auto-created draft already
+ * exists (This Sunday W1 + Next week W2 + W3 draft). A leftover draft
+ * behind that farther week still does not reopen leftover next.
  * Empty `weeks` still touches (no sibling to inspect).
  */
 export function skipTouchesNextWeek(
@@ -191,7 +193,13 @@ export function skipTouchesNextWeek(
   leftover?: WeekSlot | null,
 ): boolean {
   if (!next) return !weeks.some((w) => isInPlay(w.status));
-  if (hasNewerThan(next, weeks)) return false;
+  if (hasNewerThan(next, weeks)) {
+    const leftoverIsThisSunday =
+      !!leftover &&
+      weeks.some((w) => isInPlay(w.status) && isSameSlot(w, leftover)) &&
+      !weeks.some((w) => isInPlay(w.status) && isNewerThan(w, leftover));
+    if (!leftoverIsThisSunday) return false;
+  }
   const existing = weekAtSlot(weeks, next);
   if (existing && isInPlay(existing.status)) return false;
   const remaining = leftover ? weeks.filter((w) => !isSameSlot(w, leftover)) : weeks;
@@ -211,7 +219,8 @@ function withStatus<T extends WeekLike>(week: T, status: string): T {
  * in-play ranking (leftover W1 behind premature-final W2 and draft W3 stay
  * on W3; leftover drafts W1+W2 behind final W3 stay on W3).
  * If This Sunday remains in play, skip Next week stays there — do not open
- * a farther week and steal the family.
+ * a farther week and steal the family. Skip of This Sunday still lands on
+ * Next week when a farther auto-created draft already exists.
  * Dirty-open leftover (open + leftover finalize stamp) and premature-final
  * leftover stay put — scrub in place, do not close it and jump to the next week.
  */
@@ -450,6 +459,7 @@ export function skipScrubsViewedInPlace(
  * — unless a newer week than next already exists, or This Sunday would
  * remain in play after leftover is closed, in which case leftover skip
  * just closes the leftover and leaves the family on This Sunday.
+ * Skip of This Sunday still opens Next week when a farther draft exists.
  * Dirty-open next is already This Sunday; scrub it later.
  * Pass leftover so skip of This Sunday can still open Next week.
  */
