@@ -11,6 +11,7 @@ import {
   skipClearsCalledMoments,
   skipClearsGameOutcomes,
   skipControlCopy,
+  skipLockAfterAutofill,
   skipLockNeedsRefresh,
   skipTargetWeek,
   skipUnlocksCards,
@@ -214,6 +215,16 @@ describe("selectActiveWeek", () => {
     assert.equal(skipLockNeedsRefresh(null, now), false);
   });
 
+  it("skip keeps a future ESPN lock after autofill and only falls back to Sunday when the lock is past", () => {
+    const now = Date.parse("2026-09-15T16:00:00.000Z");
+    const sunday = "2026-09-20T17:00:00.000Z";
+    const thursday = "2026-09-17T00:15:00.000Z";
+    assert.equal(skipLockAfterAutofill(thursday, sunday, now), undefined);
+    assert.equal(skipLockAfterAutofill(sunday, sunday, now), undefined);
+    assert.equal(skipLockAfterAutofill("2026-09-13T17:00:00.000Z", sunday, now), sunday);
+    assert.equal(skipLockAfterAutofill(null, sunday, now), undefined);
+  });
+
   it("returns null for an empty list", () => {
     assert.equal(selectActiveWeek([]), null);
   });
@@ -318,8 +329,13 @@ describe("useCurrentWeek production wiring", () => {
       skipFn.indexOf("shouldOpenExistingNextWeek") < skipFn.lastIndexOf("leftover.id"),
       "open next before closing leftover so a leftover-close failure still leaves a playable week",
     );
-    assert.match(skipFn, /skipLockNeedsRefresh/);
-    assert.match(skipFn, /else if \(next && skipLockNeedsRefresh/);
+    assert.match(skipFn, /skipLockAfterAutofill/);
+    assert.match(skipFn, /select\("lock_at"\)/);
+    assert.ok(
+      skipFn.indexOf("runAutoFill") < skipFn.indexOf("lockAfterAutofill("),
+      "autofill before Sunday lock fallback so ESPN earliest kickoff wins",
+    );
+    assert.doesNotMatch(skipFn, /skipLockNeedsRefresh\(next\.lock_at\)/);
     assert.doesNotMatch(skipFn, /next\?\.status === "draft"/);
     assert.doesNotMatch(skipFn, /finalize:\s*true/);
     assert.doesNotMatch(skipFn, /runRecompute/);

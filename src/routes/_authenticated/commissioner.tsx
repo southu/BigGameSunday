@@ -16,7 +16,7 @@ import {
   skipClearsCalledMoments,
   skipClearsGameOutcomes,
   skipControlCopy,
-  skipLockNeedsRefresh,
+  skipLockAfterAutofill,
   skipTargetWeek,
   skipUnlocksCards,
   weekAtSlot,
@@ -534,10 +534,21 @@ function Commissioner() {
       const skippedNumber = leftover.week_number;
       const slot = nextWeekSlot(leftover);
       const now = new Date().toISOString();
+      const sundayLock = nextSundayKickoff().toISOString();
 
       // Open (or create) next first so a leftover-close failure still leaves a playable week.
       const next = weekAtSlot(weeks, slot);
       let nextId = next?.id ?? null;
+
+      const lockAfterAutofill = async (weekId: string, knownLock: string | null | undefined) => {
+        const { data: filled, error: lockReadErr } = await db
+          .from("weeks")
+          .select("lock_at")
+          .eq("id", weekId)
+          .maybeSingle();
+        if (lockReadErr) throw lockReadErr;
+        return skipLockAfterAutofill(filled?.lock_at ?? knownLock, sundayLock);
+      };
 
       if (!nextId) {
         const { data, error: cErr } = await db
@@ -546,7 +557,7 @@ function Commissioner() {
             household_id: household.id,
             season_year: slot.season_year,
             week_number: slot.week_number,
-            lock_at: nextSundayKickoff().toISOString(),
+            lock_at: sundayLock,
             status: "open",
             auto_opened_at: now,
           })
@@ -558,6 +569,14 @@ function Commissioner() {
           await runAutoFill({ data: { weekId: nextId } });
         } catch {
           /* week is already open; commissioner can auto-fill after */
+        }
+        const lockFallback = await lockAfterAutofill(nextId, sundayLock);
+        if (lockFallback) {
+          const { error: lockErr } = await db
+            .from("weeks")
+            .update({ lock_at: lockFallback })
+            .eq("id", nextId);
+          if (lockErr) throw lockErr;
         }
       } else if (shouldOpenExistingNextWeek(next)) {
         try {
@@ -571,9 +590,8 @@ function Commissioner() {
           finalized_at: null,
           auto_locked_at: null,
         };
-        if (skipLockNeedsRefresh(next.lock_at)) {
-          patch.lock_at = nextSundayKickoff().toISOString();
-        }
+        const lockFallback = await lockAfterAutofill(nextId, next.lock_at);
+        if (lockFallback) patch.lock_at = lockFallback;
         const { error: openErr } = await db.from("weeks").update(patch).eq("id", nextId);
         if (openErr) throw openErr;
         if (skipUnlocksCards(next)) {
@@ -610,12 +628,20 @@ function Commissioner() {
             .eq("week_id", nextId);
           if (gameErr) throw gameErr;
         }
-      } else if (next && skipLockNeedsRefresh(next.lock_at)) {
-        const { error: lockErr } = await db
-          .from("weeks")
-          .update({ lock_at: nextSundayKickoff().toISOString() })
-          .eq("id", nextId);
-        if (lockErr) throw lockErr;
+      } else if (next) {
+        try {
+          await runAutoFill({ data: { weekId: nextId } });
+        } catch {
+          /* already open; lock refresh below still keeps cards playable */
+        }
+        const lockFallback = await lockAfterAutofill(nextId, next.lock_at);
+        if (lockFallback) {
+          const { error: lockErr } = await db
+            .from("weeks")
+            .update({ lock_at: lockFallback })
+            .eq("id", nextId);
+          if (lockErr) throw lockErr;
+        }
       }
 
       const { error: skipErr } = await db

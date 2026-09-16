@@ -10,6 +10,7 @@ import {
   skipClearsCalledMoments,
   skipClearsGameOutcomes,
   skipControlCopy,
+  skipLockAfterAutofill,
   skipLockNeedsRefresh,
   skipTargetWeek,
   skipUnlocksCards,
@@ -214,6 +215,16 @@ describe("selectActiveWeek", () => {
     expect(skipLockNeedsRefresh(null, now)).toBe(false);
   });
 
+  it("skip keeps a future ESPN lock after autofill and only falls back to Sunday when the lock is past", () => {
+    const now = Date.parse("2026-09-15T16:00:00.000Z");
+    const sunday = "2026-09-20T17:00:00.000Z";
+    const thursday = "2026-09-17T00:15:00.000Z";
+    expect(skipLockAfterAutofill(thursday, sunday, now)).toBeUndefined();
+    expect(skipLockAfterAutofill(sunday, sunday, now)).toBeUndefined();
+    expect(skipLockAfterAutofill("2026-09-13T17:00:00.000Z", sunday, now)).toBe(sunday);
+    expect(skipLockAfterAutofill(null, sunday, now)).toBeUndefined();
+  });
+
   it("returns null for an empty list", () => {
     expect(selectActiveWeek([])).toBeNull();
   });
@@ -317,8 +328,10 @@ describe("useCurrentWeek production wiring", () => {
     expect(skipFn.indexOf("shouldOpenExistingNextWeek")).toBeLessThan(
       skipFn.lastIndexOf("leftover.id"),
     );
-    expect(skipFn).toMatch(/skipLockNeedsRefresh/);
-    expect(skipFn).toMatch(/else if \(next && skipLockNeedsRefresh/);
+    expect(skipFn).toMatch(/skipLockAfterAutofill/);
+    expect(skipFn).toMatch(/select\("lock_at"\)/);
+    expect(skipFn.indexOf("runAutoFill")).toBeLessThan(skipFn.indexOf("lockAfterAutofill("));
+    expect(skipFn).not.toMatch(/skipLockNeedsRefresh\(next\.lock_at\)/);
     expect(skipFn).not.toMatch(/next\?\.status === "draft"/);
     expect(skipFn).not.toMatch(/finalize:\s*true/);
     expect(skipFn).not.toMatch(/runRecompute/);

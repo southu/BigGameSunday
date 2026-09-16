@@ -165,6 +165,20 @@ export function skipLockNeedsRefresh(lockAt: string | null | undefined, now = Da
   return Number.isFinite(ms) && ms <= now;
 }
 
+/**
+ * After skip autofills next week, keep a future lock (ESPN earliest kickoff).
+ * Only return the Sunday fallback when the current lock would immediately
+ * re-lock cards — never clobber Thursday night with next Sunday.
+ */
+export function skipLockAfterAutofill(
+  lockAt: string | null | undefined,
+  sundayKickoff: string,
+  now = Date.now(),
+): string | undefined {
+  if (!skipLockNeedsRefresh(lockAt, now)) return undefined;
+  return sundayKickoff;
+}
+
 /** This Sunday = in-play active week; Next week = newer draft the commish can open. */
 export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
   if (!active) return `Week ${w.week_number}`;
