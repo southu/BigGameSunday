@@ -224,8 +224,9 @@ describe("selectActiveWeek", () => {
     const pickStart = src.indexOf("export function pickViewWeek");
     const pickBody = src.slice(pickStart, pickStart + 900);
     assert.match(pickBody, /requested === "next"/);
-    assert.match(pickBody, /isNewerDraft\(w, active\)/);
-    assert.match(pickBody, /if \(!slotDraft\)/);
+    assert.match(pickBody, /weekAtSlot\(weeks, nextWeekSlot\(active\)\)/);
+    assert.match(pickBody, /isNewerDraft\(slotDraft, active\)/);
+    assert.doesNotMatch(pickBody, /if \(!slotDraft\)/);
   });
 
   it("does not label This Sunday when the active week is a newer final", () => {
@@ -614,7 +615,8 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     assert.equal(weekSwitcherLabel(laterDraft, active), "Week 3");
     assert.notEqual(weekSwitcherLabel(laterDraft, active), "Next week");
     assert.equal(pickViewWeek(weeksWithLater, active, "next")?.id, "w2");
-    assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w3");
+    assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w1");
+    assert.notEqual(pickViewWeek([open, laterDraft], active, "next")?.id, "w3");
     assert.equal(weekSwitcherLabel(laterDraft, selectActiveWeek([open, laterDraft])), "Week 3");
   });
 
@@ -631,11 +633,13 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     assert.notEqual(weekSwitcherLabel(laterDraft, active), "Next week");
     assert.equal(weekSwitcherLabel(premature, active), "Week 2");
     assert.equal(pickViewWeek([open, wr("w2d", 2, "draft"), laterDraft], active, "next")?.id, "w2d");
-    assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w3");
+    assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w1");
+    assert.notEqual(pickViewWeek([open, laterDraft], active, "next")?.id, "w3");
     const fartherDraft = wr("w4", 4, "draft");
-    assert.equal(pickViewWeek([open, laterDraft, fartherDraft], active, "next")?.id, "w3");
-    assert.equal(pickViewWeek([open, fartherDraft, laterDraft], active, "next")?.id, "w3");
-    assert.equal(pickViewWeek([open, fartherDraft], active, "next")?.id, "w4");
+    assert.equal(pickViewWeek([open, laterDraft, fartherDraft], active, "next")?.id, "w1");
+    assert.equal(pickViewWeek([open, fartherDraft, laterDraft], active, "next")?.id, "w1");
+    assert.equal(pickViewWeek([open, fartherDraft], active, "next")?.id, "w1");
+    assert.notEqual(pickViewWeek([open, fartherDraft], active, "next")?.id, "w4");
     assert.equal(selectActiveWeek([open, lockedNext, laterDraft])?.id, "w2l");
     assert.equal(
       pickViewWeek([open, lockedNext, laterDraft], selectActiveWeek([open, lockedNext, laterDraft]), "next")
@@ -659,8 +663,10 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     assert.equal(weekSwitcherLabel(gapFinal, active), "Week 3");
     assert.equal(weekSwitcherLabel(laterDraft, active), "Week 4");
     assert.notEqual(weekSwitcherLabel(laterDraft, active), "Next week");
-    assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w4");
-    assert.equal(pickViewWeek([open, wr("w3d", 3, "draft"), laterDraft], active, "next")?.id, "w3d");
+    assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w1");
+    assert.notEqual(pickViewWeek([open, laterDraft], active, "next")?.id, "w4");
+    assert.equal(pickViewWeek([open, wr("w3d", 3, "draft"), laterDraft], active, "next")?.id, "w1");
+    assert.notEqual(pickViewWeek([open, wr("w3d", 3, "draft"), laterDraft], active, "next")?.id, "w3d");
     const wrapLocked = wr("w18", 18, "locked", 2025);
     const wrapFinal = wr("w2", 2, "final", 2026);
     const wrapDraft = wr("w3", 3, "draft", 2026);
@@ -668,7 +674,31 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     assert.equal(wrapActive?.id, "w18");
     assert.equal(pickViewWeek([wrapLocked, wrapFinal, wrapDraft], wrapActive, "next")?.id, "w18");
     assert.notEqual(pickViewWeek([wrapLocked, wrapFinal, wrapDraft], wrapActive, "next")?.id, "w3");
-    assert.equal(pickViewWeek([wrapLocked, wrapDraft], wrapActive, "next")?.id, "w3");
+    assert.equal(pickViewWeek([wrapLocked, wrapDraft], wrapActive, "next")?.id, "w18");
+    assert.notEqual(pickViewWeek([wrapLocked, wrapDraft], wrapActive, "next")?.id, "w3");
+  });
+
+  it("pickViewWeek next stays on This Sunday when the next slot is missing", () => {
+    const open = wr("w1", 1, "open");
+    const laterDraft = wr("w3", 3, "draft");
+    const fartherDraft = wr("w4", 4, "draft");
+    const active = selectActiveWeek([open, laterDraft, fartherDraft]);
+    assert.equal(active?.id, "w1");
+    assert.equal(weekSwitcherLabel(open, active), "This Sunday");
+    assert.equal(weekSwitcherLabel(laterDraft, active), "Week 3");
+    assert.notEqual(weekSwitcherLabel(laterDraft, active), "Next week");
+    assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w1");
+    assert.equal(pickViewWeek([open, laterDraft, fartherDraft], active, "next")?.id, "w1");
+    assert.equal(pickViewWeek([fartherDraft, laterDraft, open], active, "next")?.id, "w1");
+    assert.equal(pickViewWeek([open, laterDraft], active, "w3")?.id, "w3");
+    const wrapLocked = wr("w18", 18, "locked", 2025);
+    const wrapDraft = wr("w2", 2, "draft", 2026);
+    const wrapActive = selectActiveWeek([wrapLocked, wrapDraft]);
+    assert.equal(wrapActive?.id, "w18");
+    assert.equal(pickViewWeek([wrapLocked, wrapDraft], wrapActive, "next")?.id, "w18");
+    assert.notEqual(pickViewWeek([wrapLocked, wrapDraft], wrapActive, "next")?.id, "w2");
+    assert.equal(weekSwitcherLabel(wrapDraft, wrapActive), "Week 2");
+    assert.notEqual(weekSwitcherLabel(wrapDraft, wrapActive), "Next week");
   });
 });
 

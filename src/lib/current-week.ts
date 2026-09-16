@@ -363,12 +363,10 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
 /**
  * Commissioner view: default is the active (open/locked) week.
  * `next` or a week id reaches the auto-created draft without changing selectActiveWeek.
- * Prefer the next slot's draft. If that slot already exists as final/open/locked,
- * stay on the active week so a later leftover draft cannot steal "next".
- * Only when the next slot is missing does a leftover later draft count as next —
- * the nearest leftover, so a farther draft cannot skip over it. If a nearer week
- * already sits in that gap (a final between This Sunday and the leftover), stay
- * on the in-play week so that leftover still cannot steal "next".
+ * "Next" is only the next slot's draft (same rule as weekSwitcherLabel).
+ * If that slot is missing or already final/open/locked, stay on the active week
+ * so a later leftover cannot steal "next" — including through an empty gap
+ * (skipped or never-created weeks between This Sunday and a farther draft).
  */
 export function pickViewWeek<T extends WeekRef>(
   weeks: readonly T[],
@@ -378,16 +376,6 @@ export function pickViewWeek<T extends WeekRef>(
   if (requested === "next" && active) {
     const slotDraft = weekAtSlot(weeks, nextWeekSlot(active));
     if (slotDraft && isNewerDraft(slotDraft, active)) return slotDraft;
-    if (!slotDraft) {
-      let next: T | undefined;
-      for (const w of weeks) {
-        if (!isNewerDraft(w, active)) continue;
-        if (!next || isOlderThan(w, next)) next = w;
-      }
-      if (next && !weeks.some((w) => isOlderThan(active, w) && isOlderThan(w, next))) {
-        return next;
-      }
-    }
   }
   if (requested && requested !== "next") {
     const found = weeks.find((w) => w.id === requested);
