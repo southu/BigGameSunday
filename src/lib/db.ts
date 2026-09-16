@@ -144,7 +144,8 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
     .order("week_number", { ascending: false });
   if (error) throw error;
   // Recency is applied here so useCurrentWeek never depends on PostgREST LIMIT 1.
-  // selectActiveWeek still ranks open/locked above a newer draft.
+  // selectActiveWeek ranks latest open/locked first, else newest overall —
+  // never an older leftover draft over a newer final or draft.
   const weeks = (data ?? []) as Week[];
   return [...weeks].sort((a, b) =>
     a.season_year !== b.season_year ? b.season_year - a.season_year : b.week_number - a.week_number,
@@ -160,7 +161,7 @@ export function useHouseholdWeeks(householdId?: string) {
   });
 }
 
-/** Active week: latest open/locked; else newest week overall (draft or final). */
+/** Active week: latest open/locked; else newest week overall (never older draft over newer final). */
 export function useCurrentWeek(householdId?: string) {
   return useQuery({
     queryKey: ["current-week", householdId],

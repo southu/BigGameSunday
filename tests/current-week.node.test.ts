@@ -212,6 +212,7 @@ describe("selectActiveWeek", () => {
     assert.doesNotMatch(body, /status === ["']final["']/);
     assert.doesNotMatch(src, /ranked\.find\(\(w\) => w\.status === "draft"\)/);
     assert.doesNotMatch(src, /else latest draft/);
+    assert.doesNotMatch(src, /open\/locked > draft > final/);
     assert.match(src, /function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
     assert.match(src, /weeks\.find\(\(w\) => isSameSlot\(w, slot\)\)/);
     const labelStart = src.indexOf("export function weekSwitcherLabel");
@@ -738,7 +739,16 @@ describe("useCurrentWeek production wiring", () => {
     const fn = src.slice(src.indexOf("export function useCurrentWeek"));
     assert.match(src, /import \{ selectActiveWeek \} from "\.\/current-week"/);
     assert.match(fn, /select:\s*\(weeks\)\s*=>\s*selectActiveWeek\(weeks\)/);
+    assert.match(src, /else newest week overall/);
+    assert.doesNotMatch(src, /else latest draft/);
+    assert.doesNotMatch(src, /open\/locked > draft > final/);
     assert.doesNotMatch(fn.slice(0, fn.indexOf("export function useWeekGames")), /\.limit\(1\)/);
+  });
+
+  it("family chrome shows the active week number from useCurrentWeek", () => {
+    const src = readFileSync(join(process.cwd(), "src/components/bgs/AppShell.tsx"), "utf8");
+    assert.match(src, /useProfile/);
+    assert.match(src, /Week \$\{week\.week_number\}/);
   });
 
   it("profile and default week routes read the active week from useCurrentWeek", () => {
