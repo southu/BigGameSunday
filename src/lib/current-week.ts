@@ -120,7 +120,11 @@ export function skipLandingWeek<T extends WeekLike>(weeks: readonly T[], leftove
   return selectActiveWeek(opened);
 }
 
-/** Button and hint for the commissioner skip control. */
+/**
+ * Button and hint for the commissioner skip control.
+ * Do not promise "start next week" / "open this week" when skip will only
+ * close the leftover because a newer week is already in play.
+ */
 export function skipControlCopy(
   leftover: WeekLike,
   viewed: WeekLike | null | undefined,
@@ -138,20 +142,27 @@ export function skipControlCopy(
       hint: `Week ${leftover.week_number} was marked finished too early. Clear leftover marks so the family can play — works on Tuesday.`,
     };
   }
+  const slot = nextWeekSlot(leftover);
+  const touchesNext = skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks);
   if (viewed && isSameSlot(leftover, viewed)) {
+    if (!touchesNext) {
+      return {
+        button: "Skip this week",
+        hint: "Didn't play this week? Close it without Reveal — works on Tuesday.",
+      };
+    }
     return {
       button: "Skip this week / start next week",
       hint: "Didn't play this week? Close it without Reveal and open next week's cards — works on Tuesday.",
     };
   }
-  const slot = nextWeekSlot(leftover);
-  if (viewed && isSameSlot(viewed, slot)) {
+  if (touchesNext && viewed && isSameSlot(viewed, slot)) {
     return {
       button: `Skip leftover Week ${leftover.week_number} / open this week`,
       hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal and open this week so the family can play — works on Tuesday.`,
     };
   }
-  if (skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks)) {
+  if (touchesNext) {
     return {
       button: `Skip leftover Week ${leftover.week_number} / open Week ${slot.week_number}`,
       hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal and open Week ${slot.week_number} so the family can play — works on Tuesday.`,

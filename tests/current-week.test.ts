@@ -440,6 +440,35 @@ describe("selectActiveWeek", () => {
     expect(stay.button).toBe("Skip leftover Week 1");
     expect(stay.button).not.toMatch(/open/);
     expect(stay.hint).toMatch(/without Reveal/);
+    expect(skipControlCopy(leftover, leftover, [leftover, w(2, "open")]).button).toBe(
+      "Skip this week / start next week",
+    );
+  });
+
+  it("skip copy does not promise next week when a newer week is already in play", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    const open3 = w(3, "open");
+    const weeks = [leftover, premature, open3];
+
+    const onLeftover = skipControlCopy(leftover, leftover, weeks);
+    expect(onLeftover.button).toBe("Skip this week");
+    expect(onLeftover.button).not.toMatch(/next week|open/i);
+    expect(onLeftover.hint).toMatch(/without Reveal/);
+    expect(onLeftover.hint).not.toMatch(/open next/);
+    expect(onLeftover.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    expect(onLeftover.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+
+    const onNext = skipControlCopy(leftover, premature, weeks);
+    expect(onNext.button).toBe("Skip leftover Week 1");
+    expect(onNext.button).not.toMatch(/open/);
+    expect(onNext.hint).toMatch(/without Reveal/);
+    expect(onNext.hint).not.toMatch(/open this week/);
+
+    const onOpen3 = skipControlCopy(leftover, open3, weeks);
+    expect(onOpen3.button).toBe("Skip leftover Week 1");
+    expect(onOpen3.button).not.toMatch(/open/);
+    expect(skipLandingWeek(weeks, leftover)?.week_number).toBe(3);
   });
 
   it("skip does not reopen next when a newer week is already in play", () => {
@@ -749,6 +778,15 @@ describe("useCurrentWeek production wiring", () => {
     expect(lib).toMatch(/Skip leftover Week/);
     expect(lib).toMatch(/without Reveal/);
     expect(lib).toMatch(/Clear leftover marks \/ open this week/);
+    const copyFn = lib.slice(
+      lib.indexOf("export function skipControlCopy"),
+      lib.indexOf("function recoverableFinishedWeek"),
+    );
+    expect(copyFn.indexOf("skipTouchesNextWeek")).toBeGreaterThanOrEqual(0);
+    expect(copyFn.indexOf("skipTouchesNextWeek")).toBeLessThan(
+      copyFn.indexOf("Skip this week / start next week"),
+    );
+    expect(copyFn).toMatch(/button: "Skip this week"/);
     const recoverFn = lib.slice(
       lib.indexOf("function recoverableFinishedWeek"),
       lib.indexOf("export function skipTargetWeek"),

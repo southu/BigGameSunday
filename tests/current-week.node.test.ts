@@ -440,6 +440,36 @@ describe("selectActiveWeek", () => {
     assert.equal(stay.button, "Skip leftover Week 1");
     assert.doesNotMatch(stay.button, /open/);
     assert.match(stay.hint, /without Reveal/);
+    assert.equal(
+      skipControlCopy(leftover, leftover, [leftover, w(2, "open")]).button,
+      "Skip this week / start next week",
+    );
+  });
+
+  it("skip copy does not promise next week when a newer week is already in play", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    const open3 = w(3, "open");
+    const weeks = [leftover, premature, open3];
+
+    const onLeftover = skipControlCopy(leftover, leftover, weeks);
+    assert.equal(onLeftover.button, "Skip this week");
+    assert.doesNotMatch(onLeftover.button, /next week|open/i);
+    assert.match(onLeftover.hint, /without Reveal/);
+    assert.doesNotMatch(onLeftover.hint, /open next/);
+    assert.doesNotMatch(onLeftover.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    assert.doesNotMatch(onLeftover.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+
+    const onNext = skipControlCopy(leftover, premature, weeks);
+    assert.equal(onNext.button, "Skip leftover Week 1");
+    assert.doesNotMatch(onNext.button, /open/);
+    assert.match(onNext.hint, /without Reveal/);
+    assert.doesNotMatch(onNext.hint, /open this week/);
+
+    const onOpen3 = skipControlCopy(leftover, open3, weeks);
+    assert.equal(onOpen3.button, "Skip leftover Week 1");
+    assert.doesNotMatch(onOpen3.button, /open/);
+    assert.equal(skipLandingWeek(weeks, leftover)?.week_number, 3);
   });
 
   it("skip does not reopen next when a newer week is already in play", () => {
@@ -751,6 +781,16 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(lib, /Skip leftover Week/);
     assert.match(lib, /without Reveal/);
     assert.match(lib, /Clear leftover marks \/ open this week/);
+    const copyFn = lib.slice(
+      lib.indexOf("export function skipControlCopy"),
+      lib.indexOf("function recoverableFinishedWeek"),
+    );
+    assert.ok(copyFn.indexOf("skipTouchesNextWeek") >= 0);
+    assert.ok(
+      copyFn.indexOf("skipTouchesNextWeek") < copyFn.indexOf("Skip this week / start next week"),
+      "skip copy must check skipTouchesNextWeek before promising to start next week",
+    );
+    assert.match(copyFn, /button: "Skip this week"/);
     const recoverFn = lib.slice(
       lib.indexOf("function recoverableFinishedWeek"),
       lib.indexOf("export function skipTargetWeek"),
