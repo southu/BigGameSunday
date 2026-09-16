@@ -8,6 +8,7 @@ import {
   nextWeekSlot,
   pickViewWeek,
   selectActiveWeek,
+  shouldAutopilotFinalize,
   shouldAutopilotLockOpen,
   shouldAutopilotOpenDraft,
   shouldOfferOpenCards,
@@ -292,6 +293,46 @@ describe("selectActiveWeek", () => {
     );
     assert.equal(selectActiveWeek([w(1, "final"), dirtyOpen])?.week_number, 2);
     assert.equal(selectActiveWeek([w(1, "final"), dirtyOpen])?.status, "open");
+  });
+
+  it("autopilot does not lock leftover open W1 behind a newer week", () => {
+    const leftover = w(1, "open");
+    const premature = w(2, "final");
+    assert.equal(shouldAutopilotLockOpen(leftover, [leftover, premature]), false);
+    assert.equal(shouldAutopilotLockOpen(leftover, [premature, leftover]), false);
+    assert.equal(shouldAutopilotLockOpen(leftover, [leftover, w(2, "open")]), false);
+    assert.equal(shouldAutopilotLockOpen(leftover, [leftover, w(2, "locked")]), false);
+    assert.equal(shouldAutopilotLockOpen(leftover, [leftover, w(2, "draft")]), true);
+    assert.equal(shouldAutopilotLockOpen(leftover, [leftover]), true);
+    assert.equal(shouldAutopilotLockOpen(w(2, "open"), [w(1, "final"), w(2, "open")]), true);
+    assert.equal(shouldAutopilotLockOpen(w(1, "open"), [w(1, "open"), w(2, "draft")]), true);
+    assert.equal(
+      shouldAutopilotLockOpen(w(18, "open", 2025), [w(18, "open", 2025), w(1, "final", 2026)]),
+      false,
+    );
+    assert.equal(selectActiveWeek([leftover, premature])?.week_number, 1);
+    assert.equal(selectActiveWeek([leftover, w(2, "open")])?.week_number, 2);
+  });
+
+  it("autopilot does not finalize leftover locked W1 behind a newer week", () => {
+    const leftover = w(1, "locked");
+    const premature = w(2, "final");
+    assert.equal(shouldAutopilotFinalize(leftover, [leftover, premature]), false);
+    assert.equal(shouldAutopilotFinalize(leftover, [premature, leftover]), false);
+    assert.equal(shouldAutopilotFinalize(leftover, [leftover, w(2, "open")]), false);
+    assert.equal(shouldAutopilotFinalize(leftover, [leftover, w(2, "locked")]), false);
+    assert.equal(shouldAutopilotFinalize(leftover, [leftover, w(2, "draft")]), true);
+    assert.equal(shouldAutopilotFinalize(leftover, [leftover]), true);
+    assert.equal(shouldAutopilotFinalize(w(1, "open"), [w(1, "open")]), false);
+    assert.equal(shouldAutopilotFinalize(w(1, "draft"), [w(1, "draft")]), false);
+    assert.equal(shouldAutopilotFinalize(w(2, "locked"), [w(1, "final"), w(2, "locked")]), true);
+    assert.equal(shouldAutopilotFinalize(w(1, "locked"), [w(1, "locked"), w(2, "draft")]), true);
+    assert.equal(
+      shouldAutopilotFinalize(w(18, "locked", 2025), [w(18, "locked", 2025), w(1, "final", 2026)]),
+      false,
+    );
+    assert.equal(selectActiveWeek([leftover, premature])?.week_number, 1);
+    assert.equal(selectActiveWeek([leftover, w(2, "draft")])?.week_number, 1);
   });
 
   it("Harper House: skipped W1 + dirty-open W2 is This Sunday, not leftover W1", () => {
@@ -1114,6 +1155,7 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(src, /for \(const week of/);
     assert.match(src, /shouldAutopilotOpenDraft/);
     assert.match(src, /shouldAutopilotLockOpen/);
+    assert.match(src, /shouldAutopilotFinalize/);
     assert.match(src, /finalized_at/);
     const openFn = src.slice(
       src.indexOf('if (week.status === "draft")'),
@@ -1130,10 +1172,23 @@ describe("useCurrentWeek production wiring", () => {
       src.indexOf("// 2. Auto-lock"),
       src.indexOf('if (week.status !== "locked")'),
     );
-    assert.match(lockFn, /shouldAutopilotLockOpen\(week\)/);
+    assert.match(lockFn, /shouldAutopilotLockOpen\(week,/);
+    assert.match(lockFn, /select\("season_year, week_number, status"\)/);
+    assert.doesNotMatch(lockFn, /\.neq\("status", "final"\)/);
     assert.ok(
       lockFn.indexOf("shouldAutopilotLockOpen") < lockFn.indexOf('status: "locked"'),
-      "dirty-open leftover guard must run before auto-lock",
+      "leftover-open guard must run before auto-lock",
+    );
+    const finalizeFn = src.slice(
+      src.indexOf("// 4. Finalize"),
+      src.indexOf("const out = await computeWeekScores"),
+    );
+    assert.match(finalizeFn, /shouldAutopilotFinalize\(week,/);
+    assert.match(finalizeFn, /select\("season_year, week_number, status"\)/);
+    assert.doesNotMatch(finalizeFn, /\.neq\("status", "final"\)/);
+    assert.ok(
+      finalizeFn.indexOf("shouldAutopilotFinalize") < finalizeFn.lastIndexOf("return"),
+      "leftover-locked guard must run before auto-finalize",
     );
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
     assert.match(autofill, /auto_create_weeks/);

@@ -6,7 +6,11 @@ import { computeWeekScores } from "./finalize";
 import { fetchEspnScores, fetchFirstScoreWasTouchdown } from "./espn.server";
 import { ensureNextWeek } from "./autofill.server";
 import { DAY_MS, tuesdaySixAmEtAfter } from "./autopilot-schedule";
-import { shouldAutopilotLockOpen, shouldAutopilotOpenDraft } from "./current-week";
+import {
+  shouldAutopilotFinalize,
+  shouldAutopilotLockOpen,
+  shouldAutopilotOpenDraft,
+} from "./current-week";
 
 type Db = { from: (table: string) => any };
 
@@ -247,25 +251,28 @@ async function advanceWeek(
   }
 
   // 2. Auto-lock by timestamp, no button needed.
-  if (
-    week.status === "open" &&
-    week.lock_at &&
-    now >= new Date(week.lock_at).getTime() &&
-    shouldAutopilotLockOpen(week)
-  ) {
-    const stamp = new Date().toISOString();
-    const { error } = await db
+  // Sibling slots include finals — leftover open W1 must see premature-final W2.
+  if (week.status === "open" && week.lock_at && now >= new Date(week.lock_at).getTime()) {
+    const { data: lockSiblings, error: lockSlotErr } = await db
       .from("weeks")
-      .update({ status: "locked", auto_locked_at: stamp })
-      .eq("id", week.id);
-    if (error) throw error;
-    await db.from("cards").update({ locked_at: stamp }).eq("week_id", week.id).is("locked_at", null);
-    week.status = "locked";
-    await record({
-      ...base,
-      action: "week_locked",
-      detail: `Week ${week.week_number} cards locked at kickoff.`,
-    });
+      .select("season_year, week_number, status")
+      .eq("household_id", week.household_id);
+    if (lockSlotErr) throw lockSlotErr;
+    if (shouldAutopilotLockOpen(week, lockSiblings ?? [])) {
+      const stamp = new Date().toISOString();
+      const { error } = await db
+        .from("weeks")
+        .update({ status: "locked", auto_locked_at: stamp })
+        .eq("id", week.id);
+      if (error) throw error;
+      await db.from("cards").update({ locked_at: stamp }).eq("week_id", week.id).is("locked_at", null);
+      week.status = "locked";
+      await record({
+        ...base,
+        action: "week_locked",
+        detail: `Week ${week.week_number} cards locked at kickoff.`,
+      });
+    }
   }
 
   if (week.status !== "locked") return;
@@ -281,9 +288,16 @@ async function advanceWeek(
   }
 
   // 4. Finalize Tuesday 6:00 AM ET after lock.
+  // Sibling slots include finals — leftover locked W1 must not Reveal behind W2.
   if (!week.lock_at) return;
   const finalizeAt = tuesdaySixAmEtAfter(new Date(week.lock_at));
   if (now < finalizeAt.getTime()) return;
+  const { data: finalizeSiblings, error: finalizeSlotErr } = await db
+    .from("weeks")
+    .select("season_year, week_number, status")
+    .eq("household_id", week.household_id);
+  if (finalizeSlotErr) throw finalizeSlotErr;
+  if (!shouldAutopilotFinalize(week, finalizeSiblings ?? [])) return;
 
   const out = await computeWeekScores(db, week.id, { finalize: true });
   await record({

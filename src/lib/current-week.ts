@@ -92,12 +92,28 @@ export function shouldAutopilotOpenDraft(
 }
 
 /**
- * Autopilot must not lock a leftover-open week that still has a premature
- * finalize stamp. Locking would freeze leftover miss marks; skip scrubs
- * those so the family can play Tuesday (Harper: dirty-open W2).
+ * Autopilot must not lock a leftover-open week skip should close.
+ * Dirty-open leftover marks would freeze as misses; leftover open W1
+ * behind a newer final/open/locked week would trap the family via
+ * in-play ranking. Skip is the Tuesday path — no Reveal required.
  */
-export function shouldAutopilotLockOpen(week: WeekLike): boolean {
-  return week.status === "open" && !hasPrematureFinalizeLeftover(week);
+export function shouldAutopilotLockOpen(
+  week: WeekLike,
+  weeks: readonly WeekLike[] = [],
+): boolean {
+  return week.status === "open" && shouldOfferOpenCards(week, weeks);
+}
+
+/**
+ * Autopilot must not Finalize a leftover locked week behind a newer
+ * final/open/locked week. That scores leftover misses and forces Reveal;
+ * skip closes that leftover without Reveal so the family can play Tuesday.
+ */
+export function shouldAutopilotFinalize(
+  week: WeekLike,
+  weeks: readonly WeekLike[] = [],
+): boolean {
+  return week.status === "locked" && shouldOfferOpenCards(week, weeks);
 }
 
 /**
