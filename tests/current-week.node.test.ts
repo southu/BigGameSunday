@@ -222,9 +222,10 @@ describe("selectActiveWeek", () => {
     assert.match(labelBody, /isInPlay\(active\.status\) && isNewerDraft\(w, active\)/);
     assert.doesNotMatch(labelBody, /w\.id === active\.id/);
     const pickStart = src.indexOf("export function pickViewWeek");
-    const pickBody = src.slice(pickStart, pickStart + 700);
+    const pickBody = src.slice(pickStart, pickStart + 900);
     assert.match(pickBody, /requested === "next"/);
     assert.match(pickBody, /isNewerDraft\(w, active\)/);
+    assert.match(pickBody, /if \(!slotDraft\)/);
   });
 
   it("does not label This Sunday when the active week is a newer final", () => {
@@ -615,6 +616,28 @@ describe("weekSwitcherLabel and pickViewWeek", () => {
     assert.equal(pickViewWeek(weeksWithLater, active, "next")?.id, "w2");
     assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w3");
     assert.equal(weekSwitcherLabel(laterDraft, selectActiveWeek([open, laterDraft])), "Week 3");
+  });
+
+  it("pickViewWeek next stays on the next slot so a later leftover cannot steal it", () => {
+    const open = wr("w1", 1, "open");
+    const premature = wr("w2", 2, "final");
+    const lockedNext = wr("w2l", 2, "locked");
+    const laterDraft = wr("w3", 3, "draft");
+    const active = selectActiveWeek([open, premature, laterDraft]);
+    assert.equal(active?.id, "w1");
+    assert.equal(pickViewWeek([open, premature, laterDraft], active, "next")?.id, "w1");
+    assert.notEqual(pickViewWeek([open, premature, laterDraft], active, "next")?.id, "w3");
+    assert.equal(weekSwitcherLabel(laterDraft, active), "Week 3");
+    assert.notEqual(weekSwitcherLabel(laterDraft, active), "Next week");
+    assert.equal(weekSwitcherLabel(premature, active), "Week 2");
+    assert.equal(pickViewWeek([open, wr("w2d", 2, "draft"), laterDraft], active, "next")?.id, "w2d");
+    assert.equal(pickViewWeek([open, laterDraft], active, "next")?.id, "w3");
+    assert.equal(selectActiveWeek([open, lockedNext, laterDraft])?.id, "w2l");
+    assert.equal(
+      pickViewWeek([open, lockedNext, laterDraft], selectActiveWeek([open, lockedNext, laterDraft]), "next")
+        ?.id,
+      "w3",
+    );
   });
 });
 

@@ -363,7 +363,9 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
 /**
  * Commissioner view: default is the active (open/locked) week.
  * `next` or a week id reaches the auto-created draft without changing selectActiveWeek.
- * Prefer the next slot's draft so a later leftover draft cannot steal "next".
+ * Prefer the next slot's draft. If that slot already exists as final/open/locked,
+ * stay on the active week so a later leftover draft cannot steal "next".
+ * Only when the next slot is missing does a leftover later draft count as next.
  */
 export function pickViewWeek<T extends WeekRef>(
   weeks: readonly T[],
@@ -373,8 +375,10 @@ export function pickViewWeek<T extends WeekRef>(
   if (requested === "next" && active) {
     const slotDraft = weekAtSlot(weeks, nextWeekSlot(active));
     if (slotDraft && isNewerDraft(slotDraft, active)) return slotDraft;
-    const next = [...weeks].sort((a, b) => recency(b, a)).find((w) => isNewerDraft(w, active));
-    if (next) return next;
+    if (!slotDraft) {
+      const next = [...weeks].sort((a, b) => recency(b, a)).find((w) => isNewerDraft(w, active));
+      if (next) return next;
+    }
   }
   if (requested && requested !== "next") {
     const found = weeks.find((w) => w.id === requested);
