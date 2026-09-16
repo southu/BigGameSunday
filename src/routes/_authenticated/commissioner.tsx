@@ -10,8 +10,10 @@ import { recomputeWeekScores, runAutopilotNow } from "@/lib/autopilot.functions"
 import { nextStepFor } from "@/lib/autopilot-schedule";
 import {
   canSkipWeek,
+  leftoverDraftNextStep,
   nextWeekSlot,
   pickViewWeek,
+  shouldOfferOpenCards,
   shouldOpenExistingNextWeek,
   skipClearsCalledMoments,
   skipClearsGameOutcomes,
@@ -749,9 +751,11 @@ function Commissioner() {
   const logs = logQ.data ?? [];
   const lastLog = logs[0] ?? null;
   const autopilotWarning = logs.find((l) => l.status === "error") ?? null;
-  const nextStep = week
-    ? nextStepFor(week)
-    : { label: "Create or auto-fill a week to start", at: null };
+  const leftoverStep =
+    week && !week.autopilot_hold ? leftoverDraftNextStep(week, weeks) : null;
+  const nextStep =
+    leftoverStep ??
+    (week ? nextStepFor(week) : { label: "Create or auto-fill a week to start", at: null });
 
   const needsCall = events.filter((e) => e.result === null);
   const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(week?.status ?? "draft") + 1];
@@ -873,7 +877,7 @@ function Commissioner() {
                 </span>
               ))}
             </div>
-            {nextStatus && (
+            {nextStatus && shouldOfferOpenCards(week, weeks) && (
               <Action
                 onClick={() => (nextStatus === "final" ? finalize() : setStatus(nextStatus))}
                 disabled={busy || (nextStatus === "final" && events.length === 0)}

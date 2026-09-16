@@ -4,10 +4,12 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
   canSkipWeek,
+  leftoverDraftNextStep,
   nextWeekSlot,
   pickViewWeek,
   selectActiveWeek,
   shouldAutopilotOpenDraft,
+  shouldOfferOpenCards,
   shouldOpenExistingNextWeek,
   skipClearsCalledMoments,
   skipClearsGameOutcomes,
@@ -154,6 +156,51 @@ describe("selectActiveWeek", () => {
       true,
     );
     assert.equal(selectActiveWeek([w(1, "open"), w(2, "final")])?.week_number, 1);
+  });
+
+  it("commissioner does not offer Open cards on leftover draft W1 behind newer W2", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    assert.equal(shouldOfferOpenCards(leftover, [leftover, premature]), false);
+    assert.equal(shouldOfferOpenCards(leftover, [premature, leftover]), false);
+    assert.equal(shouldOfferOpenCards(w(1, "draft"), [w(1, "draft"), w(2, "open")]), false);
+    assert.equal(shouldOfferOpenCards(w(1, "draft"), [w(1, "draft"), w(2, "locked")]), false);
+    assert.equal(shouldOfferOpenCards(w(1, "draft"), [w(1, "draft"), w(2, "draft")]), false);
+    assert.equal(shouldOfferOpenCards(w(2, "draft"), [w(1, "open"), w(2, "draft")]), true);
+    assert.equal(shouldOfferOpenCards(w(2, "draft"), [w(1, "final"), w(2, "draft")]), true);
+    assert.equal(shouldOfferOpenCards(w(1, "draft"), [w(1, "draft")]), true);
+    assert.equal(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "draft")]), true);
+    assert.equal(shouldOfferOpenCards(w(1, "locked"), [w(1, "locked")]), true);
+    assert.equal(selectActiveWeek([leftover, premature])?.week_number, 2);
+    assert.equal(selectActiveWeek([{ ...leftover, status: "open" }, premature])?.week_number, 1);
+  });
+
+  it("leftover draft next step does not promise Open cards behind a newer week", () => {
+    const leftover = w(1, "draft");
+    assert.equal(leftoverDraftNextStep(leftover, [leftover]), null);
+    assert.equal(leftoverDraftNextStep(w(2, "draft"), [w(1, "open"), w(2, "draft")]), null);
+    assert.equal(leftoverDraftNextStep(w(1, "open"), [w(1, "open"), w(2, "draft")]), null);
+    const behindFinal = leftoverDraftNextStep(leftover, [leftover, w(2, "final")]);
+    assert.match(behindFinal?.label ?? "", /will not auto-open/);
+    assert.match(behindFinal?.label ?? "", /skip it to start next week/);
+    assert.equal(behindFinal?.at, null);
+    assert.doesNotMatch(behindFinal?.label ?? "", /Open cards/);
+    assert.doesNotMatch(behindFinal?.label ?? "", /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const behindOpen = leftoverDraftNextStep(leftover, [leftover, w(2, "open")]);
+    assert.match(behindOpen?.label ?? "", /skip it to start next week/);
+    const behindNewerInPlay = leftoverDraftNextStep(leftover, [
+      leftover,
+      w(2, "final"),
+      w(3, "open"),
+    ]);
+    assert.match(behindNewerInPlay?.label ?? "", /will not auto-open/);
+    assert.match(behindNewerInPlay?.label ?? "", /without Reveal/);
+    assert.doesNotMatch(behindNewerInPlay?.label ?? "", /start next week/);
+    assert.doesNotMatch(behindNewerInPlay?.label ?? "", /Open cards/);
+    assert.doesNotMatch(
+      behindNewerInPlay?.label ?? "",
+      /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i,
+    );
   });
 
   it("Harper House: skipped W1 + dirty-open W2 is This Sunday, not leftover W1", () => {
@@ -879,6 +926,40 @@ describe("useCurrentWeek production wiring", () => {
     assert.doesNotMatch(skipFn, /finalize:\s*true/);
     assert.doesNotMatch(skipFn, /runRecompute/);
     assert.doesNotMatch(skipFn, /Head to the Reveal/);
+  });
+
+  it("commissioner hides Open cards on leftover drafts behind a newer week", () => {
+    const src = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
+    assert.match(src, /shouldOfferOpenCards/);
+    assert.match(src, /leftoverDraftNextStep/);
+    const statusPanel = src.slice(
+      src.indexOf('Panel title="Week status"'),
+      src.indexOf('Panel title="Auto-pilot"'),
+    );
+    assert.match(statusPanel, /shouldOfferOpenCards\(week,\s*weeks\)/);
+    assert.ok(
+      statusPanel.indexOf("shouldOfferOpenCards") < statusPanel.indexOf("NEXT_LABEL"),
+      "leftover-draft Open CTA must be gated before NEXT_LABEL",
+    );
+    assert.match(src, /leftoverDraftNextStep\(week,\s*weeks\)/);
+    assert.match(src, /leftoverStep\s*\?\?/);
+    assert.match(src, /!week\.autopilot_hold \? leftoverDraftNextStep/);
+    const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
+    const offerFn = lib.slice(
+      lib.indexOf("export function shouldOfferOpenCards"),
+      lib.indexOf("function hasNewerInPlayThan"),
+    );
+    assert.match(offerFn, /shouldAutopilotOpenDraft\(week,\s*weeks\)/);
+    const stepFn = lib.slice(
+      lib.indexOf("export function leftoverDraftNextStep"),
+      lib.indexOf("function recoverableFinishedWeek"),
+    );
+    assert.match(stepFn, /will not auto-open/);
+    assert.doesNotMatch(stepFn, /Open cards for the family/);
+    assert.match(stepFn, /skipTouchesNextWeek/);
   });
 
   it("commissioner copy does not use gambling vocabulary", () => {

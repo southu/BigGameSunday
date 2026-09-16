@@ -91,6 +91,19 @@ export function shouldAutopilotOpenDraft(
   return !weeks.some((w) => isNewerThan(w, week));
 }
 
+/**
+ * Draft→open is only safe when this draft is the newest week. Opening a
+ * leftover draft behind a newer week would steal the family via in-play
+ * ranking (Harper: leftover W1 behind final/open W2). Lock/finalize stay.
+ */
+export function shouldOfferOpenCards(
+  week: WeekLike,
+  weeks: readonly WeekLike[],
+): boolean {
+  if (week.status !== "draft") return true;
+  return shouldAutopilotOpenDraft(week, weeks);
+}
+
 function hasNewerInPlayThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
   return weeks.some((w) => isInPlay(w.status) && isNewerThan(w, week));
 }
@@ -184,6 +197,25 @@ export function skipControlCopy(
   return {
     button: `Skip leftover Week ${leftover.week_number}`,
     hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal — works on Tuesday.`,
+  };
+}
+
+/**
+ * Autopilot next-step for a leftover draft behind a newer week. Do not
+ * promise "Open cards for the family" — skip is the Tuesday path.
+ */
+export function leftoverDraftNextStep(
+  week: WeekLike,
+  weeks: readonly WeekLike[],
+): { label: string; at: null } | null {
+  if (week.status !== "draft" || shouldAutopilotOpenDraft(week, weeks)) return null;
+  const slot = nextWeekSlot(week);
+  const touchesNext = skipTouchesNextWeek(weekAtSlot(weeks, slot) ?? slot, weeks);
+  return {
+    label: touchesNext
+      ? "This leftover draft will not auto-open — skip it to start next week"
+      : "This leftover draft will not auto-open — skip it without Reveal",
+    at: null,
   };
 }
 

@@ -3,10 +3,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   canSkipWeek,
+  leftoverDraftNextStep,
   nextWeekSlot,
   pickViewWeek,
   selectActiveWeek,
   shouldAutopilotOpenDraft,
+  shouldOfferOpenCards,
   shouldOpenExistingNextWeek,
   skipClearsCalledMoments,
   skipClearsGameOutcomes,
@@ -151,6 +153,48 @@ describe("selectActiveWeek", () => {
       shouldAutopilotOpenDraft(w(1, "draft", 2026), [w(18, "final", 2025), w(1, "draft", 2026)]),
     ).toBe(true);
     expect(selectActiveWeek([w(1, "open"), w(2, "final")])?.week_number).toBe(1);
+  });
+
+  it("commissioner does not offer Open cards on leftover draft W1 behind newer W2", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    expect(shouldOfferOpenCards(leftover, [leftover, premature])).toBe(false);
+    expect(shouldOfferOpenCards(leftover, [premature, leftover])).toBe(false);
+    expect(shouldOfferOpenCards(w(1, "draft"), [w(1, "draft"), w(2, "open")])).toBe(false);
+    expect(shouldOfferOpenCards(w(1, "draft"), [w(1, "draft"), w(2, "locked")])).toBe(false);
+    expect(shouldOfferOpenCards(w(1, "draft"), [w(1, "draft"), w(2, "draft")])).toBe(false);
+    expect(shouldOfferOpenCards(w(2, "draft"), [w(1, "open"), w(2, "draft")])).toBe(true);
+    expect(shouldOfferOpenCards(w(2, "draft"), [w(1, "final"), w(2, "draft")])).toBe(true);
+    expect(shouldOfferOpenCards(w(1, "draft"), [w(1, "draft")])).toBe(true);
+    expect(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "draft")])).toBe(true);
+    expect(shouldOfferOpenCards(w(1, "locked"), [w(1, "locked")])).toBe(true);
+    expect(selectActiveWeek([leftover, premature])?.week_number).toBe(2);
+    expect(selectActiveWeek([{ ...leftover, status: "open" }, premature])?.week_number).toBe(1);
+  });
+
+  it("leftover draft next step does not promise Open cards behind a newer week", () => {
+    const leftover = w(1, "draft");
+    expect(leftoverDraftNextStep(leftover, [leftover])).toBeNull();
+    expect(leftoverDraftNextStep(w(2, "draft"), [w(1, "open"), w(2, "draft")])).toBeNull();
+    expect(leftoverDraftNextStep(w(1, "open"), [w(1, "open"), w(2, "draft")])).toBeNull();
+    const behindFinal = leftoverDraftNextStep(leftover, [leftover, w(2, "final")]);
+    expect(behindFinal?.label).toMatch(/will not auto-open/);
+    expect(behindFinal?.label).toMatch(/skip it to start next week/);
+    expect(behindFinal?.at).toBeNull();
+    expect(behindFinal?.label).not.toMatch(/Open cards/);
+    expect(behindFinal?.label).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const behindOpen = leftoverDraftNextStep(leftover, [leftover, w(2, "open")]);
+    expect(behindOpen?.label).toMatch(/skip it to start next week/);
+    const behindNewerInPlay = leftoverDraftNextStep(leftover, [
+      leftover,
+      w(2, "final"),
+      w(3, "open"),
+    ]);
+    expect(behindNewerInPlay?.label).toMatch(/will not auto-open/);
+    expect(behindNewerInPlay?.label).toMatch(/without Reveal/);
+    expect(behindNewerInPlay?.label).not.toMatch(/start next week/);
+    expect(behindNewerInPlay?.label).not.toMatch(/Open cards/);
+    expect(behindNewerInPlay?.label).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
   });
 
   it("Harper House: skipped W1 + dirty-open W2 is This Sunday, not leftover W1", () => {
@@ -866,6 +910,37 @@ describe("useCurrentWeek production wiring", () => {
     expect(skipFn).not.toMatch(/finalize:\s*true/);
     expect(skipFn).not.toMatch(/runRecompute/);
     expect(skipFn).not.toMatch(/Head to the Reveal/);
+  });
+
+  it("commissioner hides Open cards on leftover drafts behind a newer week", () => {
+    const src = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/shouldOfferOpenCards/);
+    expect(src).toMatch(/leftoverDraftNextStep/);
+    const statusPanel = src.slice(
+      src.indexOf('Panel title="Week status"'),
+      src.indexOf('Panel title="Auto-pilot"'),
+    );
+    expect(statusPanel).toMatch(/shouldOfferOpenCards\(week,\s*weeks\)/);
+    expect(statusPanel.indexOf("shouldOfferOpenCards")).toBeLessThan(statusPanel.indexOf("NEXT_LABEL"));
+    expect(src).toMatch(/leftoverDraftNextStep\(week,\s*weeks\)/);
+    expect(src).toMatch(/leftoverStep\s*\?\?/);
+    expect(src).toMatch(/!week\.autopilot_hold \? leftoverDraftNextStep/);
+    const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
+    const offerFn = lib.slice(
+      lib.indexOf("export function shouldOfferOpenCards"),
+      lib.indexOf("function hasNewerInPlayThan"),
+    );
+    expect(offerFn).toMatch(/shouldAutopilotOpenDraft\(week,\s*weeks\)/);
+    const stepFn = lib.slice(
+      lib.indexOf("export function leftoverDraftNextStep"),
+      lib.indexOf("function recoverableFinishedWeek"),
+    );
+    expect(stepFn).toMatch(/will not auto-open/);
+    expect(stepFn).not.toMatch(/Open cards for the family/);
+    expect(stepFn).toMatch(/skipTouchesNextWeek/);
   });
 
   it("commissioner copy does not use gambling vocabulary", () => {
