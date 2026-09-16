@@ -185,6 +185,26 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([skipped, dirtyOpen])?.week_number).toBe(2);
   });
 
+  it("commissioner does not offer Finalize on leftover weeks skip should close", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    expect(shouldOfferOpenCards(leftover, [leftover, premature])).toBe(false);
+    expect(shouldOfferOpenCards(leftover, [premature, leftover])).toBe(false);
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const skipped = w(1, "final");
+    expect(shouldOfferOpenCards(dirtyOpen, [skipped, dirtyOpen])).toBe(false);
+    expect(
+      shouldOfferOpenCards(
+        { ...w(2, "final"), finalized_at: "2026-09-15T19:04:43.880Z", lock_at: "2026-09-18T00:15:00.000Z" },
+        [skipped, { ...w(2, "final"), finalized_at: "2026-09-15T19:04:43.880Z", lock_at: "2026-09-18T00:15:00.000Z" }],
+      ),
+    ).toBe(false);
+    expect(shouldOfferOpenCards(w(1, "open"), [w(1, "open")])).toBe(true);
+    expect(shouldOfferOpenCards(w(1, "locked"), [w(1, "locked")])).toBe(true);
+    expect(shouldOfferOpenCards(w(2, "open"), [skipped, w(2, "open")])).toBe(true);
+    expect(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "draft")])).toBe(true);
+  });
+
   it("leftover draft next step does not promise Open cards behind a newer week", () => {
     const leftover = w(1, "draft");
     expect(leftoverDraftNextStep(leftover, [leftover])).toBeNull();
@@ -997,6 +1017,33 @@ describe("useCurrentWeek production wiring", () => {
     expect(stepFn).not.toMatch(/Open cards for the family/);
     expect(stepFn).not.toMatch(/Lock the cards/);
     expect(stepFn).toMatch(/skipTouchesNextWeek/);
+  });
+
+  it("commissioner hides Finalize on leftover weeks skip should close", () => {
+    const src = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
+    const finalizeAt = src.indexOf('Panel title="Finalize the week"');
+    expect(finalizeAt).toBeGreaterThan(-1);
+    const wrap = src.slice(
+      src.lastIndexOf("{shouldOfferOpenCards", finalizeAt),
+      src.indexOf("</Panel>", finalizeAt) + "</Panel>".length,
+    );
+    expect(wrap).toMatch(/shouldOfferOpenCards\(week,\s*weeks\)\s*&&/);
+    expect(wrap).toMatch(/Panel title="Finalize the week"/);
+    expect(wrap).toMatch(/onClick=\{finalize\}/);
+    expect(wrap).not.toMatch(/skipCopy/);
+    expect(wrap.indexOf("shouldOfferOpenCards")).toBeLessThan(
+      wrap.indexOf('Panel title="Finalize the week"'),
+    );
+    const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
+    const offerComment = lib.slice(
+      lib.indexOf("Draft→open is only safe"),
+      lib.indexOf("export function shouldOfferOpenCards"),
+    );
+    expect(offerComment).toMatch(/Finalize would freeze leftover misses/);
+    expect(offerComment).toMatch(/force Reveal/);
   });
 
   it("commissioner copy does not use gambling vocabulary", () => {

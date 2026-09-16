@@ -105,7 +105,8 @@ export function shouldAutopilotLockOpen(week: WeekLike): boolean {
  * leftover draft behind a newer week would steal the family via in-play
  * ranking (Harper: leftover W1 behind final/open W2). Lock/finalize stay
  * unless this week still has leftover marks from a premature finish —
- * skip scrubs those; locking would freeze them.
+ * skip scrubs those; locking or Finalize would freeze leftover misses
+ * and force Reveal, which skip does not require.
  */
 export function shouldOfferOpenCards(
   week: WeekLike,

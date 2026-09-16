@@ -189,6 +189,27 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([skipped, dirtyOpen])?.week_number, 2);
   });
 
+  it("commissioner does not offer Finalize on leftover weeks skip should close", () => {
+    const leftover = w(1, "draft");
+    const premature = w(2, "final");
+    assert.equal(shouldOfferOpenCards(leftover, [leftover, premature]), false);
+    assert.equal(shouldOfferOpenCards(leftover, [premature, leftover]), false);
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const skipped = w(1, "final");
+    assert.equal(shouldOfferOpenCards(dirtyOpen, [skipped, dirtyOpen]), false);
+    assert.equal(
+      shouldOfferOpenCards(
+        { ...w(2, "final"), finalized_at: "2026-09-15T19:04:43.880Z", lock_at: "2026-09-18T00:15:00.000Z" },
+        [skipped, { ...w(2, "final"), finalized_at: "2026-09-15T19:04:43.880Z", lock_at: "2026-09-18T00:15:00.000Z" }],
+      ),
+      false,
+    );
+    assert.equal(shouldOfferOpenCards(w(1, "open"), [w(1, "open")]), true);
+    assert.equal(shouldOfferOpenCards(w(1, "locked"), [w(1, "locked")]), true);
+    assert.equal(shouldOfferOpenCards(w(2, "open"), [skipped, w(2, "open")]), true);
+    assert.equal(shouldOfferOpenCards(w(1, "open"), [w(1, "open"), w(2, "draft")]), true);
+  });
+
   it("leftover draft next step does not promise Open cards behind a newer week", () => {
     const leftover = w(1, "draft");
     assert.equal(leftoverDraftNextStep(leftover, [leftover]), null);
@@ -1019,6 +1040,34 @@ describe("useCurrentWeek production wiring", () => {
     assert.doesNotMatch(stepFn, /Open cards for the family/);
     assert.doesNotMatch(stepFn, /Lock the cards/);
     assert.match(stepFn, /skipTouchesNextWeek/);
+  });
+
+  it("commissioner hides Finalize on leftover weeks skip should close", () => {
+    const src = readFileSync(
+      join(process.cwd(), "src/routes/_authenticated/commissioner.tsx"),
+      "utf8",
+    );
+    const finalizeAt = src.indexOf('Panel title="Finalize the week"');
+    assert.ok(finalizeAt > -1, "Finalize panel must still exist for in-play weeks");
+    const wrap = src.slice(
+      src.lastIndexOf("{shouldOfferOpenCards", finalizeAt),
+      src.indexOf("</Panel>", finalizeAt) + "</Panel>".length,
+    );
+    assert.match(wrap, /shouldOfferOpenCards\(week,\s*weeks\)\s*&&/);
+    assert.match(wrap, /Panel title="Finalize the week"/);
+    assert.match(wrap, /onClick=\{finalize\}/);
+    assert.doesNotMatch(wrap, /skipCopy/);
+    assert.ok(
+      wrap.indexOf("shouldOfferOpenCards") < wrap.indexOf('Panel title="Finalize the week"'),
+      "leftover Finalize panel must be gated by shouldOfferOpenCards",
+    );
+    const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
+    const offerComment = lib.slice(
+      lib.indexOf("Draft→open is only safe"),
+      lib.indexOf("export function shouldOfferOpenCards"),
+    );
+    assert.match(offerComment, /Finalize would freeze leftover misses/);
+    assert.match(offerComment, /force Reveal/);
   });
 
   it("commissioner copy does not use gambling vocabulary", () => {
