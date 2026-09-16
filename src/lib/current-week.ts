@@ -182,9 +182,10 @@ function hasNewerThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
  * reopen leftover W2; auto-created W3 must not bounce them to W2).
  * Draft/final next still opens — leftover draft W1 + premature-final W2,
  * skip of leftover W2 behind a newer final W3, and skip of This Sunday
- * still opens Next week, even when a farther auto-created draft already
- * exists (This Sunday W1 + Next week W2 + W3 draft). A leftover draft
- * behind that farther week still does not reopen leftover next.
+ * still opens Next week, even when Next week is premature-final and a
+ * farther auto-created draft already exists (This Sunday W1 + Next week
+ * W2 + W3 draft). A leftover draft behind that farther week still does
+ * not reopen leftover next.
  * Empty `weeks` still touches (no sibling to inspect).
  */
 export function skipTouchesNextWeek(
@@ -220,7 +221,9 @@ function withStatus<T extends WeekLike>(week: T, status: string): T {
  * on W3; leftover drafts W1+W2 behind final W3 stay on W3).
  * If This Sunday remains in play, skip Next week stays there — do not open
  * a farther week and steal the family. Skip of This Sunday still lands on
- * Next week when a farther auto-created draft already exists.
+ * Next week when a farther auto-created draft already exists — including
+ * a premature-final Next week. Opening next clears leftover finalize stamps
+ * so landing is a clean open week. Skip-in-place leftover stamps stay put.
  * Dirty-open leftover (open + leftover finalize stamp) and premature-final
  * leftover stay put — scrub in place, do not close it and jump to the next week.
  */
@@ -233,7 +236,9 @@ export function skipLandingWeek<T extends WeekLike>(weeks: readonly T[], leftove
   if (!skipTouchesNextWeek(slot, weeks, leftover)) return selectActiveWeek(closed);
   const next = weekAtSlot(weeks, slot);
   if (!next) return selectActiveWeek(closed);
-  const opened = closed.map((w) => (isSameSlot(w, slot) ? withStatus(w, "open") : w));
+  const opened = closed.map((w) =>
+    isSameSlot(w, slot) ? { ...withStatus(w, "open"), finalized_at: null } : w,
+  );
   return selectActiveWeek(opened);
 }
 
@@ -459,7 +464,8 @@ export function skipScrubsViewedInPlace(
  * — unless a newer week than next already exists, or This Sunday would
  * remain in play after leftover is closed, in which case leftover skip
  * just closes the leftover and leaves the family on This Sunday.
- * Skip of This Sunday still opens Next week when a farther draft exists.
+ * Skip of This Sunday still opens Next week when a farther draft exists,
+ * including a premature-final Next week.
  * Dirty-open next is already This Sunday; scrub it later.
  * Pass leftover so skip of This Sunday can still open Next week.
  */

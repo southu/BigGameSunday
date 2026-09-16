@@ -165,6 +165,23 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([skipped, dirty])?.status, "open");
     assert.equal(selectActiveWeek([dirty, skipped])?.week_number, 2);
     assert.equal(weekSwitcherLabel(dirty, selectActiveWeek([skipped, dirty])), "This Sunday");
+    const harperSkipped = {
+      ...wr("3e3aeeeb", 1, "final"),
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00.000Z",
+    };
+    const harperOpen = {
+      ...wr("52a42a9e", 2, "open"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const harper = selectActiveWeek([harperSkipped, harperOpen]);
+    assert.equal(harper?.id, "52a42a9e");
+    assert.equal(harper?.status, "open");
+    assert.equal(weekSwitcherLabel(harperOpen, harper), "This Sunday");
+    assert.equal(weekSwitcherLabel(harperSkipped, harper), "Week 1");
+    assert.equal(pickViewWeek([harperSkipped, harperOpen], harper, null)?.id, "52a42a9e");
+    assert.equal(pickViewWeek([harperSkipped, harperOpen], harper, "next")?.id, "52a42a9e");
   });
 
   it("autopilot does not auto-open leftover draft W1 behind newer W2", () => {
@@ -1048,6 +1065,7 @@ describe("selectActiveWeek", () => {
     const reopen = skipLandingWeek([leftover, premature], leftover);
     assert.equal(reopen?.id, "w2");
     assert.equal(reopen?.status, "open");
+    assert.equal(reopen?.finalized_at, null);
 
     assert.equal(skipLandingWeek([leftover, open2], leftover)?.id, "w2");
     assert.equal(skipLandingWeek([leftover, open2], leftover)?.status, "open");
@@ -1201,6 +1219,113 @@ describe("selectActiveWeek", () => {
     assert.equal(skipLandingWeek(weeks, nextDraft)?.id, "w1");
     assert.equal(skipLandingWeek(weeks, nextDraft)?.status, "open");
     assert.equal(skipTouchesNextWeek(laterDraft, weeks, nextDraft), false);
+  });
+
+  it("skip of This Sunday still opens premature-final Next week when a farther draft already exists", () => {
+    const thisSunday = wr("w1", 1, "open");
+    const lockedSunday = wr("w1l", 1, "locked");
+    const prematureNext = {
+      ...wr("w2", 2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const laterDraft = wr("w3", 3, "draft");
+    const leftoverDraft = wr("w1d", 1, "draft");
+    const weeks = [thisSunday, prematureNext, laterDraft];
+    const lockedWeeks = [lockedSunday, prematureNext, laterDraft];
+    const leftoverWeeks = [leftoverDraft, prematureNext, laterDraft];
+    const wrapSunday = wr("w18", 18, "locked", 2025);
+    const wrapNext = {
+      ...wr("w1", 1, "final", 2026),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const wrapLater = wr("w2", 2, "draft", 2026);
+    const wrapWeeks = [wrapSunday, wrapNext, wrapLater];
+
+    assert.equal(selectActiveWeek(weeks)?.id, "w1");
+    assert.equal(weekSwitcherLabel(thisSunday, selectActiveWeek(weeks)), "This Sunday");
+    assert.equal(weekSwitcherLabel(prematureNext, selectActiveWeek(weeks)), "Week 2");
+    assert.equal(weekSwitcherLabel(laterDraft, selectActiveWeek(weeks)), "Week 3");
+    assert.equal(selectActiveWeek(lockedWeeks)?.id, "w1l");
+
+    assert.equal(skipTouchesNextWeek(prematureNext, weeks, thisSunday), true);
+    assert.equal(skipTouchesNextWeek(prematureNext, lockedWeeks, lockedSunday), true);
+    assert.equal(skipTouchesNextWeek(wrapNext, wrapWeeks, wrapSunday), true);
+    assert.equal(shouldOpenExistingNextWeek(prematureNext, weeks, thisSunday), true);
+    assert.equal(shouldOpenExistingNextWeek(prematureNext, lockedWeeks, lockedSunday), true);
+    assert.equal(shouldOpenExistingNextWeek(wrapNext, wrapWeeks, wrapSunday), true);
+
+    const landing = skipLandingWeek(weeks, thisSunday);
+    assert.equal(landing?.id, "w2");
+    assert.equal(landing?.status, "open");
+    assert.equal(landing?.finalized_at, null);
+    assert.equal(weekSwitcherLabel(landing!, landing), "This Sunday");
+    assert.equal(weekSwitcherLabel(laterDraft, landing), "Next week");
+
+    const lockedLanding = skipLandingWeek(lockedWeeks, lockedSunday);
+    assert.equal(lockedLanding?.id, "w2");
+    assert.equal(lockedLanding?.status, "open");
+    assert.equal(lockedLanding?.finalized_at, null);
+
+    const wrapLanding = skipLandingWeek(wrapWeeks, wrapSunday);
+    assert.equal(wrapLanding?.id, "w1");
+    assert.equal(wrapLanding?.status, "open");
+    assert.equal(wrapLanding?.season_year, 2026);
+    assert.equal(wrapLanding?.finalized_at, null);
+
+    const onThisSunday = skipControlCopy(thisSunday, thisSunday, weeks);
+    assert.equal(onThisSunday.button, "Skip this week / start next week");
+    assert.match(onThisSunday.hint, /without Reveal/);
+    assert.match(onThisSunday.hint, /Tuesday/);
+    assert.doesNotMatch(onThisSunday.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    assert.doesNotMatch(onThisSunday.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    assert.equal(
+      skipControlCopy(lockedSunday, lockedSunday, lockedWeeks).button,
+      "Skip this week / start next week",
+    );
+    assert.equal(
+      skipControlCopy(wrapSunday, wrapSunday, wrapWeeks).button,
+      "Skip this week / start next week",
+    );
+
+    assert.equal(skipTouchesNextWeek(prematureNext, leftoverWeeks, leftoverDraft), false);
+    assert.equal(shouldOpenExistingNextWeek(prematureNext, leftoverWeeks, leftoverDraft), false);
+    assert.equal(skipLandingWeek(leftoverWeeks, leftoverDraft)?.id, "w3");
+    assert.equal(skipLandingWeek(leftoverWeeks, leftoverDraft)?.status, "draft");
+    assert.equal(skipControlCopy(leftoverDraft, leftoverDraft, leftoverWeeks).button, "Skip this week");
+    assert.doesNotMatch(
+      skipControlCopy(leftoverDraft, leftoverDraft, leftoverWeeks).button,
+      /next week|open/i,
+    );
+
+    const noLater = [thisSunday, prematureNext];
+    const noLaterLanding = skipLandingWeek(noLater, thisSunday);
+    assert.equal(skipTouchesNextWeek(prematureNext, noLater, thisSunday), true);
+    assert.equal(shouldOpenExistingNextWeek(prematureNext, noLater, thisSunday), true);
+    assert.equal(noLaterLanding?.id, "w2");
+    assert.equal(noLaterLanding?.status, "open");
+    assert.equal(noLaterLanding?.finalized_at, null);
+
+    const harperSunday = wr("3e3aeeeb", 1, "open");
+    const harperPremature = {
+      ...wr("52a42a9e", 2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const harperWeeks = [harperSunday, harperPremature];
+    assert.equal(selectActiveWeek(harperWeeks)?.id, "3e3aeeeb");
+    const harperLanding = skipLandingWeek(harperWeeks, harperSunday);
+    assert.equal(harperLanding?.id, "52a42a9e");
+    assert.equal(harperLanding?.status, "open");
+    assert.equal(harperLanding?.finalized_at, null);
+    assert.equal(weekSwitcherLabel(harperLanding!, harperLanding), "This Sunday");
+
+    const skipped = wr("w1s", 1, "final");
+    const inPlace = skipLandingWeek([skipped, prematureNext], prematureNext);
+    assert.equal(inPlace?.id, "w2");
+    assert.equal(inPlace?.status, "final");
+    assert.equal(inPlace?.finalized_at, "2026-09-15T19:04:43.880Z");
   });
 
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {

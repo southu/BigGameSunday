@@ -164,6 +164,23 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([skipped, dirty])?.status).toBe("open");
     expect(selectActiveWeek([dirty, skipped])?.week_number).toBe(2);
     expect(weekSwitcherLabel(dirty, selectActiveWeek([skipped, dirty]))).toBe("This Sunday");
+    const harperSkipped = {
+      ...wr("3e3aeeeb", 1, "final"),
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00.000Z",
+    };
+    const harperOpen = {
+      ...wr("52a42a9e", 2, "open"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const harper = selectActiveWeek([harperSkipped, harperOpen]);
+    expect(harper?.id).toBe("52a42a9e");
+    expect(harper?.status).toBe("open");
+    expect(weekSwitcherLabel(harperOpen, harper)).toBe("This Sunday");
+    expect(weekSwitcherLabel(harperSkipped, harper)).toBe("Week 1");
+    expect(pickViewWeek([harperSkipped, harperOpen], harper, null)?.id).toBe("52a42a9e");
+    expect(pickViewWeek([harperSkipped, harperOpen], harper, "next")?.id).toBe("52a42a9e");
   });
 
   it("autopilot does not auto-open leftover draft W1 behind newer W2", () => {
@@ -1023,6 +1040,7 @@ describe("selectActiveWeek", () => {
     const reopen = skipLandingWeek([leftover, premature], leftover);
     expect(reopen?.id).toBe("w2");
     expect(reopen?.status).toBe("open");
+    expect(reopen?.finalized_at).toBeNull();
 
     expect(skipLandingWeek([leftover, open2], leftover)?.id).toBe("w2");
     expect(skipLandingWeek([leftover, open2], leftover)?.status).toBe("open");
@@ -1168,6 +1186,108 @@ describe("selectActiveWeek", () => {
     expect(skipLandingWeek(weeks, nextDraft)?.id).toBe("w1");
     expect(skipLandingWeek(weeks, nextDraft)?.status).toBe("open");
     expect(skipTouchesNextWeek(laterDraft, weeks, nextDraft)).toBe(false);
+  });
+
+  it("skip of This Sunday still opens premature-final Next week when a farther draft already exists", () => {
+    const thisSunday = wr("w1", 1, "open");
+    const lockedSunday = wr("w1l", 1, "locked");
+    const prematureNext = {
+      ...wr("w2", 2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const laterDraft = wr("w3", 3, "draft");
+    const leftoverDraft = wr("w1d", 1, "draft");
+    const weeks = [thisSunday, prematureNext, laterDraft];
+    const lockedWeeks = [lockedSunday, prematureNext, laterDraft];
+    const leftoverWeeks = [leftoverDraft, prematureNext, laterDraft];
+    const wrapSunday = wr("w18", 18, "locked", 2025);
+    const wrapNext = {
+      ...wr("w1", 1, "final", 2026),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const wrapLater = wr("w2", 2, "draft", 2026);
+    const wrapWeeks = [wrapSunday, wrapNext, wrapLater];
+
+    expect(selectActiveWeek(weeks)?.id).toBe("w1");
+    expect(weekSwitcherLabel(thisSunday, selectActiveWeek(weeks))).toBe("This Sunday");
+    expect(weekSwitcherLabel(prematureNext, selectActiveWeek(weeks))).toBe("Week 2");
+    expect(weekSwitcherLabel(laterDraft, selectActiveWeek(weeks))).toBe("Week 3");
+    expect(selectActiveWeek(lockedWeeks)?.id).toBe("w1l");
+
+    expect(skipTouchesNextWeek(prematureNext, weeks, thisSunday)).toBe(true);
+    expect(skipTouchesNextWeek(prematureNext, lockedWeeks, lockedSunday)).toBe(true);
+    expect(skipTouchesNextWeek(wrapNext, wrapWeeks, wrapSunday)).toBe(true);
+    expect(shouldOpenExistingNextWeek(prematureNext, weeks, thisSunday)).toBe(true);
+    expect(shouldOpenExistingNextWeek(prematureNext, lockedWeeks, lockedSunday)).toBe(true);
+    expect(shouldOpenExistingNextWeek(wrapNext, wrapWeeks, wrapSunday)).toBe(true);
+
+    const landing = skipLandingWeek(weeks, thisSunday);
+    expect(landing?.id).toBe("w2");
+    expect(landing?.status).toBe("open");
+    expect(landing?.finalized_at).toBeNull();
+    expect(weekSwitcherLabel(landing!, landing)).toBe("This Sunday");
+    expect(weekSwitcherLabel(laterDraft, landing)).toBe("Next week");
+
+    const lockedLanding = skipLandingWeek(lockedWeeks, lockedSunday);
+    expect(lockedLanding?.id).toBe("w2");
+    expect(lockedLanding?.status).toBe("open");
+    expect(lockedLanding?.finalized_at).toBeNull();
+
+    const wrapLanding = skipLandingWeek(wrapWeeks, wrapSunday);
+    expect(wrapLanding?.id).toBe("w1");
+    expect(wrapLanding?.status).toBe("open");
+    expect(wrapLanding?.season_year).toBe(2026);
+    expect(wrapLanding?.finalized_at).toBeNull();
+
+    const onThisSunday = skipControlCopy(thisSunday, thisSunday, weeks);
+    expect(onThisSunday.button).toBe("Skip this week / start next week");
+    expect(onThisSunday.hint).toMatch(/without Reveal/);
+    expect(onThisSunday.hint).toMatch(/Tuesday/);
+    expect(onThisSunday.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    expect(onThisSunday.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    expect(skipControlCopy(lockedSunday, lockedSunday, lockedWeeks).button).toBe(
+      "Skip this week / start next week",
+    );
+    expect(skipControlCopy(wrapSunday, wrapSunday, wrapWeeks).button).toBe(
+      "Skip this week / start next week",
+    );
+
+    expect(skipTouchesNextWeek(prematureNext, leftoverWeeks, leftoverDraft)).toBe(false);
+    expect(shouldOpenExistingNextWeek(prematureNext, leftoverWeeks, leftoverDraft)).toBe(false);
+    expect(skipLandingWeek(leftoverWeeks, leftoverDraft)?.id).toBe("w3");
+    expect(skipLandingWeek(leftoverWeeks, leftoverDraft)?.status).toBe("draft");
+    expect(skipControlCopy(leftoverDraft, leftoverDraft, leftoverWeeks).button).toBe("Skip this week");
+    expect(skipControlCopy(leftoverDraft, leftoverDraft, leftoverWeeks).button).not.toMatch(/next week|open/i);
+
+    const noLater = [thisSunday, prematureNext];
+    const noLaterLanding = skipLandingWeek(noLater, thisSunday);
+    expect(skipTouchesNextWeek(prematureNext, noLater, thisSunday)).toBe(true);
+    expect(shouldOpenExistingNextWeek(prematureNext, noLater, thisSunday)).toBe(true);
+    expect(noLaterLanding?.id).toBe("w2");
+    expect(noLaterLanding?.status).toBe("open");
+    expect(noLaterLanding?.finalized_at).toBeNull();
+
+    const harperSunday = wr("3e3aeeeb", 1, "open");
+    const harperPremature = {
+      ...wr("52a42a9e", 2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const harperWeeks = [harperSunday, harperPremature];
+    expect(selectActiveWeek(harperWeeks)?.id).toBe("3e3aeeeb");
+    const harperLanding = skipLandingWeek(harperWeeks, harperSunday);
+    expect(harperLanding?.id).toBe("52a42a9e");
+    expect(harperLanding?.status).toBe("open");
+    expect(harperLanding?.finalized_at).toBeNull();
+    expect(weekSwitcherLabel(harperLanding!, harperLanding)).toBe("This Sunday");
+
+    const skipped = wr("w1s", 1, "final");
+    const inPlace = skipLandingWeek([skipped, prematureNext], prematureNext);
+    expect(inPlace?.id).toBe("w2");
+    expect(inPlace?.status).toBe("final");
+    expect(inPlace?.finalized_at).toBe("2026-09-15T19:04:43.880Z");
   });
 
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
