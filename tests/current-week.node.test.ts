@@ -427,6 +427,68 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek(after)?.status, "open");
   });
 
+  it("skip path: leftover in-play behind This Sunday closes W1, not W2", () => {
+    const leftoverOpen = w(1, "open");
+    const leftoverLocked = w(1, "locked");
+    const thisSunday = w(2, "open");
+    const lockedSunday = w(2, "locked");
+    const nextDraft = w(2, "draft");
+    const leftoverRef = wr("w1", 1, "locked");
+    const sundayRef = wr("w2", 2, "open");
+    const weeks = [leftoverRef, sundayRef];
+    const active = selectActiveWeek(weeks);
+
+    assert.equal(selectActiveWeek([leftoverOpen, thisSunday])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverLocked, thisSunday])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverLocked, lockedSunday])?.week_number, 2);
+    assert.equal(active?.id, "w2");
+    assert.equal(weekSwitcherLabel(sundayRef, active), "This Sunday");
+    assert.equal(weekSwitcherLabel(leftoverRef, active), "Week 1");
+    assert.notEqual(weekSwitcherLabel(leftoverRef, active), "This Sunday");
+    assert.notEqual(weekSwitcherLabel(leftoverRef, active), "Next week");
+    assert.equal(selectActiveWeek([leftoverLocked, nextDraft])?.week_number, 1);
+    assert.equal(
+      weekSwitcherLabel(wr("w2d", 2, "draft"), selectActiveWeek([leftoverRef, wr("w2d", 2, "draft")])),
+      "Next week",
+    );
+
+    assert.equal(skipTargetWeek([leftoverOpen, thisSunday], thisSunday)?.week_number, 1);
+    assert.equal(skipTargetWeek([leftoverLocked, thisSunday], thisSunday)?.week_number, 1);
+    assert.equal(skipTargetWeek([leftoverOpen, lockedSunday], lockedSunday)?.week_number, 1);
+    assert.equal(skipTargetWeek([leftoverLocked, lockedSunday], lockedSunday)?.week_number, 1);
+    assert.equal(skipTargetWeek([leftoverLocked, thisSunday], leftoverLocked)?.week_number, 1);
+    assert.equal(skipTargetWeek([leftoverLocked, nextDraft], leftoverLocked)?.week_number, 1);
+    assert.equal(skipTargetWeek([leftoverLocked, nextDraft], nextDraft)?.week_number, 2);
+    assert.equal(skipTargetWeek([leftoverOpen, w(2, "final")], w(2, "final")), null);
+    assert.equal(skipTargetWeek([leftoverLocked, w(2, "final")], w(2, "final")), null);
+
+    const dirtyLeftover = { ...leftoverOpen, finalized_at: "2026-09-15T19:04:43.880Z" };
+    const dirtyWeeks = [dirtyLeftover, thisSunday];
+    assert.equal(skipTargetWeek(dirtyWeeks, thisSunday)?.week_number, 1);
+    assert.equal(skipScrubsViewedInPlace(dirtyLeftover, thisSunday, dirtyWeeks), false);
+    assert.equal(skipScrubsViewedInPlace(dirtyLeftover, dirtyLeftover, dirtyWeeks), false);
+    assert.equal(skipLandingWeek(dirtyWeeks, dirtyLeftover)?.week_number, 2);
+    assert.equal(skipLandingWeek(dirtyWeeks, dirtyLeftover)?.status, "open");
+    assert.equal(skipLandingWeek([leftoverLocked, thisSunday], leftoverLocked)?.week_number, 2);
+    assert.equal(skipLandingWeek([leftoverLocked, thisSunday], leftoverLocked)?.status, "open");
+    assert.match(leftoverDraftNextStep(dirtyLeftover, dirtyWeeks)?.label ?? "", /behind a newer week/);
+    assert.doesNotMatch(leftoverDraftNextStep(dirtyLeftover, dirtyWeeks)?.label ?? "", /leftover marks/);
+    assert.match(
+      leftoverDraftNextStep(leftoverLocked, [leftoverLocked, thisSunday])?.label ?? "",
+      /behind a newer week/,
+    );
+
+    const copy = skipControlCopy(leftoverLocked, thisSunday, [leftoverLocked, thisSunday]);
+    assert.equal(copy.button, "Skip leftover Week 1 / open this week");
+    assert.match(copy.hint, /Week 1 is still leftover/);
+    assert.doesNotMatch(copy.hint, /leftover draft/);
+    assert.match(copy.hint, /without Reveal/);
+    assert.doesNotMatch(copy.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    assert.doesNotMatch(copy.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const draftCopy = skipControlCopy(w(1, "draft"), thisSunday, [w(1, "draft"), thisSunday]);
+    assert.match(draftCopy.hint, /Week 1 is still a leftover draft/);
+  });
+
   it("never prefers an older leftover draft over a newer week of any status", () => {
     assert.equal(selectActiveWeek([w(1, "draft"), w(2, "final"), w(3, "draft")])?.week_number, 3);
     assert.equal(selectActiveWeek([w(3, "final"), w(1, "draft"), w(2, "draft")])?.week_number, 3);
@@ -1040,12 +1102,26 @@ describe("useCurrentWeek production wiring", () => {
       lib.indexOf("export function skipTargetWeek"),
     );
     assert.match(recoverFn, /isPrematureFinalWeek\(target, weeks\)/);
+    const targetFn = lib.slice(
+      lib.indexOf("export function skipTargetWeek"),
+      lib.indexOf("function hasPrematureFinalizeLeftover"),
+    );
+    assert.match(targetFn, /hasNewerInPlayThan\(w, weeks\)/);
+    assert.ok(
+      targetFn.indexOf("hasNewerInPlayThan") < targetFn.indexOf("canSkipWeek(viewed)"),
+      "leftover in-play behind This Sunday must close before Skip can close the viewed week",
+    );
     const scrubFn = lib.slice(
       lib.indexOf("function skipScrubsLeftoverInPlace"),
       lib.indexOf("export function skipScrubsViewedInPlace"),
     );
     assert.doesNotMatch(scrubFn, /leftover\.status === ["']final["']/);
     assert.match(scrubFn, /isPrematureFinalWeek\(leftover, weeks\)/);
+    assert.match(scrubFn, /hasNewerNonDraftThan\(leftover,\s*weeks\)/);
+    assert.ok(
+      scrubFn.indexOf("hasNewerNonDraftThan") < scrubFn.indexOf("isPrematureFinalWeek"),
+      "leftover behind a newer week must close, not scrub in place",
+    );
     const skipFn = src.slice(
       src.indexOf("const skipAndStartNext"),
       src.indexOf("const toggleHold"),

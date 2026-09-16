@@ -413,6 +413,66 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek(after)?.status).toBe("open");
   });
 
+  it("skip path: leftover in-play behind This Sunday closes W1, not W2", () => {
+    const leftoverOpen = w(1, "open");
+    const leftoverLocked = w(1, "locked");
+    const thisSunday = w(2, "open");
+    const lockedSunday = w(2, "locked");
+    const nextDraft = w(2, "draft");
+    const leftoverRef = wr("w1", 1, "locked");
+    const sundayRef = wr("w2", 2, "open");
+    const weeks = [leftoverRef, sundayRef];
+    const active = selectActiveWeek(weeks);
+
+    expect(selectActiveWeek([leftoverOpen, thisSunday])?.week_number).toBe(2);
+    expect(selectActiveWeek([leftoverLocked, thisSunday])?.week_number).toBe(2);
+    expect(selectActiveWeek([leftoverLocked, lockedSunday])?.week_number).toBe(2);
+    expect(active?.id).toBe("w2");
+    expect(weekSwitcherLabel(sundayRef, active)).toBe("This Sunday");
+    expect(weekSwitcherLabel(leftoverRef, active)).toBe("Week 1");
+    expect(weekSwitcherLabel(leftoverRef, active)).not.toBe("This Sunday");
+    expect(weekSwitcherLabel(leftoverRef, active)).not.toBe("Next week");
+    expect(selectActiveWeek([leftoverLocked, nextDraft])?.week_number).toBe(1);
+    expect(weekSwitcherLabel(wr("w2d", 2, "draft"), selectActiveWeek([leftoverRef, wr("w2d", 2, "draft")]))).toBe(
+      "Next week",
+    );
+
+    expect(skipTargetWeek([leftoverOpen, thisSunday], thisSunday)?.week_number).toBe(1);
+    expect(skipTargetWeek([leftoverLocked, thisSunday], thisSunday)?.week_number).toBe(1);
+    expect(skipTargetWeek([leftoverOpen, lockedSunday], lockedSunday)?.week_number).toBe(1);
+    expect(skipTargetWeek([leftoverLocked, lockedSunday], lockedSunday)?.week_number).toBe(1);
+    expect(skipTargetWeek([leftoverLocked, thisSunday], leftoverLocked)?.week_number).toBe(1);
+    expect(skipTargetWeek([leftoverLocked, nextDraft], leftoverLocked)?.week_number).toBe(1);
+    expect(skipTargetWeek([leftoverLocked, nextDraft], nextDraft)?.week_number).toBe(2);
+    expect(skipTargetWeek([leftoverOpen, w(2, "final")], w(2, "final"))).toBeNull();
+    expect(skipTargetWeek([leftoverLocked, w(2, "final")], w(2, "final"))).toBeNull();
+
+    const dirtyLeftover = { ...leftoverOpen, finalized_at: "2026-09-15T19:04:43.880Z" };
+    const dirtyWeeks = [dirtyLeftover, thisSunday];
+    expect(skipTargetWeek(dirtyWeeks, thisSunday)?.week_number).toBe(1);
+    expect(skipScrubsViewedInPlace(dirtyLeftover, thisSunday, dirtyWeeks)).toBe(false);
+    expect(skipScrubsViewedInPlace(dirtyLeftover, dirtyLeftover, dirtyWeeks)).toBe(false);
+    expect(skipLandingWeek(dirtyWeeks, dirtyLeftover)?.week_number).toBe(2);
+    expect(skipLandingWeek(dirtyWeeks, dirtyLeftover)?.status).toBe("open");
+    expect(skipLandingWeek([leftoverLocked, thisSunday], leftoverLocked)?.week_number).toBe(2);
+    expect(skipLandingWeek([leftoverLocked, thisSunday], leftoverLocked)?.status).toBe("open");
+    expect(leftoverDraftNextStep(dirtyLeftover, dirtyWeeks)?.label).toMatch(/behind a newer week/);
+    expect(leftoverDraftNextStep(dirtyLeftover, dirtyWeeks)?.label).not.toMatch(/leftover marks/);
+    expect(leftoverDraftNextStep(leftoverLocked, [leftoverLocked, thisSunday])?.label).toMatch(
+      /behind a newer week/,
+    );
+
+    const copy = skipControlCopy(leftoverLocked, thisSunday, [leftoverLocked, thisSunday]);
+    expect(copy.button).toBe("Skip leftover Week 1 / open this week");
+    expect(copy.hint).toMatch(/Week 1 is still leftover/);
+    expect(copy.hint).not.toMatch(/leftover draft/);
+    expect(copy.hint).toMatch(/without Reveal/);
+    expect(copy.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    expect(copy.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const draftCopy = skipControlCopy(w(1, "draft"), thisSunday, [w(1, "draft"), thisSunday]);
+    expect(draftCopy.hint).toMatch(/Week 1 is still a leftover draft/);
+  });
+
   it("never prefers an older leftover draft over a newer week of any status", () => {
     expect(selectActiveWeek([w(1, "draft"), w(2, "final"), w(3, "draft")])?.week_number).toBe(3);
     expect(selectActiveWeek([w(3, "final"), w(1, "draft"), w(2, "draft")])?.week_number).toBe(3);
@@ -1023,12 +1083,20 @@ describe("useCurrentWeek production wiring", () => {
       lib.indexOf("export function skipTargetWeek"),
     );
     expect(recoverFn).toMatch(/isPrematureFinalWeek\(target, weeks\)/);
+    const targetFn = lib.slice(
+      lib.indexOf("export function skipTargetWeek"),
+      lib.indexOf("function hasPrematureFinalizeLeftover"),
+    );
+    expect(targetFn).toMatch(/hasNewerInPlayThan\(w, weeks\)/);
+    expect(targetFn.indexOf("hasNewerInPlayThan")).toBeLessThan(targetFn.indexOf("canSkipWeek(viewed)"));
     const scrubFn = lib.slice(
       lib.indexOf("function skipScrubsLeftoverInPlace"),
       lib.indexOf("export function skipScrubsViewedInPlace"),
     );
     expect(scrubFn).not.toMatch(/leftover\.status === ["']final["']/);
     expect(scrubFn).toMatch(/isPrematureFinalWeek\(leftover, weeks\)/);
+    expect(scrubFn).toMatch(/hasNewerNonDraftThan\(leftover,\s*weeks\)/);
+    expect(scrubFn.indexOf("hasNewerNonDraftThan")).toBeLessThan(scrubFn.indexOf("isPrematureFinalWeek"));
     const skipFn = src.slice(
       src.indexOf("const skipAndStartNext"),
       src.indexOf("const toggleHold"),

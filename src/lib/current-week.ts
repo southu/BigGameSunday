@@ -235,21 +235,22 @@ export function skipControlCopy(
       hint: "Didn't play this week? Close it without Reveal and open next week's cards — works on Tuesday.",
     };
   }
+  const leftoverKind = leftover.status === "draft" ? "a leftover draft" : "leftover";
   if (touchesNext && viewed && isSameSlot(viewed, slot)) {
     return {
       button: `Skip leftover Week ${leftover.week_number} / open this week`,
-      hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal and open this week so the family can play — works on Tuesday.`,
+      hint: `Week ${leftover.week_number} is still ${leftoverKind}. Close it without Reveal and open this week so the family can play — works on Tuesday.`,
     };
   }
   if (touchesNext) {
     return {
       button: `Skip leftover Week ${leftover.week_number} / open Week ${slot.week_number}`,
-      hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal and open Week ${slot.week_number} so the family can play — works on Tuesday.`,
+      hint: `Week ${leftover.week_number} is still ${leftoverKind}. Close it without Reveal and open Week ${slot.week_number} so the family can play — works on Tuesday.`,
     };
   }
   return {
     button: `Skip leftover Week ${leftover.week_number}`,
-    hint: `Week ${leftover.week_number} is still a leftover draft. Close it without Reveal — works on Tuesday.`,
+    hint: `Week ${leftover.week_number} is still ${leftoverKind}. Close it without Reveal — works on Tuesday.`,
   };
 }
 
@@ -313,13 +314,17 @@ function recoverableFinishedWeek<T extends WeekLike>(weeks: readonly T[]): T | n
  * Week the skip control closes.
  * Prefer an older leftover draft behind the viewed week (Harper: draft W1
  * sitting behind open/final W2) so Skip cannot close the week the family
- * is about to play. Otherwise recover a premature-final week when nothing
- * is in play and an older week exists (Harper: skipped W1 + premature-final
- * W2). Otherwise close the viewed week when it is still playable.
- * If the viewed week is already finished, still target a leftover open week
- * with a premature finalize stamp so Skip can scrub it in place (Harper:
- * skipped W1 + dirty-open W2, commissioner looking at W1). A newest final
- * without premature evidence is left alone.
+ * is about to play. Prefer an older leftover in-play week behind This Sunday
+ * (locked/open W1 sitting behind open/locked W2) for the same reason — Skip
+ * must not close the week the family is playing. Otherwise recover a
+ * premature-final week when nothing is in play and an older week exists
+ * (Harper: skipped W1 + premature-final W2). Otherwise close the viewed week
+ * when it is still playable.
+ * If the viewed week is already finished, still target a leftover in-play
+ * week behind a newer in-play week, or a leftover open week with a premature
+ * finalize stamp so Skip can scrub it in place (Harper: skipped W1 + dirty-open
+ * W2, commissioner looking at W1). A newest final without premature evidence
+ * is left alone.
  */
 export function skipTargetWeek<T extends WeekLike>(
   weeks: readonly T[],
@@ -330,9 +335,17 @@ export function skipTargetWeek<T extends WeekLike>(
     .filter((w) => w.status === "draft" && isOlderThan(w, viewed))
     .sort(recency);
   if (olderDrafts[0]) return olderDrafts[0];
+  const olderLeftoverInPlay = [...weeks]
+    .filter((w) => isInPlay(w.status) && hasNewerInPlayThan(w, weeks) && isOlderThan(w, viewed))
+    .sort(recency);
+  if (olderLeftoverInPlay[0]) return olderLeftoverInPlay[0];
   const recoverable = recoverableFinishedWeek(weeks);
   if (recoverable) return recoverable;
   if (canSkipWeek(viewed)) return viewed;
+  const leftoverInPlay = [...weeks]
+    .filter((w) => isInPlay(w.status) && hasNewerInPlayThan(w, weeks))
+    .sort(recency);
+  if (leftoverInPlay[0]) return leftoverInPlay[0];
   const dirtyOpen = [...weeks].filter(hasPrematureFinalizeLeftover).sort(recency);
   return dirtyOpen[0] ?? null;
 }
@@ -375,8 +388,13 @@ function isPrematureFinalWeek(week: WeekLike, weeks: readonly WeekLike[] = []): 
   return finalizedBeforeLock(week) || finalizedBeforeOlderSibling(week, weeks);
 }
 
-/** Premature-final or dirty-open leftover: reopen/scrub this week, do not skip to the next. */
+/**
+ * Premature-final or dirty-open leftover: reopen/scrub this week, do not skip
+ * to the next. A leftover sitting behind a newer non-draft week is closed, not
+ * scrubbed — reopening it would steal the family back via in-play ranking.
+ */
 function skipScrubsLeftoverInPlace(leftover: WeekLike, weeks: readonly WeekLike[] = []): boolean {
+  if (hasNewerNonDraftThan(leftover, weeks)) return false;
   return hasPrematureFinalizeLeftover(leftover) || isPrematureFinalWeek(leftover, weeks);
 }
 
