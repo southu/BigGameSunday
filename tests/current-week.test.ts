@@ -100,6 +100,18 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([open, skipped])?.week_number).toBe(2);
   });
 
+  it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
+    const leftover = w(1, "draft");
+    const open = w(2, "open");
+    const target = skipTargetWeek([leftover, open], open);
+    expect(target?.week_number).toBe(1);
+    expect(target?.status).toBe("draft");
+    expect(skipTargetWeek([leftover, w(2, "draft")], w(2, "draft"))?.week_number).toBe(1);
+    const after = [w(1, "final"), open];
+    expect(selectActiveWeek(after)?.week_number).toBe(2);
+    expect(selectActiveWeek(after)?.status).toBe("open");
+  });
+
   it("never prefers an older leftover draft over a newer week of any status", () => {
     expect(selectActiveWeek([w(1, "draft"), w(2, "final"), w(3, "draft")])?.week_number).toBe(3);
     expect(selectActiveWeek([w(3, "final"), w(1, "draft"), w(2, "draft")])?.week_number).toBe(3);
@@ -150,6 +162,9 @@ describe("selectActiveWeek", () => {
     expect(skipTargetWeek([w(1, "final"), w(2, "final")], w(2, "final"))).toBeNull();
     expect(skipTargetWeek([w(1, "open"), w(2, "final")], w(2, "final"))).toBeNull();
     expect(skipTargetWeek([w(1, "open"), w(2, "draft")], w(1, "open"))?.week_number).toBe(1);
+    expect(skipTargetWeek([leftover, w(2, "open")], w(2, "open"))?.week_number).toBe(1);
+    expect(skipTargetWeek([leftover, w(2, "draft")], w(2, "draft"))?.week_number).toBe(1);
+    expect(skipTargetWeek([leftover, w(2, "locked")], w(2, "locked"))?.week_number).toBe(1);
     const next = weekAtSlot([leftover, premature], nextWeekSlot(leftover));
     expect(next?.status).toBe("final");
     expect(shouldOpenExistingNextWeek(next)).toBe(true);
@@ -170,6 +185,7 @@ describe("selectActiveWeek", () => {
     const copy = skipControlCopy(leftover, premature);
     expect(copy.button).toBe("Skip leftover Week 1 / open this week");
     expect(copy.hint).toMatch(/Week 1 is still a leftover draft/);
+    expect(skipControlCopy(leftover, w(2, "open")).button).toBe("Skip leftover Week 1 / open this week");
     expect(copy.hint).toMatch(/without Reveal/);
     expect(copy.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
     expect(copy.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
@@ -273,6 +289,7 @@ describe("useCurrentWeek production wiring", () => {
     expect(skipFn).toMatch(/shouldOpenExistingNextWeek/);
     expect(skipFn).toMatch(/finalized_at:\s*null/);
     expect(skipFn).toMatch(/skipLockNeedsRefresh/);
+    expect(skipFn).toMatch(/else if \(next && skipLockNeedsRefresh/);
     expect(skipFn).not.toMatch(/next\?\.status === "draft"/);
     expect(skipFn).not.toMatch(/finalize:\s*true/);
     expect(skipFn).not.toMatch(/runRecompute/);

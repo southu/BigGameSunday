@@ -577,6 +577,12 @@ function Commissioner() {
         }
         const { error: openErr } = await db.from("weeks").update(patch).eq("id", nextId);
         if (openErr) throw openErr;
+      } else if (next && skipLockNeedsRefresh(next.lock_at)) {
+        const { error: lockErr } = await db
+          .from("weeks")
+          .update({ lock_at: nextSundayKickoff().toISOString() })
+          .eq("id", nextId);
+        if (lockErr) throw lockErr;
       }
 
       await refresh([

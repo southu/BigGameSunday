@@ -101,6 +101,18 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([open, skipped])?.week_number, 2);
   });
 
+  it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
+    const leftover = w(1, "draft");
+    const open = w(2, "open");
+    const target = skipTargetWeek([leftover, open], open);
+    assert.equal(target?.week_number, 1);
+    assert.equal(target?.status, "draft");
+    assert.equal(skipTargetWeek([leftover, w(2, "draft")], w(2, "draft"))?.week_number, 1);
+    const after = [w(1, "final"), open];
+    assert.equal(selectActiveWeek(after)?.week_number, 2);
+    assert.equal(selectActiveWeek(after)?.status, "open");
+  });
+
   it("never prefers an older leftover draft over a newer week of any status", () => {
     assert.equal(selectActiveWeek([w(1, "draft"), w(2, "final"), w(3, "draft")])?.week_number, 3);
     assert.equal(selectActiveWeek([w(3, "final"), w(1, "draft"), w(2, "draft")])?.week_number, 3);
@@ -150,6 +162,9 @@ describe("selectActiveWeek", () => {
     assert.equal(skipTargetWeek([w(1, "final"), w(2, "final")], w(2, "final")), null);
     assert.equal(skipTargetWeek([w(1, "open"), w(2, "final")], w(2, "final")), null);
     assert.equal(skipTargetWeek([w(1, "open"), w(2, "draft")], w(1, "open"))?.week_number, 1);
+    assert.equal(skipTargetWeek([leftover, w(2, "open")], w(2, "open"))?.week_number, 1);
+    assert.equal(skipTargetWeek([leftover, w(2, "draft")], w(2, "draft"))?.week_number, 1);
+    assert.equal(skipTargetWeek([leftover, w(2, "locked")], w(2, "locked"))?.week_number, 1);
     const next = weekAtSlot([leftover, premature], nextWeekSlot(leftover));
     assert.equal(next?.status, "final");
     assert.equal(shouldOpenExistingNextWeek(next), true);
@@ -170,6 +185,7 @@ describe("selectActiveWeek", () => {
     const copy = skipControlCopy(leftover, premature);
     assert.equal(copy.button, "Skip leftover Week 1 / open this week");
     assert.match(copy.hint, /Week 1 is still a leftover draft/);
+    assert.equal(skipControlCopy(leftover, w(2, "open")).button, "Skip leftover Week 1 / open this week");
     assert.match(copy.hint, /without Reveal/);
     assert.doesNotMatch(copy.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
     assert.doesNotMatch(copy.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
@@ -273,6 +289,7 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(skipFn, /shouldOpenExistingNextWeek/);
     assert.match(skipFn, /finalized_at:\s*null/);
     assert.match(skipFn, /skipLockNeedsRefresh/);
+    assert.match(skipFn, /else if \(next && skipLockNeedsRefresh/);
     assert.doesNotMatch(skipFn, /next\?\.status === "draft"/);
     assert.doesNotMatch(skipFn, /finalize:\s*true/);
     assert.doesNotMatch(skipFn, /runRecompute/);

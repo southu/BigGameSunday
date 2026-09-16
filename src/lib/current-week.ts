@@ -103,19 +103,21 @@ function isOlderThan(week: WeekLike, than: WeekLike): boolean {
 
 /**
  * Week the skip control closes.
- * The viewed leftover if it is still playable; otherwise the newest older
- * leftover draft sitting behind a finished week (Harper: draft W1 + final W2).
+ * Prefer an older leftover draft behind the viewed week (Harper: draft W1
+ * sitting behind open/final W2) so Skip cannot close the week the family
+ * is about to play. Otherwise close the viewed week when it is still playable.
  */
 export function skipTargetWeek<T extends WeekLike>(
   weeks: readonly T[],
   viewed: T | null | undefined,
 ): T | null {
-  if (canSkipWeek(viewed)) return viewed ?? null;
   if (!viewed) return null;
   const olderDrafts = [...weeks]
     .filter((w) => w.status === "draft" && isOlderThan(w, viewed))
     .sort(recency);
-  return olderDrafts[0] ?? null;
+  if (olderDrafts[0]) return olderDrafts[0];
+  if (canSkipWeek(viewed)) return viewed;
+  return null;
 }
 
 /**
