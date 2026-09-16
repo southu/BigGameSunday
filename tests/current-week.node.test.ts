@@ -278,6 +278,15 @@ describe("selectActiveWeek", () => {
       behindNewerInPlay?.label ?? "",
       /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i,
     );
+    const behindNewerDraft = leftoverDraftNextStep(leftover, [
+      leftover,
+      w(2, "final"),
+      w(3, "draft"),
+    ]);
+    assert.match(behindNewerDraft?.label ?? "", /will not auto-open/);
+    assert.match(behindNewerDraft?.label ?? "", /without Reveal/);
+    assert.doesNotMatch(behindNewerDraft?.label ?? "", /start next week/);
+    assert.doesNotMatch(behindNewerDraft?.label ?? "", /Open cards/);
     const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
     const skipped = w(1, "final");
     const dirtyStep = leftoverDraftNextStep(dirtyOpen, [skipped, dirtyOpen]);
@@ -793,6 +802,15 @@ describe("selectActiveWeek", () => {
     assert.equal(ahead.button, "Skip leftover Week 1 / open Week 2");
     assert.match(ahead.hint, /open Week 2/);
     assert.doesNotMatch(ahead.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const aheadWithDraft3 = skipControlCopy(leftover, w(3, "draft"), [
+      leftover,
+      premature,
+      w(3, "draft"),
+    ]);
+    assert.equal(aheadWithDraft3.button, "Skip leftover Week 1");
+    assert.doesNotMatch(aheadWithDraft3.button, /open/);
+    assert.match(aheadWithDraft3.hint, /without Reveal/);
+    assert.doesNotMatch(aheadWithDraft3.hint, /open Week 2/);
     const stay = skipControlCopy(leftover, w(3, "open"), [leftover, w(2, "final"), w(3, "open")]);
     assert.equal(stay.button, "Skip leftover Week 1");
     assert.doesNotMatch(stay.button, /open/);
@@ -839,7 +857,7 @@ describe("selectActiveWeek", () => {
     const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
 
     assert.equal(skipTouchesNextWeek(premature, [leftover, premature]), true);
-    assert.equal(skipTouchesNextWeek(premature, [leftover, premature, draft3]), true);
+    assert.equal(skipTouchesNextWeek(premature, [leftover, premature, draft3]), false);
     assert.equal(skipTouchesNextWeek(premature, [leftover, premature, open3]), false);
     assert.equal(skipTouchesNextWeek(premature, [leftover, premature, locked3]), false);
     assert.equal(skipTouchesNextWeek({ season_year: 2026, week_number: 2 }, [leftover, open3]), false);
@@ -854,6 +872,7 @@ describe("selectActiveWeek", () => {
 
     assert.equal(shouldOpenExistingNextWeek(premature), true);
     assert.equal(shouldOpenExistingNextWeek(premature, [leftover, premature]), true);
+    assert.equal(shouldOpenExistingNextWeek(premature, [leftover, premature, draft3]), false);
     assert.equal(shouldOpenExistingNextWeek(premature, [leftover, premature, open3]), false);
     assert.equal(shouldOpenExistingNextWeek(w(2, "draft"), [leftover, w(2, "draft"), open3]), false);
     assert.equal(shouldOpenExistingNextWeek(w(2, "locked")), true);
@@ -950,6 +969,70 @@ describe("selectActiveWeek", () => {
     );
   });
 
+  it("skip does not reopen leftover next behind a newer draft week", () => {
+    const leftover1 = wr("w1", 1, "draft");
+    const leftover2 = wr("w2", 2, "draft");
+    const premature = wr("w2f", 2, "final");
+    const draft3 = wr("w3", 3, "draft");
+    const leftoverWeeks = [leftover1, leftover2, draft3];
+    const prematureWeeks = [leftover1, premature, draft3];
+    const wrapLeftover = wr("w18", 18, "draft", 2025);
+    const wrapNext = wr("w1", 1, "draft", 2026);
+    const wrapDraft = wr("w2", 2, "draft", 2026);
+    const wrapWeeks = [wrapLeftover, wrapNext, wrapDraft];
+
+    assert.equal(selectActiveWeek(leftoverWeeks)?.id, "w3");
+    assert.equal(selectActiveWeek(prematureWeeks)?.id, "w3");
+    assert.equal(selectActiveWeek(wrapWeeks)?.id, "w2");
+
+    assert.equal(skipTouchesNextWeek(leftover2, leftoverWeeks, leftover1), false);
+    assert.equal(skipTouchesNextWeek(premature, prematureWeeks, leftover1), false);
+    assert.equal(skipTouchesNextWeek(draft3, leftoverWeeks, leftover2), true);
+    assert.equal(skipTouchesNextWeek(wrapNext, wrapWeeks, wrapLeftover), false);
+    assert.equal(skipTouchesNextWeek(wrapDraft, wrapWeeks, wrapNext), true);
+
+    assert.equal(shouldOpenExistingNextWeek(leftover2, leftoverWeeks, leftover1), false);
+    assert.equal(shouldOpenExistingNextWeek(premature, prematureWeeks, leftover1), false);
+    assert.equal(shouldOpenExistingNextWeek(draft3, leftoverWeeks, leftover2), true);
+    assert.equal(shouldOpenExistingNextWeek(wrapNext, wrapWeeks, wrapLeftover), false);
+
+    const closeW1draft = skipLandingWeek(leftoverWeeks, leftover1);
+    assert.equal(closeW1draft?.id, "w3");
+    assert.equal(closeW1draft?.status, "draft");
+    const closeW1premature = skipLandingWeek(prematureWeeks, leftover1);
+    assert.equal(closeW1premature?.id, "w3");
+    assert.equal(closeW1premature?.status, "draft");
+    const openW3 = skipLandingWeek(leftoverWeeks, leftover2);
+    assert.equal(openW3?.id, "w3");
+    assert.equal(openW3?.status, "open");
+    assert.equal(skipLandingWeek(wrapWeeks, wrapLeftover)?.id, "w2");
+    assert.equal(skipLandingWeek(wrapWeeks, wrapLeftover)?.status, "draft");
+    assert.equal(skipLandingWeek(wrapWeeks, wrapNext)?.id, "w2");
+    assert.equal(skipLandingWeek(wrapWeeks, wrapNext)?.status, "open");
+
+    const onW1 = skipControlCopy(leftover1, leftover1, leftoverWeeks);
+    assert.equal(onW1.button, "Skip this week");
+    assert.doesNotMatch(onW1.button, /next week|open/i);
+    assert.match(onW1.hint, /without Reveal/);
+    const onPremature = skipControlCopy(leftover1, leftover1, prematureWeeks);
+    assert.equal(onPremature.button, "Skip this week");
+    assert.doesNotMatch(onPremature.button, /next week|open/i);
+    const onW3fromW2 = skipControlCopy(leftover2, draft3, leftoverWeeks);
+    assert.equal(onW3fromW2.button, "Skip leftover Week 2 / open this week");
+    assert.match(onW3fromW2.hint, /open this week/);
+
+    const stepW1 = leftoverDraftNextStep(leftover1, leftoverWeeks);
+    assert.match(stepW1?.label ?? "", /will not auto-open/);
+    assert.match(stepW1?.label ?? "", /without Reveal/);
+    assert.doesNotMatch(stepW1?.label ?? "", /start next week/);
+    const stepPremature = leftoverDraftNextStep(leftover1, prematureWeeks);
+    assert.match(stepPremature?.label ?? "", /without Reveal/);
+    assert.doesNotMatch(stepPremature?.label ?? "", /start next week/);
+    const stepW2 = leftoverDraftNextStep(leftover2, leftoverWeeks);
+    assert.match(stepW2?.label ?? "", /will not auto-open/);
+    assert.match(stepW2?.label ?? "", /skip it to start next week/);
+  });
+
   it("skip landing jumps to the post-skip active week instead of staying on leftover", () => {
     const leftover = wr("w1", 1, "draft");
     const premature = wr("w2", 2, "final");
@@ -970,8 +1053,8 @@ describe("selectActiveWeek", () => {
     assert.equal(skipLandingWeek([leftover, open2], leftover)?.status, "open");
 
     const reopenWithDraft3 = skipLandingWeek([leftover, premature, draft3], leftover);
-    assert.equal(reopenWithDraft3?.id, "w2");
-    assert.equal(reopenWithDraft3?.status, "open");
+    assert.equal(reopenWithDraft3?.id, "w3");
+    assert.equal(reopenWithDraft3?.status, "draft");
 
     const only = skipLandingWeek([leftover], leftover);
     assert.equal(only?.id, "w1");
@@ -1332,15 +1415,16 @@ describe("useCurrentWeek production wiring", () => {
       lib.indexOf("export function skipTouchesNextWeek"),
       lib.indexOf("function withStatus"),
     );
-    assert.match(touchFn, /hasNewerNonDraftThan\(next, weeks\)/);
+    assert.match(touchFn, /hasNewerThan\(next, weeks\)/);
+    assert.doesNotMatch(touchFn, /hasNewerNonDraftThan\(next, weeks\)/);
     assert.doesNotMatch(touchFn, /hasNewerInPlayThan\(next, weeks\)/);
     assert.match(touchFn, /weekAtSlot\(weeks,\s*next\)/);
     assert.match(touchFn, /isInPlay\(existing\.status\)/);
     assert.match(touchFn, /leftover/);
     assert.match(touchFn, /hasOlderInPlayThan\(next, remaining\)/);
     assert.ok(
-      touchFn.indexOf("hasNewerNonDraftThan") < touchFn.indexOf("weekAtSlot(weeks, next)"),
-      "skip must refuse a newer in-play or final week before inspecting next itself",
+      touchFn.indexOf("hasNewerThan") < touchFn.indexOf("weekAtSlot(weeks, next)"),
+      "skip must refuse a newer week before inspecting next itself",
     );
     assert.ok(
       touchFn.indexOf("weekAtSlot(weeks, next)") < touchFn.indexOf("isInPlay(existing.status)"),
