@@ -84,6 +84,12 @@ export function skipControlCopy(
   leftover: WeekLike,
   viewed: WeekLike | null | undefined,
 ): { button: string; hint: string } {
+  if (skipScrubsViewedInPlace(leftover, viewed)) {
+    return {
+      button: "Clear leftover marks / open this week",
+      hint: "This week was marked finished too early. Clear leftover marks so the family can play — works on Tuesday.",
+    };
+  }
   if (viewed && isSameSlot(leftover, viewed)) {
     return {
       button: "Skip this week / start next week",
@@ -125,6 +131,17 @@ export function skipTargetWeek<T extends WeekLike>(
 /** Open + leftover finalize stamp: skip must reopen/scrub, not take the already-open path. */
 function hasPrematureFinalizeLeftover(week: WeekLike | null | undefined): boolean {
   return !!week && week.status === "open" && !!week.finalized_at;
+}
+
+/**
+ * After leftover W1 is already closed, Harper House still sits on open W2 with a
+ * stale finalized_at. Scrub that viewed week in place — do not skip it to W3.
+ */
+export function skipScrubsViewedInPlace(
+  leftover: WeekLike,
+  viewed: WeekLike | null | undefined,
+): boolean {
+  return !!viewed && isSameSlot(leftover, viewed) && hasPrematureFinalizeLeftover(leftover);
 }
 
 /**

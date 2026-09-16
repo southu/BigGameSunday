@@ -17,6 +17,7 @@ import {
   skipClearsGameOutcomes,
   skipControlCopy,
   skipLockAfterAutofill,
+  skipScrubsViewedInPlace,
   skipTargetWeek,
   skipUnlocksCards,
   skipUnlocksCardsOnLockRefresh,
@@ -537,10 +538,6 @@ function Commissioner() {
       const now = new Date().toISOString();
       const sundayLock = nextSundayKickoff().toISOString();
 
-      // Open (or create) next first so a leftover-close failure still leaves a playable week.
-      const next = weekAtSlot(weeks, slot);
-      let nextId = next?.id ?? null;
-
       const lockAfterAutofill = async (weekId: string, knownLock: string | null | undefined) => {
         const { data: filled, error: lockReadErr } = await db
           .from("weeks")
@@ -550,6 +547,75 @@ function Commissioner() {
         if (lockReadErr) throw lockReadErr;
         return skipLockAfterAutofill(filled?.lock_at ?? knownLock, sundayLock);
       };
+
+      const reopenAndScrub = async (target: typeof leftover, weekId: string) => {
+        try {
+          await runAutoFill({ data: { weekId } });
+        } catch {
+          /* still open so the family can play */
+        }
+        const patch: Record<string, unknown> = {
+          status: "open",
+          auto_opened_at: now,
+          finalized_at: null,
+          auto_locked_at: null,
+        };
+        const lockFallback = await lockAfterAutofill(weekId, target.lock_at);
+        if (lockFallback) patch.lock_at = lockFallback;
+        const { error: openErr } = await db.from("weeks").update(patch).eq("id", weekId);
+        if (openErr) throw openErr;
+        if (skipUnlocksCards(target) || skipUnlocksCardsOnLockRefresh(lockFallback)) {
+          const { error: unlockErr } = await db
+            .from("cards")
+            .update({ locked_at: null })
+            .eq("week_id", weekId);
+          if (unlockErr) throw unlockErr;
+        }
+        if (skipClearsCalledMoments(target)) {
+          const { error: evErr } = await db
+            .from("events")
+            .update({ result: null, resolved_at: null })
+            .eq("week_id", weekId);
+          if (evErr) throw evErr;
+          const { data: scored, error: cardErr } = await db
+            .from("cards")
+            .select("id")
+            .eq("week_id", weekId);
+          if (cardErr) throw cardErr;
+          const cardIds = (scored ?? []).map((c) => c.id as string);
+          if (cardIds.length) {
+            const { error: scoreErr } = await db
+              .from("weekly_scores")
+              .delete()
+              .in("card_id", cardIds);
+            if (scoreErr) throw scoreErr;
+          }
+        }
+        if (skipClearsGameOutcomes(target)) {
+          const { error: gameErr } = await db
+            .from("games")
+            .update({ home_score: null, away_score: null, upset_won: null })
+            .eq("week_id", weekId);
+          if (gameErr) throw gameErr;
+        }
+      };
+
+      if (skipScrubsViewedInPlace(leftover, week)) {
+        await reopenAndScrub(leftover, leftover.id);
+        await refresh([
+          ["current-week", household.id],
+          ["games", leftover.id],
+          ["events", leftover.id],
+          ["cards", leftover.id],
+          ["season", household.id],
+        ]);
+        setViewWeekId(leftover.id);
+        return `Week ${leftover.week_number} is open for the family.`;
+      }
+
+      // Open (or create) next first so a leftover-close failure still leaves a playable week.
+      const next = weekAtSlot(weeks, slot);
+      let nextId = next?.id ?? null;
 
       if (!nextId) {
         const { data, error: cErr } = await db
@@ -580,55 +646,7 @@ function Commissioner() {
           if (lockErr) throw lockErr;
         }
       } else if (shouldOpenExistingNextWeek(next)) {
-        try {
-          await runAutoFill({ data: { weekId: nextId } });
-        } catch {
-          /* still open so the family can play */
-        }
-        const patch: Record<string, unknown> = {
-          status: "open",
-          auto_opened_at: now,
-          finalized_at: null,
-          auto_locked_at: null,
-        };
-        const lockFallback = await lockAfterAutofill(nextId, next.lock_at);
-        if (lockFallback) patch.lock_at = lockFallback;
-        const { error: openErr } = await db.from("weeks").update(patch).eq("id", nextId);
-        if (openErr) throw openErr;
-        if (skipUnlocksCards(next) || skipUnlocksCardsOnLockRefresh(lockFallback)) {
-          const { error: unlockErr } = await db
-            .from("cards")
-            .update({ locked_at: null })
-            .eq("week_id", nextId);
-          if (unlockErr) throw unlockErr;
-        }
-        if (skipClearsCalledMoments(next)) {
-          const { error: evErr } = await db
-            .from("events")
-            .update({ result: null, resolved_at: null })
-            .eq("week_id", nextId);
-          if (evErr) throw evErr;
-          const { data: scored, error: cardErr } = await db
-            .from("cards")
-            .select("id")
-            .eq("week_id", nextId);
-          if (cardErr) throw cardErr;
-          const cardIds = (scored ?? []).map((c) => c.id as string);
-          if (cardIds.length) {
-            const { error: scoreErr } = await db
-              .from("weekly_scores")
-              .delete()
-              .in("card_id", cardIds);
-            if (scoreErr) throw scoreErr;
-          }
-        }
-        if (skipClearsGameOutcomes(next)) {
-          const { error: gameErr } = await db
-            .from("games")
-            .update({ home_score: null, away_score: null, upset_won: null })
-            .eq("week_id", nextId);
-          if (gameErr) throw gameErr;
-        }
+        await reopenAndScrub(next, nextId);
       } else if (next) {
         try {
           await runAutoFill({ data: { weekId: nextId } });

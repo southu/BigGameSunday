@@ -13,6 +13,7 @@ import {
   skipControlCopy,
   skipLockAfterAutofill,
   skipLockNeedsRefresh,
+  skipScrubsViewedInPlace,
   skipTargetWeek,
   skipUnlocksCards,
   skipUnlocksCardsOnLockRefresh,
@@ -218,6 +219,15 @@ describe("selectActiveWeek", () => {
     const after = [w(1, "final"), dirtyOpen];
     assert.equal(selectActiveWeek(after)?.week_number, 2);
     assert.equal(selectActiveWeek(after)?.status, "open");
+    assert.equal(skipScrubsViewedInPlace(leftover, leftover), false);
+    assert.equal(skipScrubsViewedInPlace(leftover, dirtyOpen), false);
+    assert.equal(skipScrubsViewedInPlace(dirtyOpen, dirtyOpen), true);
+    assert.equal(skipScrubsViewedInPlace(cleanOpen, cleanOpen), false);
+    assert.equal(skipTargetWeek([w(1, "final"), dirtyOpen], dirtyOpen)?.week_number, 2);
+    assert.equal(
+      skipScrubsViewedInPlace(skipTargetWeek([w(1, "final"), dirtyOpen], dirtyOpen)!, dirtyOpen),
+      true,
+    );
   });
 
   it("skip copy names leftover draft when viewing a premature-final week", () => {
@@ -232,6 +242,12 @@ describe("selectActiveWeek", () => {
     assert.match(copy.hint, /without Reveal/);
     assert.doesNotMatch(copy.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
     assert.doesNotMatch(copy.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const scrub = skipControlCopy(dirtyOpen, dirtyOpen);
+    assert.equal(scrub.button, "Clear leftover marks / open this week");
+    assert.match(scrub.hint, /marked finished too early/);
+    assert.doesNotMatch(scrub.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    assert.doesNotMatch(scrub.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
   });
 
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
@@ -348,11 +364,13 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(lib, /Skip this week \/ start next week/);
     assert.match(lib, /Skip leftover Week/);
     assert.match(lib, /without Reveal/);
+    assert.match(lib, /Clear leftover marks \/ open this week/);
     const skipFn = src.slice(
       src.indexOf("const skipAndStartNext"),
       src.indexOf("const toggleHold"),
     );
     assert.match(skipFn, /skipTargetWeek/);
+    assert.match(skipFn, /skipScrubsViewedInPlace/);
     assert.match(skipFn, /status:\s*"final"/);
     assert.match(skipFn, /status:\s*"open"/);
     assert.match(skipFn, /shouldOpenExistingNextWeek/);

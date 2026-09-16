@@ -12,6 +12,7 @@ import {
   skipControlCopy,
   skipLockAfterAutofill,
   skipLockNeedsRefresh,
+  skipScrubsViewedInPlace,
   skipTargetWeek,
   skipUnlocksCards,
   skipUnlocksCardsOnLockRefresh,
@@ -218,6 +219,14 @@ describe("selectActiveWeek", () => {
     const after = [w(1, "final"), dirtyOpen];
     expect(selectActiveWeek(after)?.week_number).toBe(2);
     expect(selectActiveWeek(after)?.status).toBe("open");
+    expect(skipScrubsViewedInPlace(leftover, leftover)).toBe(false);
+    expect(skipScrubsViewedInPlace(leftover, dirtyOpen)).toBe(false);
+    expect(skipScrubsViewedInPlace(dirtyOpen, dirtyOpen)).toBe(true);
+    expect(skipScrubsViewedInPlace(cleanOpen, cleanOpen)).toBe(false);
+    expect(skipTargetWeek([w(1, "final"), dirtyOpen], dirtyOpen)?.week_number).toBe(2);
+    expect(skipScrubsViewedInPlace(skipTargetWeek([w(1, "final"), dirtyOpen], dirtyOpen)!, dirtyOpen)).toBe(
+      true,
+    );
   });
 
   it("skip copy names leftover draft when viewing a premature-final week", () => {
@@ -232,6 +241,12 @@ describe("selectActiveWeek", () => {
     expect(copy.hint).toMatch(/without Reveal/);
     expect(copy.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
     expect(copy.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const scrub = skipControlCopy(dirtyOpen, dirtyOpen);
+    expect(scrub.button).toBe("Clear leftover marks / open this week");
+    expect(scrub.hint).toMatch(/marked finished too early/);
+    expect(scrub.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    expect(scrub.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
   });
 
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
@@ -347,11 +362,13 @@ describe("useCurrentWeek production wiring", () => {
     expect(lib).toMatch(/Skip this week \/ start next week/);
     expect(lib).toMatch(/Skip leftover Week/);
     expect(lib).toMatch(/without Reveal/);
+    expect(lib).toMatch(/Clear leftover marks \/ open this week/);
     const skipFn = src.slice(
       src.indexOf("const skipAndStartNext"),
       src.indexOf("const toggleHold"),
     );
     expect(skipFn).toMatch(/skipTargetWeek/);
+    expect(skipFn).toMatch(/skipScrubsViewedInPlace/);
     expect(skipFn).toMatch(/status:\s*"final"/);
     expect(skipFn).toMatch(/status:\s*"open"/);
     expect(skipFn).toMatch(/shouldOpenExistingNextWeek/);
