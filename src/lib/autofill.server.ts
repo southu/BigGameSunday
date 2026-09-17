@@ -1,5 +1,5 @@
 /** Auto-fill helpers: build a week's games + standard moments from the ESPN scoreboard. */
-import { nextWeekSlot } from "./current-week";
+import { nextWeekSlot, recency, shouldAutopilotEnsureNextWeek } from "./current-week";
 import { fetchEspnWeek } from "./espn.server";
 import { insertMissingWeekLongshots, standardEvents } from "./nfl";
 
@@ -113,14 +113,15 @@ export async function ensureNextWeek(
 
   const { data: weeks, error: wErr } = await db
     .from("weeks")
-    .select("id, season_year, week_number")
+    .select("id, season_year, week_number, status")
     .eq("household_id", householdId)
     .order("season_year", { ascending: false })
-    .order("week_number", { ascending: false })
-    .limit(1);
+    .order("week_number", { ascending: false });
   if (wErr) throw wErr;
 
-  const last = ((weeks ?? []) as any[])[0];
+  const list = (weeks ?? []) as any[];
+  if (!shouldAutopilotEnsureNextWeek(list)) return { created: false, reason: "leftover" };
+  const last = [...list].sort(recency)[0];
   // nextWeekSlot coerces so leftover string week_number cannot concat into week 11.
   if (last && Number(last.week_number) >= 18) return { created: false, reason: "season-complete" };
   const next = last

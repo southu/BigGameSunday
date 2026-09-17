@@ -9,6 +9,7 @@ import {
   pickViewWeek,
   recency,
   selectActiveWeek,
+  shouldAutopilotEnsureNextWeek,
   shouldAutopilotFinalize,
   shouldAutopilotLockOpen,
   shouldAutopilotOpenDraft,
@@ -489,6 +490,56 @@ describe("selectActiveWeek", () => {
       shouldAutopilotOpenDraft(w(1, "draft", 2026), [w(18, "final", 2025), w(1, "draft", 2026)]),
     ).toBe(true);
     expect(selectActiveWeek([w(1, "open"), w(2, "final")])?.week_number).toBe(1);
+  });
+
+  it("autopilot does not auto-create a farther week while leftover skip is still the Tuesday path", () => {
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const premature = wr("52a42a9e", 2, "final");
+    expect(shouldAutopilotEnsureNextWeek([leftover, premature])).toBe(false);
+    expect(shouldAutopilotEnsureNextWeek([premature, leftover])).toBe(false);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "abandoned"), w(2, "final")])).toBe(false);
+    expect(shouldAutopilotEnsureNextWeek([w(1, ""), w(2, "final")])).toBe(false);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "skipped"), w(2, "final")])).toBe(false);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "draft"), w(2, "draft")])).toBe(false);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "draft")])).toBe(false);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "abandoned")])).toBe(false);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "")])).toBe(false);
+
+    expect(shouldAutopilotEnsureNextWeek([w(1, "abandoned"), w(2, "open")])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "draft"), w(2, "open")])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "draft"), w(2, "locked")])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "open"), w(2, "draft")])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "locked"), w(2, "draft")])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "locked")])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "open")])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "final")])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "final"), w(2, "open")])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([])).toBe(true);
+
+    const leftoverStr = {
+      season_year: "2026",
+      week_number: "1",
+      status: "draft",
+    } as ReturnType<typeof w>;
+    const prematureNum = w(2, "final");
+    expect(shouldAutopilotEnsureNextWeek([leftoverStr, prematureNum])).toBe(false);
+    const openStr = {
+      season_year: "2026",
+      week_number: "2",
+      status: "open",
+    } as ReturnType<typeof w>;
+    expect(shouldAutopilotEnsureNextWeek([leftoverStr, openStr])).toBe(true);
+
+    const autoW3 = w(3, "draft");
+    expect(selectActiveWeek([leftover, premature])?.week_number).toBe(2);
+    expect(selectActiveWeek([leftover, premature, autoW3])?.week_number).toBe(3);
+    expect(selectActiveWeek([leftover, premature, autoW3])?.status).toBe("draft");
+    expect(familyWeekChrome("The Harper House", selectActiveWeek([leftover, premature]))).toBe(
+      "The Harper House · Week 2",
+    );
+    expect(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftover, premature, autoW3])),
+    ).not.toBe("The Harper House · Week 2");
   });
 
   it("commissioner does not offer Open cards on leftover draft W1 behind newer W2", () => {
@@ -3045,7 +3096,9 @@ describe("useCurrentWeek production wiring", () => {
     );
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
     expect(autofill).toMatch(/auto_create_weeks/);
-    expect(autofill).toMatch(/import \{ nextWeekSlot \} from "\.\/current-week"/);
+    expect(autofill).toMatch(
+      /import \{ nextWeekSlot, recency, shouldAutopilotEnsureNextWeek \} from "\.\/current-week"/,
+    );
     const ensureFn = autofill.slice(
       autofill.indexOf("export async function ensureNextWeek"),
       autofill.indexOf("const espnGames = await fetchEspnWeek(seasonYear, weekNumber)"),
@@ -3053,6 +3106,21 @@ describe("useCurrentWeek production wiring", () => {
     expect(ensureFn).toMatch(/nextWeekSlot\(last\)/);
     expect(ensureFn).toMatch(/Number\(last\.week_number\)/);
     expect(ensureFn).not.toMatch(/\(last\?\.week_number \?\? 0\) \+ 1/);
+    expect(ensureFn).toMatch(/shouldAutopilotEnsureNextWeek\(list\)/);
+    expect(ensureFn).toMatch(/\[\.\.\.list\]\.sort\(recency\)/);
+    expect(ensureFn).not.toMatch(/\.limit\(1\)/);
+    expect(ensureFn).toMatch(/select\("id, season_year, week_number, status"\)/);
+    expect(ensureFn).toMatch(/reason: "leftover"/);
+    const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
+    const ensureNextGuard = lib.slice(
+      lib.indexOf("export function shouldAutopilotEnsureNextWeek"),
+      lib.indexOf("export function shouldAutopilotLockOpen"),
+    );
+    expect(ensureNextGuard).toMatch(/weeks\.some\(\(w\) => isInPlay\(w\.status\)\)/);
+    expect(ensureNextGuard).toMatch(/!weeks\.some\(isUnplayedLeftover\)/);
+    expect(lib.indexOf("export function shouldAutopilotOpenDraft")).toBeLessThan(
+      lib.indexOf("export function shouldAutopilotEnsureNextWeek"),
+    );
   });
 });
 

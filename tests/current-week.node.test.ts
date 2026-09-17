@@ -10,6 +10,7 @@ import {
   pickViewWeek,
   recency,
   selectActiveWeek,
+  shouldAutopilotEnsureNextWeek,
   shouldAutopilotFinalize,
   shouldAutopilotLockOpen,
   shouldAutopilotOpenDraft,
@@ -492,6 +493,58 @@ describe("selectActiveWeek", () => {
       true,
     );
     assert.equal(selectActiveWeek([w(1, "open"), w(2, "final")])?.week_number, 1);
+  });
+
+  it("autopilot does not auto-create a farther week while leftover skip is still the Tuesday path", () => {
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const premature = wr("52a42a9e", 2, "final");
+    assert.equal(shouldAutopilotEnsureNextWeek([leftover, premature]), false);
+    assert.equal(shouldAutopilotEnsureNextWeek([premature, leftover]), false);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "abandoned"), w(2, "final")]), false);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, ""), w(2, "final")]), false);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "skipped"), w(2, "final")]), false);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "draft"), w(2, "draft")]), false);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "draft")]), false);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "abandoned")]), false);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "")]), false);
+
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "abandoned"), w(2, "open")]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "draft"), w(2, "open")]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "draft"), w(2, "locked")]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "open"), w(2, "draft")]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "locked"), w(2, "draft")]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "locked")]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "open")]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "final")]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "final"), w(2, "open")]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([]), true);
+
+    const leftoverStr = {
+      season_year: "2026",
+      week_number: "1",
+      status: "draft",
+    } as ReturnType<typeof w>;
+    const prematureNum = w(2, "final");
+    assert.equal(shouldAutopilotEnsureNextWeek([leftoverStr, prematureNum]), false);
+    const openStr = {
+      season_year: "2026",
+      week_number: "2",
+      status: "open",
+    } as ReturnType<typeof w>;
+    assert.equal(shouldAutopilotEnsureNextWeek([leftoverStr, openStr]), true);
+
+    const autoW3 = w(3, "draft");
+    assert.equal(selectActiveWeek([leftover, premature])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftover, premature, autoW3])?.week_number, 3);
+    assert.equal(selectActiveWeek([leftover, premature, autoW3])?.status, "draft");
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftover, premature])),
+      "The Harper House · Week 2",
+    );
+    assert.notEqual(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftover, premature, autoW3])),
+      "The Harper House · Week 2",
+    );
   });
 
   it("commissioner does not offer Open cards on leftover draft W1 behind newer W2", () => {
@@ -3165,7 +3218,10 @@ describe("useCurrentWeek production wiring", () => {
     );
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
     assert.match(autofill, /auto_create_weeks/);
-    assert.match(autofill, /import \{ nextWeekSlot \} from "\.\/current-week"/);
+    assert.match(
+      autofill,
+      /import \{ nextWeekSlot, recency, shouldAutopilotEnsureNextWeek \} from "\.\/current-week"/,
+    );
     const ensureFn = autofill.slice(
       autofill.indexOf("export async function ensureNextWeek"),
       autofill.indexOf("const espnGames = await fetchEspnWeek(seasonYear, weekNumber)"),
@@ -3173,6 +3229,23 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(ensureFn, /nextWeekSlot\(last\)/);
     assert.match(ensureFn, /Number\(last\.week_number\)/);
     assert.doesNotMatch(ensureFn, /\(last\?\.week_number \?\? 0\) \+ 1/);
+    assert.match(ensureFn, /shouldAutopilotEnsureNextWeek\(list\)/);
+    assert.match(ensureFn, /\[\.\.\.list\]\.sort\(recency\)/);
+    assert.doesNotMatch(ensureFn, /\.limit\(1\)/);
+    assert.match(ensureFn, /select\("id, season_year, week_number, status"\)/);
+    assert.match(ensureFn, /reason: "leftover"/);
+    const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
+    const ensureNextGuard = lib.slice(
+      lib.indexOf("export function shouldAutopilotEnsureNextWeek"),
+      lib.indexOf("export function shouldAutopilotLockOpen"),
+    );
+    assert.match(ensureNextGuard, /weeks\.some\(\(w\) => isInPlay\(w\.status\)\)/);
+    assert.match(ensureNextGuard, /!weeks\.some\(isUnplayedLeftover\)/);
+    assert.ok(
+      lib.indexOf("export function shouldAutopilotOpenDraft") <
+        lib.indexOf("export function shouldAutopilotEnsureNextWeek"),
+      "leftover-unplayed helper must stay before the auto-create guard so its source-scan slice stays intact",
+    );
   });
 });
 
