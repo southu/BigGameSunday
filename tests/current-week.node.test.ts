@@ -806,6 +806,67 @@ describe("selectActiveWeek", () => {
     );
   });
 
+  it("ranking ignores auto_created_at, auto_locked_at, and autopilot_hold", () => {
+    const household_id = "b03e87bd-2899-4e71-b6fb-54399eef3e6d";
+    const skipped = {
+      ...wr("3e3aeeeb", 1, "final"),
+      household_id,
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+      auto_created_at: "2026-09-15T17:53:12.479+00:00",
+      auto_locked_at: null,
+      autopilot_hold: false,
+      autopilot_checked_at: null,
+      auto_opened_at: null,
+    };
+    const dirtyOpen = {
+      ...wr("52a42a9e", 2, "open"),
+      household_id,
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      lock_at: "2026-09-18T00:15:00+00:00",
+      auto_created_at: "2026-09-15T18:00:32.128+00:00",
+      auto_locked_at: null,
+      autopilot_hold: false,
+      autopilot_checked_at: "2026-09-15T19:00:00+00:00",
+      auto_opened_at: null,
+    };
+    const weeks = [skipped, dirtyOpen];
+    const active = selectActiveWeek(weeks);
+    assert.equal(active?.id, "52a42a9e");
+    assert.equal(active?.week_number, 2);
+    assert.equal(active?.status, "open");
+    assert.equal(selectActiveWeek([dirtyOpen, skipped])?.id, "52a42a9e");
+    assert.equal(weekSwitcherLabel(dirtyOpen, active), "This Sunday");
+    assert.equal(familyWeekChrome("The Harper House", active), "The Harper House · Week 2");
+    const leftoverHeld = {
+      ...skipped,
+      status: "draft",
+      autopilot_hold: true,
+      auto_created_at: "2026-09-01T00:00:00+00:00",
+      auto_locked_at: "2026-09-10T00:00:00+00:00",
+    };
+    const prematureFinal = { ...dirtyOpen, status: "final", autopilot_hold: false };
+    assert.equal(selectActiveWeek([leftoverHeld, prematureFinal])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverHeld, prematureFinal])?.status, "final");
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftoverHeld, prematureFinal])),
+      "The Harper House · Week 2",
+    );
+    const leftoverOpen = {
+      ...skipped,
+      status: "open",
+      autopilot_hold: true,
+      auto_locked_at: "2026-09-10T00:00:00+00:00",
+    };
+    assert.equal(selectActiveWeek([leftoverOpen, dirtyOpen])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverOpen, dirtyOpen])?.status, "open");
+    assert.equal(selectActiveWeek([dirtyOpen, leftoverOpen])?.id, "52a42a9e");
+    assert.equal(
+      weekSwitcherLabel(dirtyOpen, selectActiveWeek([leftoverOpen, dirtyOpen])),
+      "This Sunday",
+    );
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -920,6 +981,11 @@ describe("selectActiveWeek", () => {
     assert.doesNotMatch(body, /featured_game_id/);
     assert.doesNotMatch(body, /\bcreated_at\b/);
     assert.doesNotMatch(body, /commissioner_edited_at/);
+    assert.doesNotMatch(body, /auto_created_at/);
+    assert.doesNotMatch(body, /auto_locked_at/);
+    assert.doesNotMatch(body, /autopilot_hold/);
+    assert.doesNotMatch(body, /autopilot_checked_at/);
+    assert.doesNotMatch(body, /household_id/);
     const inPlayStart = src.indexOf("function isInPlay");
     const inPlayEnd = src.indexOf("export function isNewerDraft");
     assert.ok(inPlayStart >= 0 && inPlayEnd > inPlayStart);
@@ -930,6 +996,10 @@ describe("selectActiveWeek", () => {
     assert.doesNotMatch(inPlayBody, /lock_at_override/);
     assert.doesNotMatch(inPlayBody, /featured_game_id/);
     assert.doesNotMatch(inPlayBody, /\bcreated_at\b/);
+    assert.doesNotMatch(inPlayBody, /auto_created_at/);
+    assert.doesNotMatch(inPlayBody, /auto_locked_at/);
+    assert.doesNotMatch(inPlayBody, /autopilot_hold/);
+    assert.doesNotMatch(inPlayBody, /autopilot_checked_at/);
     const chromeStart = src.indexOf("export function familyWeekChrome");
     const chromeEnd = src.indexOf("export function weekSwitcherLabel");
     assert.ok(chromeStart >= 0 && chromeEnd > chromeStart);
@@ -939,6 +1009,7 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /The Harper House · Week 2/);
     assert.match(chromeBody, /leftover draft W1 \+ premature-final W2/);
     assert.match(chromeBody, /lock_at_override, created_at, featured_game_id/);
+    assert.match(chromeBody, /auto_created_at, auto_locked_at, autopilot_hold/);
     assert.doesNotMatch(src, /ranked\.find\(\(w\) => w\.status === "draft"\)/);
     assert.doesNotMatch(src, /else latest draft/);
     assert.doesNotMatch(src, /open\/locked > draft > final/);

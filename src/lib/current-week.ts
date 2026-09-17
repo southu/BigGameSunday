@@ -29,6 +29,16 @@ export type WeekLike = WeekSlot & {
   featured_game_id?: string | null;
   created_at?: string | null;
   commissioner_edited_at?: string | null;
+  /**
+   * Ranking ignores these. Live Harper House weeks also carry
+   * household_id, auto_created_at, auto_locked_at, autopilot_hold,
+   * and autopilot_checked_at; in-play is status only.
+   */
+  household_id?: string;
+  auto_created_at?: string | null;
+  auto_locked_at?: string | null;
+  autopilot_hold?: boolean;
+  autopilot_checked_at?: string | null;
 };
 
 export type WeekRef = WeekLike & { id: string };
@@ -588,7 +598,9 @@ export function skipUnlocksCardsOnLockRefresh(
  * leftover draft W1 + premature-final W2 also captions Week 2 — never
  * leftover Week 1. Ranking is status-only — a leftover `finalized_at`
  * or a null `auto_opened_at` does not hide an open week. Neither do
- * `lock_at_override`, `created_at`, or `featured_game_id`.
+ * `lock_at_override`, `created_at`, or `featured_game_id`. Neither do
+ * `auto_created_at`, `auto_locked_at`, `autopilot_hold`, or
+ * `autopilot_checked_at`.
  */
 export function familyWeekChrome(
   householdName: string | null | undefined,
@@ -596,6 +608,7 @@ export function familyWeekChrome(
 ): string {
   // leftover draft W1 + premature-final W2 → The Harper House · Week 2
   // ranking ignores lock_at_override, created_at, featured_game_id
+  // ranking ignores auto_created_at, auto_locked_at, autopilot_hold
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
 }
