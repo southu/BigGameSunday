@@ -52,7 +52,8 @@ export type WeekRef = WeekLike & { id: string };
 /**
  * Recency for ranking: higher season_year, then higher week_number.
  * Timestamps and leftover stamps are not keys. Extra select("*") fields
- * from fetchHouseholdWeeks cannot hide a newer week.
+ * from fetchHouseholdWeeks cannot hide a newer week. PostgREST row order
+ * and created_at insertion order are not keys.
  */
 function recency(a: WeekSlot, b: WeekSlot): number {
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
@@ -88,6 +89,7 @@ export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | n
   if (weeks.length === 0) return null;
   let latestInPlay: T | null = null;
   let newest: T | null = null;
+  // Walk every week — PostgREST row order is not ranking.
   for (const week of weeks) {
     if (isInPlay(week.status) && (!latestInPlay || recency(week, latestInPlay) < 0)) {
       latestInPlay = week;
@@ -613,7 +615,7 @@ export function skipUnlocksCardsOnLockRefresh(
  * `auto_created_at`, `auto_locked_at`, `autopilot_hold`, or
  * `autopilot_checked_at`. Neither do `household_id` or
  * `commissioner_edited_at`. Neither does `id`. Recency is
- * season_year then week_number.
+ * season_year then week_number, not created_at insertion order.
  */
 export function familyWeekChrome(
   householdName: string | null | undefined,
@@ -624,7 +626,7 @@ export function familyWeekChrome(
   // ranking ignores auto_created_at, auto_locked_at, autopilot_hold
   // ranking ignores household_id, commissioner_edited_at, autopilot_checked_at
   // ranking ignores id
-  // recency is season_year then week_number
+  // recency is season_year then week_number, not created_at insertion order
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
 }

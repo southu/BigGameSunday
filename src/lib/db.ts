@@ -144,6 +144,7 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
     .order("week_number", { ascending: false });
   if (error) throw error;
   // Recency is applied here so useCurrentWeek never depends on PostgREST LIMIT 1.
+  // PostgREST order is season_year then week_number, never created_at or id.
   // selectActiveWeek ranks latest open/locked first, else newest overall —
   // never an older leftover draft over a newer final or draft.
   const weeks = (data ?? []) as Week[];
