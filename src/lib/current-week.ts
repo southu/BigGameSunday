@@ -271,6 +271,15 @@ function leftoverDateKey(value: unknown): boolean {
   }
 }
 
+/** Map keys coerce via Number(new Map()) (NaN) and would steal recency. JSON/PostgREST never sends Map week keys. leftover missing-key drafts stay selectable. */
+function leftoverMapKey(value: unknown): boolean {
+  try {
+    return value instanceof Map;
+  } catch {
+    return true;
+  }
+}
+
 export function recency(
   a: WeekSlot | null | undefined | boolean | number | string | unknown[],
   b: WeekSlot | null | undefined | boolean | number | string | unknown[],
@@ -432,6 +441,11 @@ export function recency(
   if (leftoverDateKey(aNumKey)) a.week_number = 0;
   if (leftoverDateKey(bYearKey)) b.season_year = 0;
   if (leftoverDateKey(bNumKey)) b.week_number = 0;
+  // leftover map keys cannot hide a newer week
+  if (leftoverMapKey(aYearKey)) a.season_year = 0;
+  if (leftoverMapKey(aNumKey)) a.week_number = 0;
+  if (leftoverMapKey(bYearKey)) b.season_year = 0;
+  if (leftoverMapKey(bNumKey)) b.week_number = 0;
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -480,6 +494,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * leftover function keys cannot hide a newer week.
  * leftover array keys cannot hide a newer week.
  * leftover date keys cannot hide a newer week.
+ * leftover map keys cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
   weeks: readonly (T | null | undefined | boolean | number | string | unknown[])[] | null | undefined,
@@ -581,6 +596,10 @@ export function selectActiveWeek<T extends WeekLike>(
       }
       // leftover date keys cannot hide a newer week
       if (leftoverDateKey(week.season_year) || leftoverDateKey(week.week_number)) {
+        continue;
+      }
+      // leftover map keys cannot hide a newer week
+      if (leftoverMapKey(week.season_year) || leftoverMapKey(week.week_number)) {
         continue;
       }
       if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
@@ -788,6 +807,17 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
   }
   try {
     if (leftoverDateKey(week.week_number)) week_number = 0;
+  } catch {
+    week_number = 0;
+  }
+  // leftover map keys cannot hide a newer week
+  try {
+    if (leftoverMapKey(week.season_year)) season_year = 0;
+  } catch {
+    season_year = 0;
+  }
+  try {
+    if (leftoverMapKey(week.week_number)) week_number = 0;
   } catch {
     week_number = 0;
   }
@@ -1382,6 +1412,7 @@ export function familyWeekChrome(
   // leftover function keys cannot hide a newer week
   // leftover array keys cannot hide a newer week
   // leftover date keys cannot hide a newer week
+  // leftover map keys cannot hide a newer week
   // fetchHouseholdWeeks sorts with recency
   // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
@@ -1407,6 +1438,7 @@ export function familyWeekChrome(
       if (leftoverFunctionKey(weekNumber)) return name;
       if (leftoverArrayKey(weekNumber)) return name;
       if (leftoverDateKey(weekNumber)) return name;
+      if (leftoverMapKey(weekNumber)) return name;
     } catch {
       // leftover throwing rows cannot hide a newer week
       return name;
@@ -1452,6 +1484,8 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
     if (leftoverArrayKey(weekNumber)) w = { ...w, week_number: 0 };
     // leftover date keys cannot hide a newer week
     if (leftoverDateKey(weekNumber)) w = { ...w, week_number: 0 };
+    // leftover map keys cannot hide a newer week
+    if (leftoverMapKey(weekNumber)) w = { ...w, week_number: 0 };
   } catch {
     // leftover unconvertible keys cannot hide a newer week
     w = { ...w, week_number: 0 };
