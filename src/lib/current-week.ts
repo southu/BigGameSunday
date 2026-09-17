@@ -73,6 +73,7 @@ export type WeekRef = WeekLike & { id: string };
  * cannot hide a newer week. leftover host objects rank as 0,0 so they
  * cannot hide a newer week. leftover throwing rows rank as 0,0 so they
  * cannot hide a newer week. leftover unconvertible keys rank as 0,0 so they
+ * cannot hide a newer week. leftover object keys rank as 0,0 so they
  * cannot hide a newer week. fetchHouseholdWeeks sorts with recency so
  * the week list cannot skip week_number on mixed string/number keys.
  */
@@ -84,6 +85,13 @@ function leftoverHostObject(value: object): boolean {
     // leftover throwing rows cannot hide a newer week
     return true;
   }
+}
+
+/** Ranking keys must be primitives. Number([2026]) === 2026 would steal recency. */
+function leftoverObjectKey(value: unknown): boolean {
+  if (value == null) return false;
+  const t = typeof value;
+  return t !== "number" && t !== "string" && t !== "bigint";
 }
 
 export function recency(
@@ -124,6 +132,10 @@ export function recency(
     // leftover throwing rows cannot hide a newer week
     b = { season_year: 0, week_number: 0 };
   }
+  const aYearKey = a.season_year;
+  const aNumKey = a.week_number;
+  const bYearKey = b.season_year;
+  const bNumKey = b.week_number;
   try {
     a.season_year = Number(a.season_year);
   } catch {
@@ -153,6 +165,11 @@ export function recency(
   if (!Number.isFinite(a.week_number)) a.week_number = 0;
   if (!Number.isFinite(b.season_year)) b.season_year = 0;
   if (!Number.isFinite(b.week_number)) b.week_number = 0;
+  // leftover object keys cannot hide a newer week
+  if (leftoverObjectKey(aYearKey)) a.season_year = 0;
+  if (leftoverObjectKey(aNumKey)) a.week_number = 0;
+  if (leftoverObjectKey(bYearKey)) b.season_year = 0;
+  if (leftoverObjectKey(bNumKey)) b.week_number = 0;
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -185,6 +202,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * leftover array rows cannot hide a newer week. leftover host objects
  * cannot hide a newer week. leftover throwing rows cannot hide a newer week.
  * leftover unconvertible keys cannot hide a newer week.
+ * leftover object keys cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
   weeks: readonly (T | null | undefined | boolean | number | string | unknown[])[] | null | undefined,
@@ -207,6 +225,8 @@ export function selectActiveWeek<T extends WeekLike>(
       // leftover unconvertible keys cannot hide a newer week
       slot.season_year = Number(slot.season_year);
       slot.week_number = Number(slot.week_number);
+      // leftover object keys cannot hide a newer week
+      if (leftoverObjectKey(week.season_year) || leftoverObjectKey(week.week_number)) continue;
       if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
         latestInPlay = week;
       }
@@ -239,6 +259,17 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
   // leftover missing/unparseable keys still advance a finite slot
   if (!Number.isFinite(season_year)) season_year = 0;
   if (!Number.isFinite(week_number)) week_number = 0;
+  // leftover object keys cannot hide a newer week
+  try {
+    if (leftoverObjectKey(week.season_year)) season_year = 0;
+  } catch {
+    season_year = 0;
+  }
+  try {
+    if (leftoverObjectKey(week.week_number)) week_number = 0;
+  } catch {
+    week_number = 0;
+  }
   if (week_number >= 18) {
     return { season_year: season_year + 1, week_number: 1 };
   }
@@ -814,14 +845,17 @@ export function familyWeekChrome(
   // leftover host objects cannot hide a newer week
   // leftover throwing rows cannot hide a newer week
   // leftover unconvertible keys cannot hide a newer week
+  // leftover object keys cannot hide a newer week
   // fetchHouseholdWeeks sorts with recency
   // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
   if (week) {
     try {
+      const weekNumber = week.week_number;
       week = { season_year: week.season_year, week_number: week.week_number };
       week.week_number = Number(week.week_number);
       if (!Number.isFinite(week.week_number)) week.week_number = 0;
+      if (leftoverObjectKey(weekNumber)) return name;
     } catch {
       // leftover throwing rows cannot hide a newer week
       return name;
@@ -833,7 +867,10 @@ export function familyWeekChrome(
 /** This Sunday = in-play active slot; Next week = the next slot when it is a newer draft. */
 export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
   try {
+    const weekNumber = w.week_number;
     w = { ...w, week_number: Number(w.week_number) };
+    // leftover object keys cannot hide a newer week
+    if (leftoverObjectKey(weekNumber)) w = { ...w, week_number: 0 };
   } catch {
     // leftover unconvertible keys cannot hide a newer week
     w = { ...w, week_number: 0 };
