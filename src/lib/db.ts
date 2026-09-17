@@ -153,14 +153,27 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
   // leftover non-object rows cannot hide a newer week
   // leftover array rows cannot hide a newer week
   // leftover host objects cannot hide a newer week
+  // leftover throwing rows cannot hide a newer week
   const weeks = (data ?? []) as Week[];
   return [...weeks]
     .filter((week) => week)
     .filter((week) => typeof week === "object")
-    .filter((week) => !Array.isArray(week))
     .filter((week) => {
-      const proto = Object.getPrototypeOf(week);
-      return proto === Object.prototype || proto === null;
+      try {
+        const proto = Object.getPrototypeOf(week);
+        return proto === Object.prototype || proto === null;
+      } catch {
+        // leftover throwing rows cannot hide a newer week
+        return false;
+      }
+    })
+    .filter((week) => {
+      try {
+        return !Array.isArray(week);
+      } catch {
+        // leftover throwing rows cannot hide a newer week
+        return false;
+      }
     })
     .sort(recency);
 }
