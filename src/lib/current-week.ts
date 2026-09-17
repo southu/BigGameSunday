@@ -343,6 +343,15 @@ function leftoverArrayBufferKey(value: unknown): boolean {
   }
 }
 
+/** SharedArrayBuffer keys coerce via Number(new SharedArrayBuffer(8)) (NaN) and would steal recency. JSON/PostgREST never sends SharedArrayBuffer week keys. leftover missing-key drafts stay selectable. */
+function leftoverSharedArrayBufferKey(value: unknown): boolean {
+  try {
+    return typeof SharedArrayBuffer === "function" && value instanceof SharedArrayBuffer;
+  } catch {
+    return true;
+  }
+}
+
 export function recency(
   a: WeekSlot | null | undefined | boolean | number | string | unknown[],
   b: WeekSlot | null | undefined | boolean | number | string | unknown[],
@@ -544,6 +553,11 @@ export function recency(
   if (leftoverArrayBufferKey(aNumKey)) a.week_number = 0;
   if (leftoverArrayBufferKey(bYearKey)) b.season_year = 0;
   if (leftoverArrayBufferKey(bNumKey)) b.week_number = 0;
+  // leftover sharedarraybuffer keys cannot hide a newer week
+  if (leftoverSharedArrayBufferKey(aYearKey)) a.season_year = 0;
+  if (leftoverSharedArrayBufferKey(aNumKey)) a.week_number = 0;
+  if (leftoverSharedArrayBufferKey(bYearKey)) b.season_year = 0;
+  if (leftoverSharedArrayBufferKey(bNumKey)) b.week_number = 0;
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -600,6 +614,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * leftover error keys cannot hide a newer week.
  * leftover regexp keys cannot hide a newer week.
  * leftover arraybuffer keys cannot hide a newer week.
+ * leftover sharedarraybuffer keys cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
   weeks: readonly (T | null | undefined | boolean | number | string | unknown[])[] | null | undefined,
@@ -733,6 +748,13 @@ export function selectActiveWeek<T extends WeekLike>(
       }
       // leftover arraybuffer keys cannot hide a newer week
       if (leftoverArrayBufferKey(week.season_year) || leftoverArrayBufferKey(week.week_number)) {
+        continue;
+      }
+      // leftover sharedarraybuffer keys cannot hide a newer week
+      if (
+        leftoverSharedArrayBufferKey(week.season_year) ||
+        leftoverSharedArrayBufferKey(week.week_number)
+      ) {
         continue;
       }
       if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
@@ -1028,6 +1050,17 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
   }
   try {
     if (leftoverArrayBufferKey(week.week_number)) week_number = 0;
+  } catch {
+    week_number = 0;
+  }
+  // leftover sharedarraybuffer keys cannot hide a newer week
+  try {
+    if (leftoverSharedArrayBufferKey(week.season_year)) season_year = 0;
+  } catch {
+    season_year = 0;
+  }
+  try {
+    if (leftoverSharedArrayBufferKey(week.week_number)) week_number = 0;
   } catch {
     week_number = 0;
   }
@@ -1630,6 +1663,7 @@ export function familyWeekChrome(
   // leftover error keys cannot hide a newer week
   // leftover regexp keys cannot hide a newer week
   // leftover arraybuffer keys cannot hide a newer week
+  // leftover sharedarraybuffer keys cannot hide a newer week
   // fetchHouseholdWeeks sorts with recency
   // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
@@ -1663,6 +1697,7 @@ export function familyWeekChrome(
       if (leftoverErrorKey(weekNumber)) return name;
       if (leftoverRegExpKey(weekNumber)) return name;
       if (leftoverArrayBufferKey(weekNumber)) return name;
+      if (leftoverSharedArrayBufferKey(weekNumber)) return name;
     } catch {
       // leftover throwing rows cannot hide a newer week
       return name;
@@ -1724,6 +1759,8 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
     if (leftoverRegExpKey(weekNumber)) w = { ...w, week_number: 0 };
     // leftover arraybuffer keys cannot hide a newer week
     if (leftoverArrayBufferKey(weekNumber)) w = { ...w, week_number: 0 };
+    // leftover sharedarraybuffer keys cannot hide a newer week
+    if (leftoverSharedArrayBufferKey(weekNumber)) w = { ...w, week_number: 0 };
   } catch {
     // leftover unconvertible keys cannot hide a newer week
     w = { ...w, week_number: 0 };

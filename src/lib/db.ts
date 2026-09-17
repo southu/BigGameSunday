@@ -464,6 +464,18 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
         return false;
       }
     })
+    .filter((week) => {
+      try {
+        if (typeof SharedArrayBuffer !== "function") return true;
+        return (
+          !(week.season_year instanceof SharedArrayBuffer) &&
+          !(week.week_number instanceof SharedArrayBuffer)
+        );
+      } catch {
+        // leftover sharedarraybuffer keys cannot hide a newer week
+        return false;
+      }
+    })
     .sort(recency);
 }
 
