@@ -4,6 +4,7 @@
  *   2. else newest week overall (highest season_year, then week_number),
  *      whether draft or final — never an older draft over a newer week
  */
+/** Ranking keys only. Recency is season_year then week_number. */
 export type WeekSlot = {
   season_year: number;
   week_number: number;
@@ -48,6 +49,11 @@ export type WeekLike = WeekSlot & {
 
 export type WeekRef = WeekLike & { id: string };
 
+/**
+ * Recency for ranking: higher season_year, then higher week_number.
+ * Timestamps and leftover stamps are not keys. Extra select("*") fields
+ * from fetchHouseholdWeeks cannot hide a newer week.
+ */
 function recency(a: WeekSlot, b: WeekSlot): number {
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
@@ -606,7 +612,8 @@ export function skipUnlocksCardsOnLockRefresh(
  * `lock_at_override`, `created_at`, or `featured_game_id`. Neither do
  * `auto_created_at`, `auto_locked_at`, `autopilot_hold`, or
  * `autopilot_checked_at`. Neither do `household_id` or
- * `commissioner_edited_at`. Neither does `id`.
+ * `commissioner_edited_at`. Neither does `id`. Recency is
+ * season_year then week_number.
  */
 export function familyWeekChrome(
   householdName: string | null | undefined,
@@ -617,6 +624,7 @@ export function familyWeekChrome(
   // ranking ignores auto_created_at, auto_locked_at, autopilot_hold
   // ranking ignores household_id, commissioner_edited_at, autopilot_checked_at
   // ranking ignores id
+  // recency is season_year then week_number
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
 }

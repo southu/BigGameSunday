@@ -1032,6 +1032,75 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([harperFinal, harperDraft])?.week_number, 2);
   });
 
+  it("recency is season_year then week_number, not extra select(\"*\") fields", () => {
+    const household_id = "b03e87bd-2899-4e71-b6fb-54399eef3e6d";
+    const leftoverDraft = {
+      ...wr("3e3aeeeb-4dcb-445b-9297-aa6c20967433", 1, "draft"),
+      household_id,
+      updated_at: "2026-09-16T12:00:00+00:00",
+      notes: "leftover skip",
+    };
+    const prematureFinal = {
+      ...wr("52a42a9e-fbce-4e06-a9b4-8a00b1d36994", 2, "final"),
+      household_id,
+      updated_at: "2026-09-15T19:04:43.88+00:00",
+      notes: null,
+    };
+    assert.equal(selectActiveWeek([leftoverDraft, prematureFinal])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverDraft, prematureFinal])?.status, "final");
+    assert.equal(selectActiveWeek([prematureFinal, leftoverDraft])?.week_number, 2);
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftoverDraft, prematureFinal])),
+      "The Harper House · Week 2",
+    );
+    assert.equal(
+      weekSwitcherLabel(leftoverDraft, selectActiveWeek([leftoverDraft, prematureFinal])),
+      "Week 1",
+    );
+
+    const leftoverOpen = {
+      ...leftoverDraft,
+      status: "open",
+      updated_at: "2026-09-17T00:00:00+00:00",
+    };
+    const thisSunday = {
+      ...prematureFinal,
+      status: "open",
+      updated_at: "2026-09-15T19:04:43.88+00:00",
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+    };
+    const activeOpen = selectActiveWeek([leftoverOpen, thisSunday]);
+    assert.equal(activeOpen?.week_number, 2);
+    assert.equal(activeOpen?.status, "open");
+    assert.equal(selectActiveWeek([thisSunday, leftoverOpen])?.id, thisSunday.id);
+    assert.equal(weekSwitcherLabel(thisSunday, activeOpen), "This Sunday");
+    assert.equal(weekSwitcherLabel(leftoverOpen, activeOpen), "Week 1");
+    assert.equal(familyWeekChrome("The Harper House", activeOpen), "The Harper House · Week 2");
+
+    const skipped = { ...leftoverDraft, status: "final", updated_at: "2026-09-16T16:00:00+00:00" };
+    const dirtyOpen = {
+      ...thisSunday,
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      updated_at: "2026-09-15T19:04:43.88+00:00",
+    };
+    const skipActive = selectActiveWeek([skipped, dirtyOpen]);
+    assert.equal(skipActive?.week_number, 2);
+    assert.equal(skipActive?.status, "open");
+    assert.equal(weekSwitcherLabel(dirtyOpen, skipActive), "This Sunday");
+    assert.equal(selectActiveWeek([w(1, "final")])?.week_number, 1);
+
+    const wrapLeftover = {
+      ...wr("w18", 18, "draft", 2025),
+      updated_at: "2026-09-16T12:00:00+00:00",
+    };
+    const wrapNewer = {
+      ...wr("w1", 1, "final", 2026),
+      updated_at: "2026-09-10T00:00:00+00:00",
+    };
+    assert.equal(selectActiveWeek([wrapLeftover, wrapNewer])?.season_year, 2026);
+    assert.equal(selectActiveWeek([wrapLeftover, wrapNewer])?.week_number, 1);
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -1179,11 +1248,29 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /auto_created_at, auto_locked_at, autopilot_hold/);
     assert.match(chromeBody, /household_id, commissioner_edited_at, autopilot_checked_at/);
     assert.match(chromeBody, /ranking ignores id/);
+    assert.match(chromeBody, /recency is season_year then week_number/);
     assert.doesNotMatch(body, /\bid\b/);
     assert.doesNotMatch(inPlayBody, /\bid\b/);
+    const recencyStart = src.indexOf("function recency");
+    const recencyEnd = src.indexOf("function isNewerThan");
+    assert.ok(recencyStart >= 0 && recencyEnd > recencyStart);
+    const recencyImpl = src.slice(src.indexOf("{", recencyStart), recencyEnd);
+    assert.match(recencyImpl, /a\.season_year !== b\.season_year/);
+    assert.match(recencyImpl, /b\.season_year - a\.season_year/);
+    assert.match(recencyImpl, /b\.week_number - a\.week_number/);
+    assert.doesNotMatch(recencyImpl, /\bid\b/);
+    assert.doesNotMatch(recencyImpl, /status/);
+    assert.doesNotMatch(recencyImpl, /finalized_at/);
+    assert.doesNotMatch(recencyImpl, /lock_at/);
+    assert.doesNotMatch(recencyImpl, /auto_opened_at/);
+    assert.doesNotMatch(recencyImpl, /created_at/);
+    assert.doesNotMatch(recencyImpl, /household_id/);
+    assert.doesNotMatch(recencyImpl, /updated_at/);
     assert.doesNotMatch(src, /ranked\.find\(\(w\) => w\.status === "draft"\)/);
     assert.doesNotMatch(src, /else latest draft/);
     assert.doesNotMatch(src, /open\/locked > draft > final/);
+    assert.match(src, /function isNewerThan[\s\S]{0,80}return recency\(week, than\) < 0/);
+    assert.match(src, /function isOlderThan[\s\S]{0,80}return recency\(week, than\) > 0/);
     assert.match(src, /function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
     assert.match(src, /weeks\.find\(\(w\) => isSameSlot\(w, slot\)\)/);
     const labelStart = src.indexOf("export function weekSwitcherLabel");
@@ -2341,6 +2428,10 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(src, /import \{ selectActiveWeek \} from "\.\/current-week"/);
     assert.match(fn, /select:\s*\(weeks\)\s*=>\s*selectActiveWeek\(weeks\)/);
     assert.match(src, /else newest week overall/);
+    assert.match(
+      src,
+      /a\.season_year !== b\.season_year \? b\.season_year - a\.season_year : b\.week_number - a\.week_number/,
+    );
     assert.doesNotMatch(src, /else latest draft/);
     assert.doesNotMatch(src, /open\/locked > draft > final/);
     assert.doesNotMatch(fn.slice(0, fn.indexOf("export function useWeekGames")), /\.limit\(1\)/);

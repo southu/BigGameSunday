@@ -1005,6 +1005,73 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([harperFinal, harperDraft])?.week_number).toBe(2);
   });
 
+  it("recency is season_year then week_number, not extra select(\"*\") fields", () => {
+    const household_id = "b03e87bd-2899-4e71-b6fb-54399eef3e6d";
+    const leftoverDraft = {
+      ...wr("3e3aeeeb-4dcb-445b-9297-aa6c20967433", 1, "draft"),
+      household_id,
+      updated_at: "2026-09-16T12:00:00+00:00",
+      notes: "leftover skip",
+    };
+    const prematureFinal = {
+      ...wr("52a42a9e-fbce-4e06-a9b4-8a00b1d36994", 2, "final"),
+      household_id,
+      updated_at: "2026-09-15T19:04:43.88+00:00",
+      notes: null,
+    };
+    expect(selectActiveWeek([leftoverDraft, prematureFinal])?.week_number).toBe(2);
+    expect(selectActiveWeek([leftoverDraft, prematureFinal])?.status).toBe("final");
+    expect(selectActiveWeek([prematureFinal, leftoverDraft])?.week_number).toBe(2);
+    expect(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftoverDraft, prematureFinal])),
+    ).toBe("The Harper House · Week 2");
+    expect(weekSwitcherLabel(leftoverDraft, selectActiveWeek([leftoverDraft, prematureFinal]))).toBe(
+      "Week 1",
+    );
+
+    const leftoverOpen = {
+      ...leftoverDraft,
+      status: "open",
+      updated_at: "2026-09-17T00:00:00+00:00",
+    };
+    const thisSunday = {
+      ...prematureFinal,
+      status: "open",
+      updated_at: "2026-09-15T19:04:43.88+00:00",
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+    };
+    const activeOpen = selectActiveWeek([leftoverOpen, thisSunday]);
+    expect(activeOpen?.week_number).toBe(2);
+    expect(activeOpen?.status).toBe("open");
+    expect(selectActiveWeek([thisSunday, leftoverOpen])?.id).toBe(thisSunday.id);
+    expect(weekSwitcherLabel(thisSunday, activeOpen)).toBe("This Sunday");
+    expect(weekSwitcherLabel(leftoverOpen, activeOpen)).toBe("Week 1");
+    expect(familyWeekChrome("The Harper House", activeOpen)).toBe("The Harper House · Week 2");
+
+    const skipped = { ...leftoverDraft, status: "final", updated_at: "2026-09-16T16:00:00+00:00" };
+    const dirtyOpen = {
+      ...thisSunday,
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      updated_at: "2026-09-15T19:04:43.88+00:00",
+    };
+    const skipActive = selectActiveWeek([skipped, dirtyOpen]);
+    expect(skipActive?.week_number).toBe(2);
+    expect(skipActive?.status).toBe("open");
+    expect(weekSwitcherLabel(dirtyOpen, skipActive)).toBe("This Sunday");
+    expect(selectActiveWeek([w(1, "final")])?.week_number).toBe(1);
+
+    const wrapLeftover = {
+      ...wr("w18", 18, "draft", 2025),
+      updated_at: "2026-09-16T12:00:00+00:00",
+    };
+    const wrapNewer = {
+      ...wr("w1", 1, "final", 2026),
+      updated_at: "2026-09-10T00:00:00+00:00",
+    };
+    expect(selectActiveWeek([wrapLeftover, wrapNewer])?.season_year).toBe(2026);
+    expect(selectActiveWeek([wrapLeftover, wrapNewer])?.week_number).toBe(1);
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -1151,11 +1218,30 @@ describe("selectActiveWeek", () => {
     expect(chromeBody).toMatch(/auto_created_at, auto_locked_at, autopilot_hold/);
     expect(chromeBody).toMatch(/household_id, commissioner_edited_at, autopilot_checked_at/);
     expect(chromeBody).toMatch(/ranking ignores id/);
+    expect(chromeBody).toMatch(/recency is season_year then week_number/);
     expect(body).not.toMatch(/\bid\b/);
     expect(inPlayBody).not.toMatch(/\bid\b/);
+    const recencyStart = src.indexOf("function recency");
+    const recencyEnd = src.indexOf("function isNewerThan");
+    expect(recencyStart).toBeGreaterThanOrEqual(0);
+    expect(recencyEnd).toBeGreaterThan(recencyStart);
+    const recencyImpl = src.slice(src.indexOf("{", recencyStart), recencyEnd);
+    expect(recencyImpl).toMatch(/a\.season_year !== b\.season_year/);
+    expect(recencyImpl).toMatch(/b\.season_year - a\.season_year/);
+    expect(recencyImpl).toMatch(/b\.week_number - a\.week_number/);
+    expect(recencyImpl).not.toMatch(/\bid\b/);
+    expect(recencyImpl).not.toMatch(/status/);
+    expect(recencyImpl).not.toMatch(/finalized_at/);
+    expect(recencyImpl).not.toMatch(/lock_at/);
+    expect(recencyImpl).not.toMatch(/auto_opened_at/);
+    expect(recencyImpl).not.toMatch(/created_at/);
+    expect(recencyImpl).not.toMatch(/household_id/);
+    expect(recencyImpl).not.toMatch(/updated_at/);
     expect(src).not.toMatch(/ranked\.find\(\(w\) => w\.status === "draft"\)/);
     expect(src).not.toMatch(/else latest draft/);
     expect(src).not.toMatch(/open\/locked > draft > final/);
+    expect(src).toMatch(/function isNewerThan[\s\S]{0,80}return recency\(week, than\) < 0/);
+    expect(src).toMatch(/function isOlderThan[\s\S]{0,80}return recency\(week, than\) > 0/);
     expect(src).toMatch(/function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
     expect(src).toMatch(/weeks\.find\(\(w\) => isSameSlot\(w, slot\)\)/);
     const labelStart = src.indexOf("export function weekSwitcherLabel");
@@ -2285,6 +2371,9 @@ describe("useCurrentWeek production wiring", () => {
     expect(src).toMatch(/import \{ selectActiveWeek \} from "\.\/current-week"/);
     expect(fn).toMatch(/select:\s*\(weeks\)\s*=>\s*selectActiveWeek\(weeks\)/);
     expect(src).toMatch(/else newest week overall/);
+    expect(src).toMatch(
+      /a\.season_year !== b\.season_year \? b\.season_year - a\.season_year : b\.week_number - a\.week_number/,
+    );
     expect(src).not.toMatch(/else latest draft/);
     expect(src).not.toMatch(/open\/locked > draft > final/);
     expect(fn.slice(0, fn.indexOf("export function useWeekGames"))).not.toMatch(/\.limit\(1\)/);
