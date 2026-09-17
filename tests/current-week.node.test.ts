@@ -1969,6 +1969,27 @@ describe("selectActiveWeek", () => {
       ]),
       null,
     );
+    // leftover file keys cannot hide a newer week — skip own files
+    assert.equal(
+      selectActiveWeek([
+        {
+          season_year: new File(["2026"], "year"),
+          week_number: new File(["2"], "week"),
+          status: "final",
+        } as never,
+      ]),
+      null,
+    );
+    assert.equal(
+      selectActiveWeek([
+        {
+          season_year: new File([], "empty-year"),
+          week_number: new File([], "empty-week"),
+          status: "final",
+        } as never,
+      ]),
+      null,
+    );
 
     // e: skip path: final/skipped W1 with missing year + open W2 → W2
     const skipped = keyedRef("w1s", 1, "final", Number.NaN);
@@ -2546,6 +2567,49 @@ describe("selectActiveWeek", () => {
     assert.equal(
       weekSwitcherLabel(
         { id: "empty-blob", ...onlyEmptyBlob } as ReturnType<typeof wr>,
+        null,
+      ),
+      "Week 0",
+    );
+
+    // leftover file keys cannot caption Week NaN — skip the row, chrome is household name only
+    const onlyFile = {
+      season_year: new File(["2026"], "year"),
+      week_number: new File(["2"], "week"),
+      status: "final",
+    } as never;
+    const onlyEmptyFile = {
+      season_year: new File([], "empty-year"),
+      week_number: new File([], "empty-week"),
+      status: "final",
+    } as never;
+    assert.equal(selectActiveWeek([onlyFile]), null);
+    assert.equal(selectActiveWeek([onlyEmptyFile]), null);
+    assert.equal(familyWeekChrome("The Harper House", onlyFile), "The Harper House");
+    assert.equal(familyWeekChrome("The Harper House", onlyEmptyFile), "The Harper House");
+    assert.notEqual(
+      familyWeekChrome("The Harper House", onlyFile),
+      "The Harper House · Week 2",
+    );
+    assert.notEqual(
+      familyWeekChrome("The Harper House", onlyFile),
+      "The Harper House · Week NaN",
+    );
+    assert.notEqual(
+      familyWeekChrome("The Harper House", onlyEmptyFile),
+      "The Harper House · Week 0",
+    );
+    assert.notEqual(
+      familyWeekChrome("The Harper House", onlyEmptyFile),
+      "The Harper House · Week NaN",
+    );
+    assert.equal(
+      weekSwitcherLabel({ id: "file", ...onlyFile } as ReturnType<typeof wr>, null),
+      "Week 0",
+    );
+    assert.equal(
+      weekSwitcherLabel(
+        { id: "empty-file", ...onlyEmptyFile } as ReturnType<typeof wr>,
         null,
       ),
       "Week 0",
@@ -6888,6 +6952,164 @@ describe("selectActiveWeek", () => {
     assert.doesNotThrow(() => weekSwitcherLabel(blobKeys, e));
   });
 
+  it("leftover file keys cannot hide a newer week (a–e)", () => {
+    const fileKeys = {
+      season_year: new File(["2026"], "year"),
+      week_number: new File(["2"], "week"),
+      status: "open",
+    } as never;
+    const fileLocked = {
+      season_year: new File(["2026"], "year"),
+      week_number: new File(["2"], "week"),
+      status: "locked",
+    } as never;
+    const emptyFile = {
+      season_year: new File([], "empty-year"),
+      week_number: new File([], "empty-week"),
+      status: "open",
+    } as never;
+    const mixed = {
+      season_year: new File(["2026"], "year"),
+      week_number: 2,
+      status: "open",
+    } as never;
+    const mixedWeek = {
+      season_year: 2026,
+      week_number: new File(["2"], "week"),
+      status: "open",
+    } as never;
+    // a: draft W1 + final W2 + leftover file keys → active W2
+    assert.equal(selectActiveWeek([fileKeys, w(1, "draft"), w(2, "final")])?.week_number, 2);
+    assert.equal(
+      selectActiveWeek([w(1, "draft"), fileLocked, w(2, "final")])?.status,
+      "final",
+    );
+    assert.equal(
+      selectActiveWeek([w(2, "final"), w(1, "draft"), emptyFile])?.week_number,
+      2,
+    );
+    assert.equal(selectActiveWeek([mixed, w(1, "draft"), w(2, "final")])?.status, "final");
+    assert.equal(selectActiveWeek([mixedWeek, w(1, "draft"), w(2, "final")])?.week_number, 2);
+    assert.equal(
+      familyWeekChrome(
+        "The Harper House",
+        selectActiveWeek([fileKeys, w(1, "draft"), w(2, "final")]),
+      ),
+      "The Harper House · Week 2",
+    );
+    assert.equal(selectActiveWeek([fileKeys]), null);
+    assert.equal(selectActiveWeek([fileLocked, emptyFile, mixed]), null);
+    assert.equal(selectActiveWeek([mixedWeek]), null);
+    assert.doesNotThrow(() =>
+      selectActiveWeek([fileKeys, w(1, "draft"), w(2, "final")]),
+    );
+    assert.doesNotThrow(() => selectActiveWeek([fileLocked, w(2, "final")]));
+    assert.doesNotThrow(() => recency(fileKeys, w(2, "final")));
+    assert.doesNotThrow(() => recency(fileLocked, w(2, "final")));
+    assert.doesNotThrow(() => recency(emptyFile, w(2, "final")));
+    assert.doesNotThrow(() => recency(mixed, w(2, "final")));
+    assert.doesNotThrow(() => recency(mixedWeek, w(2, "final")));
+    assert.doesNotThrow(() => nextWeekSlot(fileKeys));
+    assert.doesNotThrow(() => nextWeekSlot(fileLocked));
+    assert.deepEqual(nextWeekSlot(fileKeys), { season_year: 0, week_number: 1 });
+    assert.deepEqual(nextWeekSlot(fileLocked), { season_year: 0, week_number: 1 });
+    assert.deepEqual(nextWeekSlot(emptyFile), { season_year: 0, week_number: 1 });
+    // leftover file keys must not beat a same-recency leftover draft
+    const leftoverMissingDraft = { status: "draft" } as never;
+    assert.equal(selectActiveWeek([fileKeys, leftoverMissingDraft])?.status, "draft");
+    assert.equal(selectActiveWeek([leftoverMissingDraft, fileLocked])?.status, "draft");
+    assert.equal(selectActiveWeek([mixed, leftoverMissingDraft])?.status, "draft");
+    assert.equal(selectActiveWeek([emptyFile, leftoverMissingDraft])?.status, "draft");
+    assert.ok(recency(fileKeys, w(2, "final")) > 0);
+    assert.ok(recency(fileLocked, w(2, "final")) > 0);
+    assert.ok(recency(emptyFile, w(2, "final")) > 0);
+    assert.ok(recency(mixed, w(2, "final")) > 0);
+    assert.ok(recency(mixedWeek, w(2, "final")) > 0);
+    // finite integer keys still rank — leftover skip is file only
+    assert.equal(
+      selectActiveWeek([{ ...w(1, "open"), season_year: 2026, week_number: 1 }])?.status,
+      "open",
+    );
+    assert.equal(
+      selectActiveWeek([
+        { season_year: "2026", week_number: "1", status: "draft" },
+        w(2, "final"),
+      ])?.week_number,
+      2,
+    );
+    // leftover missing-key draft stays selectable — leftover skip is file only
+    assert.equal(selectActiveWeek([leftoverMissingDraft])?.status, "draft");
+    // b: draft W1 + open W2 + leftover file keys → active W2
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const open = wr("52a42a9e", 2, "open");
+    const b = selectActiveWeek([fileKeys, leftover, open]);
+    assert.equal(b?.id, "52a42a9e");
+    assert.equal(b?.status, "open");
+    assert.equal(selectActiveWeek([leftover, fileLocked, open])?.week_number, 2);
+    assert.equal(selectActiveWeek([open, leftover, emptyFile])?.id, "52a42a9e");
+    assert.equal(selectActiveWeek([mixed, leftover, open])?.id, "52a42a9e");
+    assert.equal(selectActiveWeek([mixedWeek, leftover, open])?.id, "52a42a9e");
+    assert.equal(weekSwitcherLabel(open, b), "This Sunday");
+    assert.equal(weekSwitcherLabel(leftover, b), "Week 1");
+    assert.notEqual(weekSwitcherLabel(leftover, b), "This Sunday");
+    assert.notEqual(weekSwitcherLabel(leftover, b), "Next week");
+    assert.equal(familyWeekChrome("The Harper House", b), "The Harper House · Week 2");
+    assert.equal(pickViewWeek([leftover, open], b, "next")?.id, "52a42a9e");
+    assert.equal([fileKeys, leftover, open].sort(recency)[0]?.week_number, 2);
+    assert.equal([fileLocked, leftover, open].sort(recency)[0]?.week_number, 2);
+    assert.equal([emptyFile, leftover, open].sort(recency)[0]?.week_number, 2);
+    // c: open W1 + draft W2 + leftover file keys → active W1, W2 labeled Next week
+    const thisSunday = wr("w1", 1, "open");
+    const nextDraft = wr("w2", 2, "draft");
+    const c = selectActiveWeek([thisSunday, fileKeys, nextDraft]);
+    assert.equal(c?.id, "w1");
+    assert.equal(c?.week_number, 1);
+    assert.equal(weekSwitcherLabel(thisSunday, c), "This Sunday");
+    assert.equal(weekSwitcherLabel(nextDraft, c), "Next week");
+    assert.equal(pickViewWeek([thisSunday, nextDraft], c, "next")?.id, "w2");
+    assert.equal(selectActiveWeek([fileLocked, thisSunday, nextDraft])?.id, "w1");
+    assert.equal(selectActiveWeek([emptyFile, thisSunday, nextDraft])?.id, "w1");
+    assert.equal(selectActiveWeek([mixed, thisSunday, nextDraft])?.id, "w1");
+    assert.equal(selectActiveWeek([mixedWeek, thisSunday, nextDraft])?.id, "w1");
+    // d: only final W1 + leftover file keys → W1
+    assert.equal(
+      selectActiveWeek([fileKeys, w(1, "final"), fileLocked])?.week_number,
+      1,
+    );
+    assert.equal(selectActiveWeek([mixed, w(1, "final")])?.status, "final");
+    assert.equal(selectActiveWeek([fileKeys, fileLocked]), null);
+    assert.equal(selectActiveWeek(null), null);
+    assert.equal(selectActiveWeek(undefined), null);
+    // e: skip path: final/skipped W1 + open W2 + leftover file keys → W2
+    const skipped = wr("w1s", 1, "final");
+    const dirty = { ...wr("w2d", 2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const e = selectActiveWeek([fileKeys, skipped, dirty]);
+    assert.equal(e?.id, "w2d");
+    assert.equal(e?.status, "open");
+    assert.equal(selectActiveWeek([skipped, fileLocked, dirty])?.week_number, 2);
+    assert.equal(selectActiveWeek([dirty, skipped, emptyFile])?.id, "w2d");
+    assert.equal(selectActiveWeek([mixed, skipped, dirty])?.id, "w2d");
+    assert.equal(selectActiveWeek([mixedWeek, skipped, dirty])?.id, "w2d");
+    assert.equal(weekSwitcherLabel(dirty, e), "This Sunday");
+    assert.equal(weekSwitcherLabel(skipped, e), "Week 1");
+    assert.notEqual(weekSwitcherLabel(skipped, e), "Next week");
+    assert.equal(familyWeekChrome("The Harper House", e), "The Harper House · Week 2");
+    assert.equal(pickViewWeek([skipped, dirty], e, "next")?.id, "w2d");
+    assert.equal([fileKeys, skipped, dirty].sort(recency)[0]?.week_number, 2);
+    assert.equal(familyWeekChrome("The Harper House", fileKeys), "The Harper House");
+    assert.equal(familyWeekChrome("The Harper House", fileLocked), "The Harper House");
+    assert.equal(familyWeekChrome("The Harper House", emptyFile), "The Harper House");
+    assert.notEqual(
+      familyWeekChrome("The Harper House", fileKeys),
+      "The Harper House · Week 2",
+    );
+    assert.notEqual(
+      familyWeekChrome("The Harper House", fileKeys),
+      "The Harper House · Week NaN",
+    );
+    assert.doesNotThrow(() => weekSwitcherLabel(fileKeys, e));
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -7143,6 +7365,8 @@ describe("selectActiveWeek", () => {
     assert.match(body, /leftoverTypedArrayKey\(week\.season_year\)/);
     assert.match(body, /leftover blob keys cannot hide a newer week/);
     assert.match(body, /leftoverBlobKey\(week\.season_year\)/);
+    assert.match(body, /leftover file keys cannot hide a newer week/);
+    assert.match(body, /leftoverFileKey\(week\.season_year\)/);
     assert.match(body, /if \(!weeks\?\.length\) return null/);
     assert.doesNotMatch(body, /weeks\[0\]/);
     assert.doesNotMatch(body, /status === ["']draft["']/);
@@ -7247,6 +7471,8 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /leftoverTypedArrayKey\(weekNumber\)/);
     assert.match(chromeBody, /leftover blob keys cannot hide a newer week/);
     assert.match(chromeBody, /leftoverBlobKey\(weekNumber\)/);
+    assert.match(chromeBody, /leftover file keys cannot hide a newer week/);
+    assert.match(chromeBody, /leftoverFileKey\(weekNumber\)/);
     assert.match(chromeBody, /fetchHouseholdWeeks sorts with recency/);
     assert.match(chromeBody, /familyWeekChrome treats non-finite week_number as 0/);
     assert.match(chromeBody, /Number\(week\.week_number\)/);
@@ -7375,6 +7601,9 @@ describe("selectActiveWeek", () => {
     assert.match(recencyImpl, /leftover blob keys cannot hide a newer week/);
     assert.match(recencyImpl, /leftoverBlobKey\(aYearKey\)/);
     assert.match(recencyImpl, /leftoverBlobKey\(bYearKey\)/);
+    assert.match(recencyImpl, /leftover file keys cannot hide a newer week/);
+    assert.match(recencyImpl, /leftoverFileKey\(aYearKey\)/);
+    assert.match(recencyImpl, /leftoverFileKey\(bYearKey\)/);
     assert.doesNotMatch(recencyImpl, /\bid\b/);
     assert.doesNotMatch(recencyImpl, /status/);
     assert.doesNotMatch(recencyImpl, /finalized_at/);
@@ -7463,6 +7692,9 @@ describe("selectActiveWeek", () => {
     assert.match(nextBody, /leftover blob keys cannot hide a newer week/);
     assert.match(nextBody, /leftoverBlobKey\(week\.season_year\)/);
     assert.match(nextBody, /leftoverBlobKey\(week\.week_number\)/);
+    assert.match(nextBody, /leftover file keys cannot hide a newer week/);
+    assert.match(nextBody, /leftoverFileKey\(week\.season_year\)/);
+    assert.match(nextBody, /leftoverFileKey\(week\.week_number\)/);
     assert.match(src, /function isNewerThan[\s\S]{0,80}return recency\(week, than\) < 0/);
     assert.match(src, /function isOlderThan[\s\S]{0,80}return recency\(week, than\) > 0/);
     assert.match(src, /function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
@@ -7523,6 +7755,8 @@ describe("selectActiveWeek", () => {
     assert.match(labelBody, /leftoverTypedArrayKey\(weekNumber\)/);
     assert.match(labelBody, /leftover blob keys cannot hide a newer week/);
     assert.match(labelBody, /leftoverBlobKey\(weekNumber\)/);
+    assert.match(labelBody, /leftover file keys cannot hide a newer week/);
+    assert.match(labelBody, /leftoverFileKey\(weekNumber\)/);
     assert.doesNotMatch(labelBody, /w\.id === active\.id/);
     const pickStart = src.indexOf("export function pickViewWeek");
     const pickBody = src.slice(pickStart, pickStart + 900);
@@ -8731,6 +8965,7 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(fetchBody, /leftover dataview keys cannot hide a newer week/);
     assert.match(fetchBody, /leftover typedarray keys cannot hide a newer week/);
     assert.match(fetchBody, /leftover blob keys cannot hide a newer week/);
+    assert.match(fetchBody, /leftover file keys cannot hide a newer week/);
     assert.match(fetchBody, /Object.getPrototypeOf\(week\)/);
     assert.doesNotMatch(fetchBody, /\.limit\(/);
     assert.doesNotMatch(fetchBody, /\.order\("created_at"/);
