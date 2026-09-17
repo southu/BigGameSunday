@@ -8,6 +8,7 @@ import {
   leftoverDraftNextStep,
   nextWeekSlot,
   pickViewWeek,
+  recency,
   selectActiveWeek,
   shouldAutopilotFinalize,
   shouldAutopilotLockOpen,
@@ -1357,6 +1358,13 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([wrapDraft, wrapFinal])?.week_number, 1);
     assert.equal(selectActiveWeek([wrapFinal, wrapDraft])?.status, "final");
 
+    assert.equal([leftoverStr, prematureNum].sort(recency)[0]?.week_number, 2);
+    assert.equal([prematureNum, leftoverStr].sort(recency)[0]?.status, "final");
+    assert.equal(Number([leftoverNum, prematureStr].sort(recency)[0]?.week_number), 2);
+    assert.equal(Number([draftNum, openStr].sort(recency)[0]?.week_number), 2);
+    assert.equal([openW1, nextDraft].sort(recency)[0]?.id, "draft-2");
+    assert.equal(Number([skippedStr, dirtyOpen].sort(recency)[0]?.week_number), 2);
+
     assert.deepEqual(nextWeekSlot(keyed("1", "draft", "2026")), {
       season_year: 2026,
       week_number: 2,
@@ -1621,6 +1629,7 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /ranking copies only season_year and week_number/);
     assert.match(chromeBody, /recency copies both operands before comparing/);
     assert.match(chromeBody, /recency coerces season_year and week_number to numbers/);
+    assert.match(chromeBody, /fetchHouseholdWeeks sorts with recency/);
     assert.doesNotMatch(body, /\bid\b/);
     assert.doesNotMatch(inPlayBody, /\bid\b/);
     const recencyStart = src.indexOf("function recency");
@@ -2812,13 +2821,9 @@ describe("useCurrentWeek production wiring", () => {
   it("db.ts selects the active week through selectActiveWeek, not LIMIT 1", () => {
     const src = readFileSync(join(process.cwd(), "src/lib/db.ts"), "utf8");
     const fn = src.slice(src.indexOf("export function useCurrentWeek"));
-    assert.match(src, /import \{ selectActiveWeek \} from "\.\/current-week"/);
+    assert.match(src, /import \{ recency, selectActiveWeek \} from "\.\/current-week"/);
     assert.match(fn, /select:\s*\(weeks\)\s*=>\s*selectActiveWeek\(weeks\)/);
     assert.match(src, /else newest week overall/);
-    assert.match(
-      src,
-      /a\.season_year !== b\.season_year \? b\.season_year - a\.season_year : b\.week_number - a\.week_number/,
-    );
     assert.doesNotMatch(src, /else latest draft/);
     assert.doesNotMatch(src, /open\/locked > draft > final/);
     assert.doesNotMatch(fn.slice(0, fn.indexOf("export function useWeekGames")), /\.limit\(1\)/);
@@ -2830,6 +2835,8 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(fetchBody, /\.order\("season_year"/);
     assert.match(fetchBody, /\.order\("week_number"/);
     assert.match(fetchBody, /never created_at or id/);
+    assert.match(fetchBody, /\.sort\(recency\)/);
+    assert.match(fetchBody, /mixed string\/number keys cannot skip week_number/);
     assert.doesNotMatch(fetchBody, /\.limit\(/);
     assert.doesNotMatch(fetchBody, /\.order\("created_at"/);
     assert.doesNotMatch(fetchBody, /\.order\("id"/);
@@ -3158,6 +3165,14 @@ describe("useCurrentWeek production wiring", () => {
     );
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
     assert.match(autofill, /auto_create_weeks/);
+    assert.match(autofill, /import \{ nextWeekSlot \} from "\.\/current-week"/);
+    const ensureFn = autofill.slice(
+      autofill.indexOf("export async function ensureNextWeek"),
+      autofill.indexOf("const espnGames = await fetchEspnWeek(seasonYear, weekNumber)"),
+    );
+    assert.match(ensureFn, /nextWeekSlot\(last\)/);
+    assert.match(ensureFn, /Number\(last\.week_number\)/);
+    assert.doesNotMatch(ensureFn, /\(last\?\.week_number \?\? 0\) \+ 1/);
   });
 });
 

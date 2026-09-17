@@ -64,9 +64,10 @@ export type WeekRef = WeekLike & { id: string };
  * recency copies both operands so extra fields on the incumbent cannot leak.
  * recency coerces season_year and week_number to numbers so a leftover
  * string-keyed draft cannot hide a newer week (`"2026" !== 2026` would
- * otherwise skip week_number).
+ * otherwise skip week_number). fetchHouseholdWeeks sorts with recency so
+ * the week list cannot skip week_number on mixed string/number keys.
  */
-function recency(a: WeekSlot, b: WeekSlot): number {
+export function recency(a: WeekSlot, b: WeekSlot): number {
   a = { season_year: a.season_year, week_number: a.week_number };
   b = { season_year: b.season_year, week_number: b.week_number };
   a.season_year = Number(a.season_year);
@@ -664,6 +665,7 @@ export function familyWeekChrome(
   // ranking copies only season_year and week_number before comparing
   // recency copies both operands before comparing
   // recency coerces season_year and week_number to numbers
+  // fetchHouseholdWeeks sorts with recency
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
 }

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { selectActiveWeek } from "./current-week";
+import { recency, selectActiveWeek } from "./current-week";
 import {
   buildSeasonStandings,
   regularSeasonWeeks,
@@ -147,10 +147,9 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
   // PostgREST order is season_year then week_number, never created_at or id.
   // selectActiveWeek ranks latest open/locked first, else newest overall —
   // never an older leftover draft over a newer final or draft.
+  // recency coerces so mixed string/number keys cannot skip week_number.
   const weeks = (data ?? []) as Week[];
-  return [...weeks].sort((a, b) =>
-    a.season_year !== b.season_year ? b.season_year - a.season_year : b.week_number - a.week_number,
-  );
+  return [...weeks].sort(recency);
 }
 
 /** Every week for the household (same cache as useCurrentWeek). */

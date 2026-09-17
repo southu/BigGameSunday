@@ -7,6 +7,7 @@ import {
   leftoverDraftNextStep,
   nextWeekSlot,
   pickViewWeek,
+  recency,
   selectActiveWeek,
   shouldAutopilotFinalize,
   shouldAutopilotLockOpen,
@@ -1317,6 +1318,13 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([wrapDraft, wrapFinal])?.week_number).toBe(1);
     expect(selectActiveWeek([wrapFinal, wrapDraft])?.status).toBe("final");
 
+    expect([leftoverStr, prematureNum].sort(recency)[0]?.week_number).toBe(2);
+    expect([prematureNum, leftoverStr].sort(recency)[0]?.status).toBe("final");
+    expect(Number([leftoverNum, prematureStr].sort(recency)[0]?.week_number)).toBe(2);
+    expect(Number([draftNum, openStr].sort(recency)[0]?.week_number)).toBe(2);
+    expect([openW1, nextDraft].sort(recency)[0]?.id).toBe("draft-2");
+    expect(Number([skippedStr, dirtyOpen].sort(recency)[0]?.week_number)).toBe(2);
+
     expect(nextWeekSlot(keyed("1", "draft", "2026"))).toEqual({
       season_year: 2026,
       week_number: 2,
@@ -1577,6 +1585,7 @@ describe("selectActiveWeek", () => {
     expect(chromeBody).toMatch(/ranking copies only season_year and week_number/);
     expect(chromeBody).toMatch(/recency copies both operands before comparing/);
     expect(chromeBody).toMatch(/recency coerces season_year and week_number to numbers/);
+    expect(chromeBody).toMatch(/fetchHouseholdWeeks sorts with recency/);
     expect(body).not.toMatch(/\bid\b/);
     expect(inPlayBody).not.toMatch(/\bid\b/);
     const recencyStart = src.indexOf("function recency");
@@ -2739,12 +2748,9 @@ describe("useCurrentWeek production wiring", () => {
   it("db.ts selects the active week through selectActiveWeek, not LIMIT 1", () => {
     const src = readFileSync(join(process.cwd(), "src/lib/db.ts"), "utf8");
     const fn = src.slice(src.indexOf("export function useCurrentWeek"));
-    expect(src).toMatch(/import \{ selectActiveWeek \} from "\.\/current-week"/);
+    expect(src).toMatch(/import \{ recency, selectActiveWeek \} from "\.\/current-week"/);
     expect(fn).toMatch(/select:\s*\(weeks\)\s*=>\s*selectActiveWeek\(weeks\)/);
     expect(src).toMatch(/else newest week overall/);
-    expect(src).toMatch(
-      /a\.season_year !== b\.season_year \? b\.season_year - a\.season_year : b\.week_number - a\.week_number/,
-    );
     expect(src).not.toMatch(/else latest draft/);
     expect(src).not.toMatch(/open\/locked > draft > final/);
     expect(fn.slice(0, fn.indexOf("export function useWeekGames"))).not.toMatch(/\.limit\(1\)/);
@@ -2757,6 +2763,8 @@ describe("useCurrentWeek production wiring", () => {
     expect(fetchBody).toMatch(/\.order\("season_year"/);
     expect(fetchBody).toMatch(/\.order\("week_number"/);
     expect(fetchBody).toMatch(/never created_at or id/);
+    expect(fetchBody).toMatch(/\.sort\(recency\)/);
+    expect(fetchBody).toMatch(/mixed string\/number keys cannot skip week_number/);
     expect(fetchBody).not.toMatch(/\.limit\(/);
     expect(fetchBody).not.toMatch(/\.order\("created_at"/);
     expect(fetchBody).not.toMatch(/\.order\("id"/);
@@ -3037,6 +3045,14 @@ describe("useCurrentWeek production wiring", () => {
     );
     const autofill = readFileSync(join(process.cwd(), "src/lib/autofill.server.ts"), "utf8");
     expect(autofill).toMatch(/auto_create_weeks/);
+    expect(autofill).toMatch(/import \{ nextWeekSlot \} from "\.\/current-week"/);
+    const ensureFn = autofill.slice(
+      autofill.indexOf("export async function ensureNextWeek"),
+      autofill.indexOf("const espnGames = await fetchEspnWeek(seasonYear, weekNumber)"),
+    );
+    expect(ensureFn).toMatch(/nextWeekSlot\(last\)/);
+    expect(ensureFn).toMatch(/Number\(last\.week_number\)/);
+    expect(ensureFn).not.toMatch(/\(last\?\.week_number \?\? 0\) \+ 1/);
   });
 });
 

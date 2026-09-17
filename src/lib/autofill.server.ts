@@ -1,4 +1,5 @@
 /** Auto-fill helpers: build a week's games + standard moments from the ESPN scoreboard. */
+import { nextWeekSlot } from "./current-week";
 import { fetchEspnWeek } from "./espn.server";
 import { insertMissingWeekLongshots, standardEvents } from "./nfl";
 
@@ -120,9 +121,13 @@ export async function ensureNextWeek(
   if (wErr) throw wErr;
 
   const last = ((weeks ?? []) as any[])[0];
-  const seasonYear: number = last?.season_year ?? new Date().getFullYear();
-  const weekNumber: number = (last?.week_number ?? 0) + 1;
-  if (weekNumber > 18) return { created: false, reason: "season-complete" };
+  // nextWeekSlot coerces so leftover string week_number cannot concat into week 11.
+  if (last && Number(last.week_number) >= 18) return { created: false, reason: "season-complete" };
+  const next = last
+    ? nextWeekSlot(last)
+    : { season_year: new Date().getFullYear(), week_number: 1 };
+  const seasonYear = next.season_year;
+  const weekNumber = next.week_number;
 
   const espnGames = await fetchEspnWeek(seasonYear, weekNumber);
   const kickoffs = espnGames.map((g) => g.kickoff_at).filter(Boolean) as string[];
