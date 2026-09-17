@@ -62,10 +62,17 @@ export type WeekRef = WeekLike & { id: string };
  * and created_at insertion order are not keys. notes and updated_at are
  * not keys. selectActiveWeek copies only these two numbers before ranking.
  * recency copies both operands so extra fields on the incumbent cannot leak.
+ * recency coerces season_year and week_number to numbers so a leftover
+ * string-keyed draft cannot hide a newer week (`"2026" !== 2026` would
+ * otherwise skip week_number).
  */
 function recency(a: WeekSlot, b: WeekSlot): number {
   a = { season_year: a.season_year, week_number: a.week_number };
   b = { season_year: b.season_year, week_number: b.week_number };
+  a.season_year = Number(a.season_year);
+  a.week_number = Number(a.week_number);
+  b.season_year = Number(b.season_year);
+  b.week_number = Number(b.week_number);
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -113,10 +120,12 @@ export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | n
 
 /** Regular season wraps to week 1 of the next year after week 18. */
 export function nextWeekSlot(week: WeekSlot): WeekSlot {
-  if (week.week_number >= 18) {
-    return { season_year: week.season_year + 1, week_number: 1 };
+  const season_year = Number(week.season_year);
+  const week_number = Number(week.week_number);
+  if (week_number >= 18) {
+    return { season_year: season_year + 1, week_number: 1 };
   }
-  return { season_year: week.season_year, week_number: week.week_number + 1 };
+  return { season_year, week_number: week_number + 1 };
 }
 
 export function weekAtSlot<T extends WeekSlot>(weeks: readonly T[], slot: WeekSlot): T | undefined {
@@ -639,7 +648,7 @@ export function skipUnlocksCardsOnLockRefresh(
  * `autopilot_checked_at`. Neither do `household_id` or
  * `commissioner_edited_at`. Neither does `id`. Neither do `notes` or
  * `updated_at`. Recency is season_year then week_number, not created_at
- * insertion order.
+ * insertion order. recency coerces season_year and week_number to numbers.
  */
 export function familyWeekChrome(
   householdName: string | null | undefined,
@@ -654,6 +663,7 @@ export function familyWeekChrome(
   // recency is season_year then week_number, not created_at insertion order
   // ranking copies only season_year and week_number before comparing
   // recency copies both operands before comparing
+  // recency coerces season_year and week_number to numbers
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
 }

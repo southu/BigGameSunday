@@ -1239,6 +1239,106 @@ describe("selectActiveWeek", () => {
     expect(familyWeekChrome("The Harper House", e)).toBe("The Harper House · Week 2");
   });
 
+  it("recency coerces mixed string/number season_year and week_number", () => {
+    const keyed = (
+      week_number: number | string,
+      status: string,
+      season_year: number | string = 2026,
+    ) => ({ season_year, week_number, status }) as ReturnType<typeof w>;
+    const keyedRef = (
+      id: string,
+      week_number: number | string,
+      status: string,
+      season_year: number | string = 2026,
+    ) => ({ id, season_year, week_number, status }) as ReturnType<typeof wr>;
+
+    // a: draft W1 + final W2 → active W2
+    const leftoverStr = keyed("1", "draft", "2026");
+    const prematureNum = keyed(2, "final", 2026);
+    expect(selectActiveWeek([leftoverStr, prematureNum])?.week_number).toBe(2);
+    expect(selectActiveWeek([leftoverStr, prematureNum])?.status).toBe("final");
+    expect(selectActiveWeek([prematureNum, leftoverStr])?.week_number).toBe(2);
+    expect(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftoverStr, prematureNum])),
+    ).toBe("The Harper House · Week 2");
+    const leftoverNum = keyed(1, "draft", 2026);
+    const prematureStr = keyed("2", "final", "2026");
+    expect(Number(selectActiveWeek([leftoverNum, prematureStr])?.week_number)).toBe(2);
+    expect(selectActiveWeek([leftoverNum, prematureStr])?.status).toBe("final");
+    expect(Number(selectActiveWeek([prematureStr, leftoverNum])?.week_number)).toBe(2);
+
+    // b: draft W1 + open W2 → active W2
+    const draftNum = keyedRef("w1", 1, "draft", 2026);
+    const openStr = keyedRef("w2", "2", "open", "2026");
+    const b = selectActiveWeek([draftNum, openStr]);
+    expect(b?.id).toBe("w2");
+    expect(Number(b?.week_number)).toBe(2);
+    expect(b?.status).toBe("open");
+    expect(selectActiveWeek([openStr, draftNum])?.id).toBe("w2");
+    expect(weekSwitcherLabel(openStr, b)).toBe("This Sunday");
+    expect(weekSwitcherLabel(draftNum, b)).toBe("Week 1");
+    expect(weekSwitcherLabel(draftNum, b)).not.toBe("This Sunday");
+    expect(weekSwitcherLabel(draftNum, b)).not.toBe("Next week");
+    expect(familyWeekChrome("The Harper House", b)).toBe("The Harper House · Week 2");
+    expect(pickViewWeek([draftNum, openStr], b, "next")?.id).toBe("w2");
+
+    // c: open W1 + draft W2 → active W1, W2 labeled Next week
+    const openW1 = keyedRef("open-1", "1", "open", "2026");
+    const nextDraft = keyedRef("draft-2", 2, "draft", 2026);
+    const c = selectActiveWeek([openW1, nextDraft]);
+    expect(c?.id).toBe("open-1");
+    expect(Number(c?.week_number)).toBe(1);
+    expect(weekSwitcherLabel(openW1, c)).toBe("This Sunday");
+    expect(weekSwitcherLabel(nextDraft, c)).toBe("Next week");
+    expect(pickViewWeek([openW1, nextDraft], c, null)?.id).toBe("open-1");
+    expect(pickViewWeek([openW1, nextDraft], c, "next")?.id).toBe("draft-2");
+
+    // d: only final W1 → W1
+    expect(Number(selectActiveWeek([keyed("1", "final", "2026")])?.week_number)).toBe(1);
+
+    // e: skip path: final/skipped W1 + open W2 → W2
+    const skippedStr = keyedRef("w1", "1", "final", "2026");
+    const dirtyOpen = {
+      ...keyedRef("w2", 2, "open", 2026),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+    };
+    const e = selectActiveWeek([skippedStr, dirtyOpen]);
+    expect(e?.id).toBe("w2");
+    expect(e?.week_number).toBe(2);
+    expect(e?.status).toBe("open");
+    expect(selectActiveWeek([dirtyOpen, skippedStr])?.id).toBe("w2");
+    expect(weekSwitcherLabel(dirtyOpen, e)).toBe("This Sunday");
+    expect(weekSwitcherLabel(skippedStr, e)).toBe("Week 1");
+    expect(familyWeekChrome("The Harper House", e)).toBe("The Harper House · Week 2");
+
+    const wrapDraft = keyed("18", "draft", "2025");
+    const wrapFinal = keyed(1, "final", 2026);
+    expect(selectActiveWeek([wrapDraft, wrapFinal])?.season_year).toBe(2026);
+    expect(selectActiveWeek([wrapDraft, wrapFinal])?.week_number).toBe(1);
+    expect(selectActiveWeek([wrapFinal, wrapDraft])?.status).toBe("final");
+
+    expect(nextWeekSlot(keyed("1", "draft", "2026"))).toEqual({
+      season_year: 2026,
+      week_number: 2,
+    });
+    expect(nextWeekSlot(keyed("1", "draft", "2026")).week_number).not.toBe("11");
+    expect(nextWeekSlot(keyed("18", "final", "2026"))).toEqual({
+      season_year: 2027,
+      week_number: 1,
+    });
+    expect(nextWeekSlot(keyed("18", "final", "2026")).season_year).not.toBe("20261");
+
+    const leftoverDraft = keyedRef("3e3aeeeb", "1", "draft", "2026");
+    const prematureFinal = keyedRef("52a42a9e", 2, "final", 2026);
+    expect(skipTargetWeek([leftoverDraft, prematureFinal], prematureFinal)?.id).toBe("3e3aeeeb");
+    const landed = skipLandingWeek([leftoverDraft, prematureFinal], leftoverDraft);
+    expect(landed?.id).toBe("52a42a9e");
+    expect(landed?.status).toBe("open");
+    expect(weekAtSlot([leftoverDraft, prematureFinal], nextWeekSlot(leftoverDraft))?.id).toBe(
+      "52a42a9e",
+    );
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -1476,6 +1576,7 @@ describe("selectActiveWeek", () => {
     expect(chromeBody).toMatch(/not created_at insertion order/);
     expect(chromeBody).toMatch(/ranking copies only season_year and week_number/);
     expect(chromeBody).toMatch(/recency copies both operands before comparing/);
+    expect(chromeBody).toMatch(/recency coerces season_year and week_number to numbers/);
     expect(body).not.toMatch(/\bid\b/);
     expect(inPlayBody).not.toMatch(/\bid\b/);
     const recencyStart = src.indexOf("function recency");
@@ -1488,6 +1589,10 @@ describe("selectActiveWeek", () => {
     expect(recencyImpl).toMatch(/a\.season_year !== b\.season_year/);
     expect(recencyImpl).toMatch(/b\.season_year - a\.season_year/);
     expect(recencyImpl).toMatch(/b\.week_number - a\.week_number/);
+    expect(recencyImpl).toMatch(/Number\(a\.season_year\)/);
+    expect(recencyImpl).toMatch(/Number\(a\.week_number\)/);
+    expect(recencyImpl).toMatch(/Number\(b\.season_year\)/);
+    expect(recencyImpl).toMatch(/Number\(b\.week_number\)/);
     expect(recencyImpl).not.toMatch(/\bid\b/);
     expect(recencyImpl).not.toMatch(/status/);
     expect(recencyImpl).not.toMatch(/finalized_at/);
@@ -1541,6 +1646,12 @@ describe("selectActiveWeek", () => {
     expect(canSkipWeek(w(1, "final"))).toBe(false);
     expect(nextWeekSlot(draft)).toEqual({ season_year: 2026, week_number: 2 });
     expect(nextWeekSlot(w(18, "draft"))).toEqual({ season_year: 2027, week_number: 1 });
+    expect(
+      nextWeekSlot({ season_year: "2026" as unknown as number, week_number: "1" as unknown as number }),
+    ).toEqual({ season_year: 2026, week_number: 2 });
+    expect(
+      nextWeekSlot({ season_year: "2026" as unknown as number, week_number: "18" as unknown as number }),
+    ).toEqual({ season_year: 2027, week_number: 1 });
     expect(weekAtSlot([draft, nextDraft], nextWeekSlot(draft))?.week_number).toBe(2);
     expect(weekAtSlot([draft], nextWeekSlot(draft))).toBeUndefined();
   });
