@@ -151,10 +151,12 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
   // recency treats non-finite keys as 0 so leftover drafts cannot hide a newer week.
   // leftover holes cannot hide a newer week
   // leftover non-object rows cannot hide a newer week
+  // leftover array rows cannot hide a newer week
   const weeks = (data ?? []) as Week[];
   return [...weeks]
     .filter((week) => week)
     .filter((week) => typeof week === "object")
+    .filter((week) => !Array.isArray(week))
     .sort(recency);
 }
 
