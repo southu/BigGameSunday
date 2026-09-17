@@ -1877,6 +1877,104 @@ describe("selectActiveWeek", () => {
     assert.equal([empty, skipped, dirty].sort(recency)[0]?.week_number, 2);
   });
 
+  it("leftover host objects cannot hide a newer week (a–e)", () => {
+    const when = new Date("2026-09-15T19:04:43.880Z") as never;
+    const bytes = new Uint8Array(2) as never;
+    const bag = new Map() as never;
+    const boxed = new String("x") as never;
+    // a: draft W1 + final W2 + leftover host object → active W2
+    assert.equal(selectActiveWeek([when, w(1, "draft"), w(2, "final")])?.week_number, 2);
+    assert.equal(selectActiveWeek([w(1, "draft"), bytes, w(2, "final")])?.status, "final");
+    assert.equal(selectActiveWeek([w(2, "final"), w(1, "draft"), bag])?.week_number, 2);
+    assert.equal(selectActiveWeek([boxed, w(1, "draft"), w(2, "final")])?.status, "final");
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([when, w(1, "draft"), w(2, "final")])),
+      "The Harper House · Week 2",
+    );
+    assert.equal(selectActiveWeek([when]), null);
+    assert.equal(selectActiveWeek([bytes, bag, boxed]), null);
+    // leftover host object must not beat a same-recency leftover draft
+    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
+    assert.equal(selectActiveWeek([when, leftoverNaN])?.status, "draft");
+    assert.equal(selectActiveWeek([leftoverNaN, when])?.status, "draft");
+    assert.ok(recency(when, w(2, "final")) > 0);
+    assert.ok(recency(bytes, w(2, "final")) > 0);
+    assert.ok(recency(bag, w(2, "final")) > 0);
+    assert.ok(recency(boxed, w(2, "final")) > 0);
+    const keyedDate = Object.assign(new Date("2026-09-15"), {
+      season_year: 2026,
+      week_number: 11,
+      status: "open",
+    }) as never;
+    const keyedBytes = Object.assign(new Uint8Array(2), {
+      season_year: 2026,
+      week_number: 11,
+      status: "open",
+    }) as never;
+    assert.equal(selectActiveWeek([keyedDate, w(1, "draft"), w(2, "final")])?.week_number, 2);
+    assert.equal(selectActiveWeek([keyedBytes, w(1, "draft"), w(2, "final")])?.week_number, 2);
+    assert.equal(selectActiveWeek([keyedDate]), null);
+    assert.equal(selectActiveWeek([keyedBytes]), null);
+    assert.ok(recency(keyedDate, w(2, "final")) > 0);
+    assert.ok(recency(keyedBytes, w(2, "final")) > 0);
+    // plain Object.create(null) week rows still rank
+    const nullProto = Object.assign(Object.create(null), {
+      season_year: 2026,
+      week_number: 2,
+      status: "final",
+    });
+    assert.equal(selectActiveWeek([w(1, "draft"), nullProto])?.week_number, 2);
+    assert.equal(selectActiveWeek([w(1, "draft"), nullProto])?.status, "final");
+    // b: draft W1 + open W2 + leftover host object → active W2
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const open = wr("52a42a9e", 2, "open");
+    const b = selectActiveWeek([when, leftover, open]);
+    assert.equal(b?.id, "52a42a9e");
+    assert.equal(b?.status, "open");
+    assert.equal(selectActiveWeek([leftover, bytes, open])?.week_number, 2);
+    assert.equal(selectActiveWeek([open, leftover, bag])?.id, "52a42a9e");
+    assert.equal(selectActiveWeek([keyedDate, leftover, open])?.id, "52a42a9e");
+    assert.equal(weekSwitcherLabel(open, b), "This Sunday");
+    assert.equal(weekSwitcherLabel(leftover, b), "Week 1");
+    assert.notEqual(weekSwitcherLabel(leftover, b), "This Sunday");
+    assert.notEqual(weekSwitcherLabel(leftover, b), "Next week");
+    assert.equal(familyWeekChrome("The Harper House", b), "The Harper House · Week 2");
+    assert.equal(pickViewWeek([leftover, open], b, "next")?.id, "52a42a9e");
+    assert.equal([when, leftover, open].sort(recency)[0]?.week_number, 2);
+    // c: open W1 + draft W2 + leftover host object → active W1, W2 labeled Next week
+    const thisSunday = wr("w1", 1, "open");
+    const nextDraft = wr("w2", 2, "draft");
+    const c = selectActiveWeek([thisSunday, when, nextDraft]);
+    assert.equal(c?.id, "w1");
+    assert.equal(c?.week_number, 1);
+    assert.equal(weekSwitcherLabel(thisSunday, c), "This Sunday");
+    assert.equal(weekSwitcherLabel(nextDraft, c), "Next week");
+    assert.equal(pickViewWeek([thisSunday, nextDraft], c, "next")?.id, "w2");
+    assert.equal(selectActiveWeek([when, thisSunday, nextDraft])?.id, "w1");
+    assert.equal(selectActiveWeek([keyedDate, thisSunday, nextDraft])?.id, "w1");
+    // d: only final W1 + leftover host objects → W1
+    assert.equal(selectActiveWeek([when, w(1, "final"), bytes])?.week_number, 1);
+    assert.equal(selectActiveWeek([bag, w(1, "final")])?.status, "final");
+    assert.equal(selectActiveWeek([when, bytes]), null);
+    assert.equal(selectActiveWeek(null), null);
+    assert.equal(selectActiveWeek(undefined), null);
+    // e: skip path: final/skipped W1 + open W2 + leftover host object → W2
+    const skipped = wr("w1s", 1, "final");
+    const dirty = { ...wr("w2d", 2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const e = selectActiveWeek([when, skipped, dirty]);
+    assert.equal(e?.id, "w2d");
+    assert.equal(e?.status, "open");
+    assert.equal(selectActiveWeek([skipped, bytes, dirty])?.week_number, 2);
+    assert.equal(selectActiveWeek([dirty, skipped, bag])?.id, "w2d");
+    assert.equal(selectActiveWeek([keyedDate, skipped, dirty])?.id, "w2d");
+    assert.equal(weekSwitcherLabel(dirty, e), "This Sunday");
+    assert.equal(weekSwitcherLabel(skipped, e), "Week 1");
+    assert.notEqual(weekSwitcherLabel(skipped, e), "Next week");
+    assert.equal(familyWeekChrome("The Harper House", e), "The Harper House · Week 2");
+    assert.equal(pickViewWeek([skipped, dirty], e, "next")?.id, "w2d");
+    assert.equal([when, skipped, dirty].sort(recency)[0]?.week_number, 2);
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -2071,6 +2169,8 @@ describe("selectActiveWeek", () => {
     assert.match(body, /leftover non-object rows cannot hide a newer week/);
     assert.match(body, /if \(Array.isArray\(week\)\) continue/);
     assert.match(body, /leftover array rows cannot hide a newer week/);
+    assert.match(body, /leftoverHostObject\(week\)/);
+    assert.match(body, /leftover host objects cannot hide a newer week/);
     assert.match(body, /if \(!weeks\?\.length\) return null/);
     assert.doesNotMatch(body, /weeks\[0\]/);
     assert.doesNotMatch(body, /status === ["']draft["']/);
@@ -2126,6 +2226,7 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /recency copies both operands before comparing/);
     assert.match(chromeBody, /recency coerces season_year and week_number to numbers/);
     assert.match(chromeBody, /recency treats non-finite season_year and week_number as 0/);
+    assert.match(chromeBody, /leftover host objects cannot hide a newer week/);
     assert.match(chromeBody, /fetchHouseholdWeeks sorts with recency/);
     assert.match(chromeBody, /familyWeekChrome treats non-finite week_number as 0/);
     assert.match(chromeBody, /Number\(week\.week_number\)/);
@@ -2163,6 +2264,9 @@ describe("selectActiveWeek", () => {
     assert.match(recencyImpl, /Array.isArray\(a\)/);
     assert.match(recencyImpl, /Array.isArray\(b\)/);
     assert.match(recencyImpl, /leftover array rows cannot hide a newer week/);
+    assert.match(recencyImpl, /leftoverHostObject\(a\)/);
+    assert.match(recencyImpl, /leftoverHostObject\(b\)/);
+    assert.match(recencyImpl, /leftover host objects cannot hide a newer week/);
     assert.doesNotMatch(recencyImpl, /\bid\b/);
     assert.doesNotMatch(recencyImpl, /status/);
     assert.doesNotMatch(recencyImpl, /finalized_at/);
@@ -3376,6 +3480,8 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(fetchBody, /leftover non-object rows cannot hide a newer week/);
     assert.match(fetchBody, /!Array.isArray\(week\)/);
     assert.match(fetchBody, /leftover array rows cannot hide a newer week/);
+    assert.match(fetchBody, /leftover host objects cannot hide a newer week/);
+    assert.match(fetchBody, /Object.getPrototypeOf\(week\)/);
     assert.doesNotMatch(fetchBody, /\.limit\(/);
     assert.doesNotMatch(fetchBody, /\.order\("created_at"/);
     assert.doesNotMatch(fetchBody, /\.order\("id"/);
