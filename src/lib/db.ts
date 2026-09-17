@@ -162,6 +162,7 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
   // leftover non-integer keys cannot hide a newer week
   // leftover non-positive keys cannot hide a newer week
   // leftover infinity keys cannot hide a newer week
+  // leftover nan keys cannot hide a newer week
   const weeks = (data ?? []) as Week[];
   return [...weeks]
     .filter((week) => week)
@@ -293,6 +294,18 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
         return !leftover(week.season_year) && !leftover(week.week_number);
       } catch {
         // leftover infinity keys cannot hide a newer week
+        return false;
+      }
+    })
+    .filter((week) => {
+      try {
+        const leftover = (value: unknown) => {
+          if (typeof value !== "number") return false;
+          return Number.isNaN(value);
+        };
+        return !leftover(week.season_year) && !leftover(week.week_number);
+      } catch {
+        // leftover nan keys cannot hide a newer week
         return false;
       }
     })

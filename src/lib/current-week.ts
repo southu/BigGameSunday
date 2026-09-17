@@ -80,6 +80,7 @@ export type WeekRef = WeekLike & { id: string };
  * cannot hide a newer week. leftover non-integer keys rank as 0,0 so they
  * cannot hide a newer week. leftover non-positive keys rank as 0,0 so they
  * cannot hide a newer week. leftover infinity keys rank as 0,0 so they
+ * cannot hide a newer week. leftover nan keys rank as 0,0 so they
  * cannot hide a newer week. fetchHouseholdWeeks sorts with recency so
  * the week list cannot skip week_number on mixed string/number keys.
  */
@@ -165,11 +166,21 @@ function leftoverNonPositiveKey(value: unknown): boolean {
   }
 }
 
-/** Infinity keys (Infinity / -Infinity) would steal in-play over a real week. Recency zeros non-finite, but leftover OPEN Infinity is still latestInPlay. NaN stays selectable. */
+/** Infinity keys (Infinity / -Infinity) would steal in-play over a real week. Recency zeros non-finite, but leftover OPEN Infinity is still latestInPlay. */
 function leftoverInfinityKey(value: unknown): boolean {
   try {
     if (typeof value !== "number") return false;
     return value === Number.POSITIVE_INFINITY || value === Number.NEGATIVE_INFINITY;
+  } catch {
+    return true;
+  }
+}
+
+/** NaN keys would steal in-play over a real week. Recency zeros non-finite, but leftover OPEN NaN is still latestInPlay. leftover missing-key drafts stay selectable. */
+function leftoverNaNKey(value: unknown): boolean {
+  try {
+    if (typeof value !== "number") return false;
+    return Number.isNaN(value);
   } catch {
     return true;
   }
@@ -281,6 +292,11 @@ export function recency(
   if (leftoverInfinityKey(aNumKey)) a.week_number = 0;
   if (leftoverInfinityKey(bYearKey)) b.season_year = 0;
   if (leftoverInfinityKey(bNumKey)) b.week_number = 0;
+  // leftover nan keys cannot hide a newer week
+  if (leftoverNaNKey(aYearKey)) a.season_year = 0;
+  if (leftoverNaNKey(aNumKey)) a.week_number = 0;
+  if (leftoverNaNKey(bYearKey)) b.season_year = 0;
+  if (leftoverNaNKey(bNumKey)) b.week_number = 0;
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -320,6 +336,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * leftover non-integer keys cannot hide a newer week.
  * leftover non-positive keys cannot hide a newer week.
  * leftover infinity keys cannot hide a newer week.
+ * leftover nan keys cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
   weeks: readonly (T | null | undefined | boolean | number | string | unknown[])[] | null | undefined,
@@ -372,6 +389,10 @@ export function selectActiveWeek<T extends WeekLike>(
       }
       // leftover infinity keys cannot hide a newer week
       if (leftoverInfinityKey(week.season_year) || leftoverInfinityKey(week.week_number)) {
+        continue;
+      }
+      // leftover nan keys cannot hide a newer week
+      if (leftoverNaNKey(week.season_year) || leftoverNaNKey(week.week_number)) {
         continue;
       }
       if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
@@ -480,6 +501,17 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
   }
   try {
     if (leftoverInfinityKey(week.week_number)) week_number = 0;
+  } catch {
+    week_number = 0;
+  }
+  // leftover nan keys cannot hide a newer week
+  try {
+    if (leftoverNaNKey(week.season_year)) season_year = 0;
+  } catch {
+    season_year = 0;
+  }
+  try {
+    if (leftoverNaNKey(week.week_number)) week_number = 0;
   } catch {
     week_number = 0;
   }
@@ -1065,6 +1097,7 @@ export function familyWeekChrome(
   // leftover non-integer keys cannot hide a newer week
   // leftover non-positive keys cannot hide a newer week
   // leftover infinity keys cannot hide a newer week
+  // leftover nan keys cannot hide a newer week
   // fetchHouseholdWeeks sorts with recency
   // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
@@ -1081,6 +1114,7 @@ export function familyWeekChrome(
       if (leftoverNonIntegerKey(weekNumber)) return name;
       if (leftoverNonPositiveKey(weekNumber)) return name;
       if (leftoverInfinityKey(weekNumber)) return name;
+      if (leftoverNaNKey(weekNumber)) return name;
     } catch {
       // leftover throwing rows cannot hide a newer week
       return name;
@@ -1108,6 +1142,8 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
     if (leftoverNonPositiveKey(weekNumber)) w = { ...w, week_number: 0 };
     // leftover infinity keys cannot hide a newer week
     if (leftoverInfinityKey(weekNumber)) w = { ...w, week_number: 0 };
+    // leftover nan keys cannot hide a newer week
+    if (leftoverNaNKey(weekNumber)) w = { ...w, week_number: 0 };
   } catch {
     // leftover unconvertible keys cannot hide a newer week
     w = { ...w, week_number: 0 };

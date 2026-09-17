@@ -1594,7 +1594,7 @@ describe("selectActiveWeek", () => {
 
     // d: only final W1 → W1
     expect(selectActiveWeek([keyed(undefined, "final", 2026)])?.status).toBe("final");
-    expect(selectActiveWeek([keyed(1, "final", Number.NaN)])?.status).toBe("final");
+    expect(selectActiveWeek([keyed(1, "final", undefined)])?.status).toBe("final");
 
     // e: skip path: final/skipped W1 with missing year + open W2 → W2
     const skipped = keyedRef("w1s", 1, "final", Number.NaN);
@@ -1629,10 +1629,10 @@ describe("selectActiveWeek", () => {
     expect(recency(null, null)).toBe(0);
     expect([null as never, leftoverMissing, premature].sort(recency)[0]?.week_number).toBe(2);
 
-    // d: only-week with unparseable keys still captions a finite week, never Week NaN
+    // leftover nan keys cannot caption Week NaN — skip the row, chrome is household name only
     const onlyNaN = keyed(Number.NaN, "final", Number.NaN);
-    expect(selectActiveWeek([onlyNaN])?.status).toBe("final");
-    expect(familyWeekChrome("The Harper House", onlyNaN)).toBe("The Harper House · Week 0");
+    expect(selectActiveWeek([onlyNaN])).toBeNull();
+    expect(familyWeekChrome("The Harper House", onlyNaN)).toBe("The Harper House");
     expect(familyWeekChrome("The Harper House", onlyNaN)).not.toBe("The Harper House · Week NaN");
     expect(weekSwitcherLabel({ id: "nan", ...onlyNaN } as ReturnType<typeof wr>, null)).toBe(
       "Week 0",
@@ -1699,9 +1699,9 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([junk]) ).toBeNull();
     expect(selectActiveWeek([num, str, junk])).toBeNull();
     // leftover non-object row must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([junk, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, junk])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([junk, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, junk])?.status).toBe("draft");
     expect(recency(junk, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(num, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(str, w(2, "final"))).toBeGreaterThan(0);
@@ -1767,9 +1767,9 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([empty])).toBeNull();
     expect(selectActiveWeek([nested, nums, empty])).toBeNull();
     // leftover array row must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([empty, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, empty])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([empty, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, empty])?.status).toBe("draft");
     expect(recency(empty, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(nested, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(nums, w(2, "final"))).toBeGreaterThan(0);
@@ -1840,9 +1840,9 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([when])).toBeNull();
     expect(selectActiveWeek([bytes, bag, boxed])).toBeNull();
     // leftover host object must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([when, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, when])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([when, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, when])?.status).toBe("draft");
     expect(recency(when, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(bytes, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(bag, w(2, "final"))).toBeGreaterThan(0);
@@ -1962,9 +1962,9 @@ describe("selectActiveWeek", () => {
     expect(() => recency(boom, w(2, "final"))).not.toThrow();
     expect(() => recency(revoked, w(2, "final"))).not.toThrow();
     // leftover throwing row must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([boom, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, revoked])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([boom, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, revoked])?.status).toBe("draft");
     expect(recency(boom, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(revoked, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(trap, w(2, "final"))).toBeGreaterThan(0);
@@ -2080,10 +2080,10 @@ describe("selectActiveWeek", () => {
     expect(() => nextWeekSlot(symbols)).not.toThrow();
     expect(nextWeekSlot(nullKeys)).toEqual({ season_year: 0, week_number: 1 });
     // leftover unconvertible keys must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([nullKeys, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, symbols])?.status).toBe("draft");
-    expect(selectActiveWeek([mixed, leftoverNaN])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([nullKeys, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, symbols])?.status).toBe("draft");
+    expect(selectActiveWeek([mixed, leftoverMissingDraft])?.status).toBe("draft");
     expect(recency(nullKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(symbols, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(throwVal, w(2, "final"))).toBeGreaterThan(0);
@@ -2201,10 +2201,10 @@ describe("selectActiveWeek", () => {
     expect(nextWeekSlot(arrayKeys)).toEqual({ season_year: 0, week_number: 1 });
     expect(nextWeekSlot(dateKeys)).toEqual({ season_year: 0, week_number: 1 });
     // leftover object keys must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([arrayKeys, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, valueOfKeys])?.status).toBe("draft");
-    expect(selectActiveWeek([mixed, leftoverNaN])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([arrayKeys, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, valueOfKeys])?.status).toBe("draft");
+    expect(selectActiveWeek([mixed, leftoverMissingDraft])?.status).toBe("draft");
     expect(recency(arrayKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(valueOfKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(dateKeys, w(2, "final"))).toBeGreaterThan(0);
@@ -2315,10 +2315,10 @@ describe("selectActiveWeek", () => {
     expect(nextWeekSlot(blankKeys)).toEqual({ season_year: 0, week_number: 1 });
     expect(nextWeekSlot(whitespaceKeys)).toEqual({ season_year: 0, week_number: 1 });
     // leftover non-numeric string keys must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([blankKeys, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, junkKeys])?.status).toBe("draft");
-    expect(selectActiveWeek([mixed, leftoverNaN])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([blankKeys, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, junkKeys])?.status).toBe("draft");
+    expect(selectActiveWeek([mixed, leftoverMissingDraft])?.status).toBe("draft");
     expect(recency(blankKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(whitespaceKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(junkKeys, w(2, "final"))).toBeGreaterThan(0);
@@ -2439,10 +2439,10 @@ describe("selectActiveWeek", () => {
     expect(nextWeekSlot(hexKeys)).toEqual({ season_year: 0, week_number: 1 });
     expect(nextWeekSlot(binKeys)).toEqual({ season_year: 0, week_number: 1 });
     // leftover non-decimal string keys must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([hexKeys, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, octKeys])?.status).toBe("draft");
-    expect(selectActiveWeek([mixed, leftoverNaN])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([hexKeys, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, octKeys])?.status).toBe("draft");
+    expect(selectActiveWeek([mixed, leftoverMissingDraft])?.status).toBe("draft");
     expect(recency(hexKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(binKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(octKeys, w(2, "final"))).toBeGreaterThan(0);
@@ -2563,10 +2563,10 @@ describe("selectActiveWeek", () => {
     expect(nextWeekSlot(yearKeys)).toEqual({ season_year: 0, week_number: 1 });
     expect(nextWeekSlot(tenKeys)).toEqual({ season_year: 0, week_number: 1 });
     // leftover bigint keys must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([yearKeys, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, tenKeys])?.status).toBe("draft");
-    expect(selectActiveWeek([mixed, leftoverNaN])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([yearKeys, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, tenKeys])?.status).toBe("draft");
+    expect(selectActiveWeek([mixed, leftoverMissingDraft])?.status).toBe("draft");
     expect(recency(yearKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(tenKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(zeroKeys, w(2, "final"))).toBeGreaterThan(0);
@@ -2685,10 +2685,10 @@ describe("selectActiveWeek", () => {
     expect(nextWeekSlot(halfKeys)).toEqual({ season_year: 0, week_number: 1 });
     expect(nextWeekSlot(stringKeys)).toEqual({ season_year: 0, week_number: 1 });
     // leftover non-integer keys must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([halfKeys, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, stringKeys])?.status).toBe("draft");
-    expect(selectActiveWeek([mixed, leftoverNaN])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([halfKeys, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, stringKeys])?.status).toBe("draft");
+    expect(selectActiveWeek([mixed, leftoverMissingDraft])?.status).toBe("draft");
     expect(recency(halfKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(stringKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(tenthKeys, w(2, "final"))).toBeGreaterThan(0);
@@ -2807,10 +2807,10 @@ describe("selectActiveWeek", () => {
     expect(nextWeekSlot(zeroKeys)).toEqual({ season_year: 0, week_number: 1 });
     expect(nextWeekSlot(stringKeys)).toEqual({ season_year: 0, week_number: 1 });
     // leftover non-positive keys must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([zeroKeys, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, stringKeys])?.status).toBe("draft");
-    expect(selectActiveWeek([mixed, leftoverNaN])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([zeroKeys, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, stringKeys])?.status).toBe("draft");
+    expect(selectActiveWeek([mixed, leftoverMissingDraft])?.status).toBe("draft");
     expect(recency(zeroKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(stringKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(negativeKeys, w(2, "final"))).toBeGreaterThan(0);
@@ -2929,10 +2929,10 @@ describe("selectActiveWeek", () => {
     expect(nextWeekSlot(infKeys)).toEqual({ season_year: 0, week_number: 1 });
     expect(nextWeekSlot(negInfKeys)).toEqual({ season_year: 0, week_number: 1 });
     // leftover infinity keys must not beat a same-recency leftover draft
-    const leftoverNaN = { season_year: Number.NaN, week_number: Number.NaN, status: "draft" };
-    expect(selectActiveWeek([infKeys, leftoverNaN])?.status).toBe("draft");
-    expect(selectActiveWeek([leftoverNaN, negInfKeys])?.status).toBe("draft");
-    expect(selectActiveWeek([mixed, leftoverNaN])?.status).toBe("draft");
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([infKeys, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, negInfKeys])?.status).toBe("draft");
+    expect(selectActiveWeek([mixed, leftoverMissingDraft])?.status).toBe("draft");
     expect(recency(infKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(negInfKeys, w(2, "final"))).toBeGreaterThan(0);
     expect(recency(mixed, w(2, "final"))).toBeGreaterThan(0);
@@ -2946,8 +2946,8 @@ describe("selectActiveWeek", () => {
         w(2, "final"),
       ])?.week_number,
     ).toBe(2);
-    // leftover NaN stays selectable — leftover skip is infinity only
-    expect(selectActiveWeek([leftoverNaN])?.status).toBe("draft");
+    // leftover missing-key draft stays selectable — leftover skip is infinity only
+    expect(selectActiveWeek([leftoverMissingDraft])?.status).toBe("draft");
     // b: draft W1 + open W2 + leftover infinity keys → active W2
     const leftover = wr("3e3aeeeb", 1, "draft");
     const open = wr("52a42a9e", 2, "open");
@@ -3003,6 +3003,130 @@ describe("selectActiveWeek", () => {
     expect(familyWeekChrome("The Harper House", infKeys)).toBe("The Harper House");
     expect(familyWeekChrome("The Harper House", negInfKeys)).toBe("The Harper House");
     expect(() => weekSwitcherLabel(infKeys, e)).not.toThrow();
+  });
+
+  it("leftover nan keys cannot hide a newer week (a–e)", () => {
+    const nanKeys = {
+      season_year: Number.NaN,
+      week_number: Number.NaN,
+      status: "open",
+    } as never;
+    const nanLocked = {
+      season_year: Number.NaN,
+      week_number: Number.NaN,
+      status: "locked",
+    } as never;
+    const mixed = {
+      season_year: 2026,
+      week_number: Number.NaN,
+      status: "open",
+    } as never;
+    const mixedWeek = {
+      season_year: Number.NaN,
+      week_number: 2,
+      status: "open",
+    } as never;
+    const zeroOverZero = {
+      season_year: 0 / 0,
+      week_number: 0 / 0,
+      status: "open",
+    } as never;
+    // a: draft W1 + final W2 + leftover nan keys → active W2
+    expect(selectActiveWeek([nanKeys, w(1, "draft"), w(2, "final")])?.week_number).toBe(2);
+    expect(selectActiveWeek([w(1, "draft"), nanLocked, w(2, "final")])?.status).toBe("final");
+    expect(selectActiveWeek([w(2, "final"), w(1, "draft"), mixed])?.week_number).toBe(2);
+    expect(selectActiveWeek([mixedWeek, w(1, "draft"), w(2, "final")])?.status).toBe("final");
+    expect(selectActiveWeek([zeroOverZero, w(1, "draft"), w(2, "final")])?.week_number).toBe(2);
+    expect(
+      familyWeekChrome("The Harper House", selectActiveWeek([nanKeys, w(1, "draft"), w(2, "final")])),
+    ).toBe("The Harper House · Week 2");
+    expect(selectActiveWeek([nanKeys])).toBeNull();
+    expect(selectActiveWeek([nanLocked, mixed, mixedWeek])).toBeNull();
+    expect(() => selectActiveWeek([nanKeys, w(1, "draft"), w(2, "final")])).not.toThrow();
+    expect(() => selectActiveWeek([nanLocked, w(2, "final")])).not.toThrow();
+    expect(() => recency(nanKeys, w(2, "final"))).not.toThrow();
+    expect(() => recency(nanLocked, w(2, "final"))).not.toThrow();
+    expect(() => recency(mixed, w(2, "final"))).not.toThrow();
+    expect(() => recency(mixedWeek, w(2, "final"))).not.toThrow();
+    expect(() => nextWeekSlot(nanKeys)).not.toThrow();
+    expect(() => nextWeekSlot(nanLocked)).not.toThrow();
+    expect(nextWeekSlot(nanKeys)).toEqual({ season_year: 0, week_number: 1 });
+    expect(nextWeekSlot(nanLocked)).toEqual({ season_year: 0, week_number: 1 });
+    // leftover nan keys must not beat a same-recency leftover draft
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([nanKeys, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, nanLocked])?.status).toBe("draft");
+    expect(selectActiveWeek([mixed, leftoverMissingDraft])?.status).toBe("draft");
+    expect(recency(nanKeys, w(2, "final"))).toBeGreaterThan(0);
+    expect(recency(nanLocked, w(2, "final"))).toBeGreaterThan(0);
+    expect(recency(mixed, w(2, "final"))).toBeGreaterThan(0);
+    expect(recency(mixedWeek, w(2, "final"))).toBeGreaterThan(0);
+    expect(recency(zeroOverZero, w(2, "final"))).toBeGreaterThan(0);
+    // finite integer keys still rank — leftover skip is nan only
+    expect(selectActiveWeek([{ ...w(1, "open"), season_year: 2026, week_number: 1 }])?.status).toBe("open");
+    expect(
+      selectActiveWeek([
+        { season_year: "2026", week_number: "1", status: "draft" },
+        w(2, "final"),
+      ])?.week_number,
+    ).toBe(2);
+    // leftover missing-key draft stays selectable — leftover skip is nan only
+    expect(selectActiveWeek([leftoverMissingDraft])?.status).toBe("draft");
+    // b: draft W1 + open W2 + leftover nan keys → active W2
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const open = wr("52a42a9e", 2, "open");
+    const b = selectActiveWeek([nanKeys, leftover, open]);
+    expect(b?.id).toBe("52a42a9e");
+    expect(b?.status).toBe("open");
+    expect(selectActiveWeek([leftover, nanLocked, open])?.week_number).toBe(2);
+    expect(selectActiveWeek([open, leftover, mixed])?.id).toBe("52a42a9e");
+    expect(selectActiveWeek([mixedWeek, leftover, open])?.id).toBe("52a42a9e");
+    expect(selectActiveWeek([zeroOverZero, leftover, open])?.id).toBe("52a42a9e");
+    expect(weekSwitcherLabel(open, b)).toBe("This Sunday");
+    expect(weekSwitcherLabel(leftover, b)).toBe("Week 1");
+    expect(weekSwitcherLabel(leftover, b)).not.toBe("This Sunday");
+    expect(weekSwitcherLabel(leftover, b)).not.toBe("Next week");
+    expect(familyWeekChrome("The Harper House", b)).toBe("The Harper House · Week 2");
+    expect(pickViewWeek([leftover, open], b, "next")?.id).toBe("52a42a9e");
+    expect([nanKeys, leftover, open].sort(recency)[0]?.week_number).toBe(2);
+    expect([nanLocked, leftover, open].sort(recency)[0]?.week_number).toBe(2);
+    // c: open W1 + draft W2 + leftover nan keys → active W1, W2 labeled Next week
+    const thisSunday = wr("w1", 1, "open");
+    const nextDraft = wr("w2", 2, "draft");
+    const c = selectActiveWeek([thisSunday, nanKeys, nextDraft]);
+    expect(c?.id).toBe("w1");
+    expect(c?.week_number).toBe(1);
+    expect(weekSwitcherLabel(thisSunday, c)).toBe("This Sunday");
+    expect(weekSwitcherLabel(nextDraft, c)).toBe("Next week");
+    expect(pickViewWeek([thisSunday, nextDraft], c, "next")?.id).toBe("w2");
+    expect(selectActiveWeek([nanLocked, thisSunday, nextDraft])?.id).toBe("w1");
+    expect(selectActiveWeek([mixed, thisSunday, nextDraft])?.id).toBe("w1");
+    expect(selectActiveWeek([mixedWeek, thisSunday, nextDraft])?.id).toBe("w1");
+    // d: only final W1 + leftover nan keys → W1
+    expect(selectActiveWeek([nanKeys, w(1, "final"), nanLocked])?.week_number).toBe(1);
+    expect(selectActiveWeek([mixed, w(1, "final")])?.status).toBe("final");
+    expect(selectActiveWeek([nanKeys, nanLocked])).toBeNull();
+    expect(selectActiveWeek(null)).toBeNull();
+    expect(selectActiveWeek(undefined)).toBeNull();
+    // e: skip path: final/skipped W1 + open W2 + leftover nan keys → W2
+    const skipped = wr("w1s", 1, "final");
+    const dirty = { ...wr("w2d", 2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const e = selectActiveWeek([nanKeys, skipped, dirty]);
+    expect(e?.id).toBe("w2d");
+    expect(e?.status).toBe("open");
+    expect(selectActiveWeek([skipped, nanLocked, dirty])?.week_number).toBe(2);
+    expect(selectActiveWeek([dirty, skipped, mixed])?.id).toBe("w2d");
+    expect(selectActiveWeek([mixedWeek, skipped, dirty])?.id).toBe("w2d");
+    expect(selectActiveWeek([zeroOverZero, skipped, dirty])?.id).toBe("w2d");
+    expect(weekSwitcherLabel(dirty, e)).toBe("This Sunday");
+    expect(weekSwitcherLabel(skipped, e)).toBe("Week 1");
+    expect(weekSwitcherLabel(skipped, e)).not.toBe("Next week");
+    expect(familyWeekChrome("The Harper House", e)).toBe("The Harper House · Week 2");
+    expect(pickViewWeek([skipped, dirty], e, "next")?.id).toBe("w2d");
+    expect([nanKeys, skipped, dirty].sort(recency)[0]?.week_number).toBe(2);
+    expect(familyWeekChrome("The Harper House", nanKeys)).toBe("The Harper House");
+    expect(familyWeekChrome("The Harper House", nanLocked)).toBe("The Harper House");
+    expect(() => weekSwitcherLabel(nanKeys, e)).not.toThrow();
   });
 
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
@@ -3212,6 +3336,8 @@ describe("selectActiveWeek", () => {
     expect(body).toMatch(/leftoverNonPositiveKey\(week\.season_year\)/);
     expect(body).toMatch(/leftover infinity keys cannot hide a newer week/);
     expect(body).toMatch(/leftoverInfinityKey\(week\.season_year\)/);
+    expect(body).toMatch(/leftover nan keys cannot hide a newer week/);
+    expect(body).toMatch(/leftoverNaNKey\(week\.season_year\)/);
     expect(body).toMatch(/if \(!weeks\?\.length\) return null/);
     expect(body).not.toMatch(/weeks\[0\]/);
     expect(body).not.toMatch(/status === ["']draft["']/);
@@ -3279,6 +3405,7 @@ describe("selectActiveWeek", () => {
     expect(chromeBody).toMatch(/leftover non-integer keys cannot hide a newer week/);
     expect(chromeBody).toMatch(/leftover non-positive keys cannot hide a newer week/);
     expect(chromeBody).toMatch(/leftover infinity keys cannot hide a newer week/);
+    expect(chromeBody).toMatch(/leftover nan keys cannot hide a newer week/);
     expect(chromeBody).toMatch(/fetchHouseholdWeeks sorts with recency/);
     expect(chromeBody).toMatch(/familyWeekChrome treats non-finite week_number as 0/);
     expect(chromeBody).toMatch(/Number\(week\.week_number\)/);
@@ -3343,6 +3470,9 @@ describe("selectActiveWeek", () => {
     expect(recencyImpl).toMatch(/leftover infinity keys cannot hide a newer week/);
     expect(recencyImpl).toMatch(/leftoverInfinityKey\(aYearKey\)/);
     expect(recencyImpl).toMatch(/leftoverInfinityKey\(bYearKey\)/);
+    expect(recencyImpl).toMatch(/leftover nan keys cannot hide a newer week/);
+    expect(recencyImpl).toMatch(/leftoverNaNKey\(aYearKey\)/);
+    expect(recencyImpl).toMatch(/leftoverNaNKey\(bYearKey\)/);
     expect(recencyImpl).not.toMatch(/\bid\b/);
     expect(recencyImpl).not.toMatch(/status/);
     expect(recencyImpl).not.toMatch(/finalized_at/);
@@ -3375,6 +3505,7 @@ describe("selectActiveWeek", () => {
     expect(nextBody).toMatch(/leftover non-integer keys cannot hide a newer week/);
     expect(nextBody).toMatch(/leftover non-positive keys cannot hide a newer week/);
     expect(nextBody).toMatch(/leftover infinity keys cannot hide a newer week/);
+    expect(nextBody).toMatch(/leftover nan keys cannot hide a newer week/);
     expect(src).toMatch(/function isNewerThan[\s\S]{0,80}return recency\(week, than\) < 0/);
     expect(src).toMatch(/function isOlderThan[\s\S]{0,80}return recency\(week, than\) > 0/);
     expect(src).toMatch(/function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
@@ -3397,6 +3528,7 @@ describe("selectActiveWeek", () => {
     expect(labelBody).toMatch(/leftover non-integer keys cannot hide a newer week/);
     expect(labelBody).toMatch(/leftover non-positive keys cannot hide a newer week/);
     expect(labelBody).toMatch(/leftover infinity keys cannot hide a newer week/);
+    expect(labelBody).toMatch(/leftover nan keys cannot hide a newer week/);
     expect(labelBody).not.toMatch(/w\.id === active\.id/);
     const pickStart = src.indexOf("export function pickViewWeek");
     const pickBody = src.slice(pickStart, pickStart + 900);
@@ -4554,6 +4686,7 @@ describe("useCurrentWeek production wiring", () => {
     expect(fetchBody).toMatch(/leftover non-integer keys cannot hide a newer week/);
     expect(fetchBody).toMatch(/leftover non-positive keys cannot hide a newer week/);
     expect(fetchBody).toMatch(/leftover infinity keys cannot hide a newer week/);
+    expect(fetchBody).toMatch(/leftover nan keys cannot hide a newer week/);
     expect(fetchBody).toMatch(/Object.getPrototypeOf\(week\)/);
     expect(fetchBody).not.toMatch(/\.limit\(/);
     expect(fetchBody).not.toMatch(/\.order\("created_at"/);
