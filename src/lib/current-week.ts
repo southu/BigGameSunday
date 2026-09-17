@@ -415,6 +415,15 @@ function leftoverFormDataKey(value: unknown): boolean {
   }
 }
 
+/** Headers keys coerce via Number(new Headers()) (NaN) and Number(new Headers()) after append("year","2026") (NaN) and would steal recency. JSON/PostgREST never sends Headers week keys. leftover missing-key drafts stay selectable. */
+function leftoverHeadersKey(value: unknown): boolean {
+  try {
+    return value instanceof Headers;
+  } catch {
+    return true;
+  }
+}
+
 export function recency(
   a: WeekSlot | null | undefined | boolean | number | string | unknown[],
   b: WeekSlot | null | undefined | boolean | number | string | unknown[],
@@ -656,6 +665,11 @@ export function recency(
   if (leftoverFormDataKey(aNumKey)) a.week_number = 0;
   if (leftoverFormDataKey(bYearKey)) b.season_year = 0;
   if (leftoverFormDataKey(bNumKey)) b.week_number = 0;
+  // leftover headers keys cannot hide a newer week
+  if (leftoverHeadersKey(aYearKey)) a.season_year = 0;
+  if (leftoverHeadersKey(aNumKey)) a.week_number = 0;
+  if (leftoverHeadersKey(bYearKey)) b.season_year = 0;
+  if (leftoverHeadersKey(bNumKey)) b.week_number = 0;
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -720,6 +734,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * leftover url keys cannot hide a newer week.
  * leftover urlsearchparams keys cannot hide a newer week.
  * leftover formdata keys cannot hide a newer week.
+ * leftover headers keys cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
   weeks: readonly (T | null | undefined | boolean | number | string | unknown[])[] | null | undefined,
@@ -891,6 +906,10 @@ export function selectActiveWeek<T extends WeekLike>(
       }
       // leftover formdata keys cannot hide a newer week
       if (leftoverFormDataKey(week.season_year) || leftoverFormDataKey(week.week_number)) {
+        continue;
+      }
+      // leftover headers keys cannot hide a newer week
+      if (leftoverHeadersKey(week.season_year) || leftoverHeadersKey(week.week_number)) {
         continue;
       }
       if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
@@ -1274,6 +1293,17 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
   }
   try {
     if (leftoverFormDataKey(week.week_number)) week_number = 0;
+  } catch {
+    week_number = 0;
+  }
+  // leftover headers keys cannot hide a newer week
+  try {
+    if (leftoverHeadersKey(week.season_year)) season_year = 0;
+  } catch {
+    season_year = 0;
+  }
+  try {
+    if (leftoverHeadersKey(week.week_number)) week_number = 0;
   } catch {
     week_number = 0;
   }
@@ -1884,6 +1914,7 @@ export function familyWeekChrome(
   // leftover url keys cannot hide a newer week
   // leftover urlsearchparams keys cannot hide a newer week
   // leftover formdata keys cannot hide a newer week
+  // leftover headers keys cannot hide a newer week
   // fetchHouseholdWeeks sorts with recency
   // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
@@ -1925,6 +1956,7 @@ export function familyWeekChrome(
       if (leftoverUrlKey(weekNumber)) return name;
       if (leftoverUrlSearchParamsKey(weekNumber)) return name;
       if (leftoverFormDataKey(weekNumber)) return name;
+      if (leftoverHeadersKey(weekNumber)) return name;
     } catch {
       // leftover throwing rows cannot hide a newer week
       return name;
@@ -2002,6 +2034,8 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
     if (leftoverUrlSearchParamsKey(weekNumber)) w = { ...w, week_number: 0 };
     // leftover formdata keys cannot hide a newer week
     if (leftoverFormDataKey(weekNumber)) w = { ...w, week_number: 0 };
+    // leftover headers keys cannot hide a newer week
+    if (leftoverHeadersKey(weekNumber)) w = { ...w, week_number: 0 };
   } catch {
     // leftover unconvertible keys cannot hide a newer week
     w = { ...w, week_number: 0 };
