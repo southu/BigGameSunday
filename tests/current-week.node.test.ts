@@ -967,6 +967,71 @@ describe("selectActiveWeek", () => {
     );
   });
 
+  it("ranking ignores UUID id (lexicographic id does not beat recency)", () => {
+    const household_id = "b03e87bd-2899-4e71-b6fb-54399eef3e6d";
+    const skipped = {
+      ...wr("zzzzzzzz-ffff-4e06-a9b4-8a00b1d36994", 1, "final"),
+      household_id,
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+      auto_opened_at: null,
+    };
+    const dirtyOpen = {
+      ...wr("00000000-0000-4e06-a9b4-8a00b1d36994", 2, "open"),
+      household_id,
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      lock_at: "2026-09-18T00:15:00+00:00",
+      auto_opened_at: null,
+    };
+    const weeks = [skipped, dirtyOpen];
+    const active = selectActiveWeek(weeks);
+    assert.equal(active?.id, "00000000-0000-4e06-a9b4-8a00b1d36994");
+    assert.equal(active?.week_number, 2);
+    assert.equal(active?.status, "open");
+    assert.equal(selectActiveWeek([dirtyOpen, skipped])?.id, "00000000-0000-4e06-a9b4-8a00b1d36994");
+    assert.equal(weekSwitcherLabel(dirtyOpen, active), "This Sunday");
+    assert.equal(weekSwitcherLabel(skipped, active), "Week 1");
+    assert.equal(familyWeekChrome("The Harper House", active), "The Harper House · Week 2");
+    const leftoverDraft = {
+      ...wr("zzzzzzzz-ffff-445b-9297-aa6c20967433", 1, "draft"),
+      household_id,
+    };
+    const prematureFinal = {
+      ...wr("00000000-aaaa-4e06-a9b4-8a00b1d36994", 2, "final"),
+      household_id,
+    };
+    assert.equal(selectActiveWeek([leftoverDraft, prematureFinal])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverDraft, prematureFinal])?.status, "final");
+    assert.equal(
+      selectActiveWeek([prematureFinal, leftoverDraft])?.id,
+      "00000000-aaaa-4e06-a9b4-8a00b1d36994",
+    );
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftoverDraft, prematureFinal])),
+      "The Harper House · Week 2",
+    );
+    assert.equal(
+      weekSwitcherLabel(leftoverDraft, selectActiveWeek([leftoverDraft, prematureFinal])),
+      "Week 1",
+    );
+    const leftoverOpen = wr("ffffffff-ffff-445b-9297-aa6c20967433", 1, "open");
+    const thisSunday = wr("00000000-0000-4e06-a9b4-8a00b1d36994", 2, "open");
+    assert.equal(selectActiveWeek([leftoverOpen, thisSunday])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverOpen, thisSunday])?.status, "open");
+    assert.equal(
+      selectActiveWeek([thisSunday, leftoverOpen])?.id,
+      "00000000-0000-4e06-a9b4-8a00b1d36994",
+    );
+    assert.equal(
+      weekSwitcherLabel(thisSunday, selectActiveWeek([leftoverOpen, thisSunday])),
+      "This Sunday",
+    );
+    const harperDraft = wr("3e3aeeeb-4dcb-445b-9297-aa6c20967433", 1, "draft");
+    const harperFinal = wr("52a42a9e-fbce-4e06-a9b4-8a00b1d36994", 2, "final");
+    assert.equal(selectActiveWeek([harperDraft, harperFinal])?.id, "52a42a9e-fbce-4e06-a9b4-8a00b1d36994");
+    assert.equal(selectActiveWeek([harperFinal, harperDraft])?.week_number, 2);
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -1113,6 +1178,9 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /lock_at_override, created_at, featured_game_id/);
     assert.match(chromeBody, /auto_created_at, auto_locked_at, autopilot_hold/);
     assert.match(chromeBody, /household_id, commissioner_edited_at, autopilot_checked_at/);
+    assert.match(chromeBody, /ranking ignores id/);
+    assert.doesNotMatch(body, /\bid\b/);
+    assert.doesNotMatch(inPlayBody, /\bid\b/);
     assert.doesNotMatch(src, /ranked\.find\(\(w\) => w\.status === "draft"\)/);
     assert.doesNotMatch(src, /else latest draft/);
     assert.doesNotMatch(src, /open\/locked > draft > final/);

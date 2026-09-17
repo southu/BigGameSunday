@@ -943,6 +943,68 @@ describe("selectActiveWeek", () => {
     );
   });
 
+  it("ranking ignores UUID id (lexicographic id does not beat recency)", () => {
+    const household_id = "b03e87bd-2899-4e71-b6fb-54399eef3e6d";
+    const skipped = {
+      ...wr("zzzzzzzz-ffff-4e06-a9b4-8a00b1d36994", 1, "final"),
+      household_id,
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+      auto_opened_at: null,
+    };
+    const dirtyOpen = {
+      ...wr("00000000-0000-4e06-a9b4-8a00b1d36994", 2, "open"),
+      household_id,
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      lock_at: "2026-09-18T00:15:00+00:00",
+      auto_opened_at: null,
+    };
+    const weeks = [skipped, dirtyOpen];
+    const active = selectActiveWeek(weeks);
+    expect(active?.id).toBe("00000000-0000-4e06-a9b4-8a00b1d36994");
+    expect(active?.week_number).toBe(2);
+    expect(active?.status).toBe("open");
+    expect(selectActiveWeek([dirtyOpen, skipped])?.id).toBe("00000000-0000-4e06-a9b4-8a00b1d36994");
+    expect(weekSwitcherLabel(dirtyOpen, active)).toBe("This Sunday");
+    expect(weekSwitcherLabel(skipped, active)).toBe("Week 1");
+    expect(familyWeekChrome("The Harper House", active)).toBe("The Harper House · Week 2");
+    const leftoverDraft = {
+      ...wr("zzzzzzzz-ffff-445b-9297-aa6c20967433", 1, "draft"),
+      household_id,
+    };
+    const prematureFinal = {
+      ...wr("00000000-aaaa-4e06-a9b4-8a00b1d36994", 2, "final"),
+      household_id,
+    };
+    expect(selectActiveWeek([leftoverDraft, prematureFinal])?.week_number).toBe(2);
+    expect(selectActiveWeek([leftoverDraft, prematureFinal])?.status).toBe("final");
+    expect(selectActiveWeek([prematureFinal, leftoverDraft])?.id).toBe(
+      "00000000-aaaa-4e06-a9b4-8a00b1d36994",
+    );
+    expect(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftoverDraft, prematureFinal])),
+    ).toBe("The Harper House · Week 2");
+    expect(weekSwitcherLabel(leftoverDraft, selectActiveWeek([leftoverDraft, prematureFinal]))).toBe(
+      "Week 1",
+    );
+    const leftoverOpen = wr("ffffffff-ffff-445b-9297-aa6c20967433", 1, "open");
+    const thisSunday = wr("00000000-0000-4e06-a9b4-8a00b1d36994", 2, "open");
+    expect(selectActiveWeek([leftoverOpen, thisSunday])?.week_number).toBe(2);
+    expect(selectActiveWeek([leftoverOpen, thisSunday])?.status).toBe("open");
+    expect(selectActiveWeek([thisSunday, leftoverOpen])?.id).toBe(
+      "00000000-0000-4e06-a9b4-8a00b1d36994",
+    );
+    expect(weekSwitcherLabel(thisSunday, selectActiveWeek([leftoverOpen, thisSunday]))).toBe(
+      "This Sunday",
+    );
+    const harperDraft = wr("3e3aeeeb-4dcb-445b-9297-aa6c20967433", 1, "draft");
+    const harperFinal = wr("52a42a9e-fbce-4e06-a9b4-8a00b1d36994", 2, "final");
+    expect(selectActiveWeek([harperDraft, harperFinal])?.id).toBe(
+      "52a42a9e-fbce-4e06-a9b4-8a00b1d36994",
+    );
+    expect(selectActiveWeek([harperFinal, harperDraft])?.week_number).toBe(2);
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -1088,6 +1150,9 @@ describe("selectActiveWeek", () => {
     expect(chromeBody).toMatch(/lock_at_override, created_at, featured_game_id/);
     expect(chromeBody).toMatch(/auto_created_at, auto_locked_at, autopilot_hold/);
     expect(chromeBody).toMatch(/household_id, commissioner_edited_at, autopilot_checked_at/);
+    expect(chromeBody).toMatch(/ranking ignores id/);
+    expect(body).not.toMatch(/\bid\b/);
+    expect(inPlayBody).not.toMatch(/\bid\b/);
     expect(src).not.toMatch(/ranked\.find\(\(w\) => w\.status === "draft"\)/);
     expect(src).not.toMatch(/else latest draft/);
     expect(src).not.toMatch(/open\/locked > draft > final/);

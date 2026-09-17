@@ -39,6 +39,11 @@ export type WeekLike = WeekSlot & {
   auto_locked_at?: string | null;
   autopilot_hold?: boolean;
   autopilot_checked_at?: string | null;
+  /**
+   * Ranking ignores this. Live week rows have a UUID primary key;
+   * recency is season_year then week_number, not lexicographic id.
+   */
+  id?: string;
 };
 
 export type WeekRef = WeekLike & { id: string };
@@ -601,7 +606,7 @@ export function skipUnlocksCardsOnLockRefresh(
  * `lock_at_override`, `created_at`, or `featured_game_id`. Neither do
  * `auto_created_at`, `auto_locked_at`, `autopilot_hold`, or
  * `autopilot_checked_at`. Neither do `household_id` or
- * `commissioner_edited_at`.
+ * `commissioner_edited_at`. Neither does `id`.
  */
 export function familyWeekChrome(
   householdName: string | null | undefined,
@@ -611,6 +616,7 @@ export function familyWeekChrome(
   // ranking ignores lock_at_override, created_at, featured_game_id
   // ranking ignores auto_created_at, auto_locked_at, autopilot_hold
   // ranking ignores household_id, commissioner_edited_at, autopilot_checked_at
+  // ranking ignores id
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
 }
