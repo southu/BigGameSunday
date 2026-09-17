@@ -68,13 +68,20 @@ export type WeekRef = WeekLike & { id: string };
  * week_number as 0 so a leftover draft with missing or unparseable keys
  * cannot hide a newer week (`NaN !== 2026` would skip week_number;
  * `Infinity` would rank newest). leftover missing rows rank as 0,0 so they
+ * cannot hide a newer week. leftover non-object rows rank as 0,0 so they
  * cannot hide a newer week. fetchHouseholdWeeks sorts with recency so
  * the week list cannot skip week_number on mixed string/number keys.
  */
-export function recency(a: WeekSlot | null | undefined, b: WeekSlot | null | undefined): number {
+export function recency(
+  a: WeekSlot | null | undefined | boolean | number | string,
+  b: WeekSlot | null | undefined | boolean | number | string,
+): number {
   // leftover missing rows cannot hide a newer week
   if (!a) a = { season_year: 0, week_number: 0 };
   if (!b) b = { season_year: 0, week_number: 0 };
+  // leftover non-object rows cannot hide a newer week
+  if (typeof a !== "object") a = { season_year: 0, week_number: 0 };
+  if (typeof b !== "object") b = { season_year: 0, week_number: 0 };
   a = { season_year: a.season_year, week_number: a.week_number };
   b = { season_year: b.season_year, week_number: b.week_number };
   a.season_year = Number(a.season_year);
@@ -114,10 +121,10 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * Latest open|locked (highest season_year, then week_number). Else newest
  * week overall — draft vs final is not a rank, so leftover draft W1 cannot
  * hide a newer final W2 (Harper House). leftover holes in the week list
- * cannot hide a newer week.
+ * cannot hide a newer week. leftover non-object rows cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
-  weeks: readonly (T | null | undefined)[] | null | undefined,
+  weeks: readonly (T | null | undefined | boolean | number | string)[] | null | undefined,
 ): T | null {
   if (!weeks?.length) return null;
   let latestInPlay: T | null = null;
@@ -126,6 +133,8 @@ export function selectActiveWeek<T extends WeekLike>(
   for (const week of weeks) {
     // leftover holes cannot hide a newer week
     if (!week) continue;
+    // leftover non-object rows cannot hide a newer week
+    if (typeof week !== "object") continue;
     const slot = { season_year: week.season_year, week_number: week.week_number };
     if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
       latestInPlay = week;
