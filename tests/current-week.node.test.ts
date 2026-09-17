@@ -1589,6 +1589,90 @@ describe("selectActiveWeek", () => {
     );
   });
 
+  it("recency treats non-finite season_year and week_number as 0 so leftover drafts cannot hide newer weeks", () => {
+    const keyed = (
+      week_number: number | string | undefined,
+      status: string,
+      season_year: number | string | undefined = 2026,
+    ) => ({ season_year, week_number, status }) as ReturnType<typeof w>;
+    const keyedRef = (
+      id: string,
+      week_number: number | string | undefined,
+      status: string,
+      season_year: number | string | undefined = 2026,
+    ) => ({ id, season_year, week_number, status }) as ReturnType<typeof wr>;
+
+    // a: leftover draft with missing/unparseable year + final W2 → active W2
+    const leftoverMissing = keyed(1, "draft", Number.NaN);
+    const leftoverJunk = keyed("week-1", "draft", "not-a-year");
+    const leftoverInf = keyed(1, "draft", Number.POSITIVE_INFINITY);
+    const premature = keyed(2, "final", 2026);
+    assert.equal(selectActiveWeek([leftoverMissing, premature])?.week_number, 2);
+    assert.equal(selectActiveWeek([premature, leftoverMissing])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverMissing, premature])?.status, "final");
+    assert.equal(selectActiveWeek([leftoverJunk, premature])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverInf, premature])?.week_number, 2);
+    assert.equal(selectActiveWeek([premature, leftoverInf])?.week_number, 2);
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftoverInf, premature])),
+      "The Harper House · Week 2",
+    );
+
+    // b: leftover draft NaN year + open W2 → active W2
+    const leftoverDraft = keyedRef("w1", 1, "draft", Number.NaN);
+    const openW2 = keyedRef("w2", 2, "open", 2026);
+    const b = selectActiveWeek([leftoverDraft, openW2]);
+    assert.equal(b?.id, "w2");
+    assert.equal(b?.status, "open");
+    assert.equal(selectActiveWeek([openW2, leftoverDraft])?.id, "w2");
+    assert.equal(weekSwitcherLabel(openW2, b), "This Sunday");
+    assert.equal(weekSwitcherLabel(leftoverDraft, b), "Week 1");
+    assert.notEqual(weekSwitcherLabel(leftoverDraft, b), "This Sunday");
+    assert.notEqual(weekSwitcherLabel(leftoverDraft, b), "Next week");
+    assert.equal(familyWeekChrome("The Harper House", b), "The Harper House · Week 2");
+    assert.equal(pickViewWeek([leftoverDraft, openW2], b, "next")?.id, "w2");
+
+    // c: open W1 + draft W2 → active W1, W2 labeled Next week
+    const openW1 = keyedRef("open-1", 1, "open", 2026);
+    const nextDraft = keyedRef("draft-2", 2, "draft", 2026);
+    const c = selectActiveWeek([openW1, nextDraft]);
+    assert.equal(c?.id, "open-1");
+    assert.equal(weekSwitcherLabel(openW1, c), "This Sunday");
+    assert.equal(weekSwitcherLabel(nextDraft, c), "Next week");
+    assert.equal(pickViewWeek([openW1, nextDraft], c, "next")?.id, "draft-2");
+
+    // d: only final W1 → W1
+    assert.equal(selectActiveWeek([keyed(undefined, "final", 2026)])?.status, "final");
+    assert.equal(selectActiveWeek([keyed(1, "final", Number.NaN)])?.status, "final");
+
+    // e: skip path: final/skipped W1 with missing year + open W2 → W2
+    const skipped = keyedRef("w1s", 1, "final", Number.NaN);
+    const dirty = {
+      ...keyedRef("w2d", 2, "open", 2026),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+    };
+    const e = selectActiveWeek([skipped, dirty]);
+    assert.equal(e?.id, "w2d");
+    assert.equal(e?.status, "open");
+    assert.equal(selectActiveWeek([dirty, skipped])?.id, "w2d");
+    assert.equal(weekSwitcherLabel(dirty, e), "This Sunday");
+    assert.equal(familyWeekChrome("The Harper House", e), "The Harper House · Week 2");
+
+    assert.equal([leftoverMissing, premature].sort(recency)[0]?.week_number, 2);
+    assert.equal([leftoverInf, premature].sort(recency)[0]?.week_number, 2);
+    assert.ok(recency(leftoverMissing, premature) > 0);
+    assert.deepEqual(nextWeekSlot(keyed(Number.NaN, "draft", Number.NaN)), {
+      season_year: 0,
+      week_number: 1,
+    });
+    assert.ok(Number.isFinite(nextWeekSlot(keyed(Number.NaN, "draft", Number.NaN)).week_number));
+    assert.deepEqual(nextWeekSlot(keyed("1", "draft", "2026")), {
+      season_year: 2026,
+      week_number: 2,
+    });
+    assert.notEqual(nextWeekSlot(keyed("1", "draft", "2026")).week_number, "11");
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -1830,6 +1914,7 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /ranking copies only season_year and week_number/);
     assert.match(chromeBody, /recency copies both operands before comparing/);
     assert.match(chromeBody, /recency coerces season_year and week_number to numbers/);
+    assert.match(chromeBody, /recency treats non-finite season_year and week_number as 0/);
     assert.match(chromeBody, /fetchHouseholdWeeks sorts with recency/);
     assert.doesNotMatch(body, /\bid\b/);
     assert.doesNotMatch(inPlayBody, /\bid\b/);
@@ -1846,6 +1931,14 @@ describe("selectActiveWeek", () => {
     assert.match(recencyImpl, /Number\(a\.week_number\)/);
     assert.match(recencyImpl, /Number\(b\.season_year\)/);
     assert.match(recencyImpl, /Number\(b\.week_number\)/);
+    assert.match(recencyImpl, /Number\.isFinite\(a\.season_year\)/);
+    assert.match(recencyImpl, /Number\.isFinite\(a\.week_number\)/);
+    assert.match(recencyImpl, /Number\.isFinite\(b\.season_year\)/);
+    assert.match(recencyImpl, /Number\.isFinite\(b\.week_number\)/);
+    assert.match(recencyImpl, /a\.season_year = 0/);
+    assert.match(recencyImpl, /a\.week_number = 0/);
+    assert.match(recencyImpl, /b\.season_year = 0/);
+    assert.match(recencyImpl, /b\.week_number = 0/);
     assert.doesNotMatch(recencyImpl, /\bid\b/);
     assert.doesNotMatch(recencyImpl, /status/);
     assert.doesNotMatch(recencyImpl, /finalized_at/);
@@ -1858,6 +1951,17 @@ describe("selectActiveWeek", () => {
     assert.doesNotMatch(src, /ranked\.find\(\(w\) => w\.status === "draft"\)/);
     assert.doesNotMatch(src, /else latest draft/);
     assert.doesNotMatch(src, /open\/locked > draft > final/);
+    const oauth = readFileSync(join(process.cwd(), "ops/google-oauth.md"), "utf8");
+    assert.doesNotMatch(oauth, /open\/locked > draft > final/);
+    assert.match(oauth, /else newest week overall/);
+    const nextStart = src.indexOf("export function nextWeekSlot");
+    const nextEnd = src.indexOf("export function weekAtSlot");
+    assert.ok(nextStart >= 0 && nextEnd > nextStart);
+    const nextBody = src.slice(nextStart, nextEnd);
+    assert.match(nextBody, /Number\(week\.season_year\)/);
+    assert.match(nextBody, /Number\(week\.week_number\)/);
+    assert.match(nextBody, /Number\.isFinite\(season_year\)/);
+    assert.match(nextBody, /Number\.isFinite\(week_number\)/);
     assert.match(src, /function isNewerThan[\s\S]{0,80}return recency\(week, than\) < 0/);
     assert.match(src, /function isOlderThan[\s\S]{0,80}return recency\(week, than\) > 0/);
     assert.match(src, /function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
@@ -3038,6 +3142,7 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(fetchBody, /never created_at or id/);
     assert.match(fetchBody, /\.sort\(recency\)/);
     assert.match(fetchBody, /mixed string\/number keys cannot skip week_number/);
+    assert.match(fetchBody, /non-finite keys as 0/);
     assert.doesNotMatch(fetchBody, /\.limit\(/);
     assert.doesNotMatch(fetchBody, /\.order\("created_at"/);
     assert.doesNotMatch(fetchBody, /\.order\("id"/);

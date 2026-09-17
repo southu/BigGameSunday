@@ -127,4 +127,4 @@ This commit is the GitHub tip SHA. Production is updated with Vercel CLI from `/
 - `--meta githubOrg=southu`
 - `--meta githubCommitRepo=BigGameSunday`
 
-Live `GET /version` is this SHA. Commissioner auto-fill notices say the underdog is unset. `useCurrentWeek` / `selectActiveWeek` stay open/locked > draft > final. `auto_create_weeks`, scoring, Google OAuth, `/auth` chrome, and `/ops` are unchanged.
+Live `GET /version` is this SHA. Commissioner auto-fill notices say the underdog is unset. `useCurrentWeek` / `selectActiveWeek` prefer latest open/locked, else newest week overall — never an older leftover draft over a newer final. `auto_create_weeks`, scoring, Google OAuth, `/auth` chrome, and `/ops` are unchanged.

@@ -64,7 +64,10 @@ export type WeekRef = WeekLike & { id: string };
  * recency copies both operands so extra fields on the incumbent cannot leak.
  * recency coerces season_year and week_number to numbers so a leftover
  * string-keyed draft cannot hide a newer week (`"2026" !== 2026` would
- * otherwise skip week_number). fetchHouseholdWeeks sorts with recency so
+ * otherwise skip week_number). recency treats non-finite season_year and
+ * week_number as 0 so a leftover draft with missing or unparseable keys
+ * cannot hide a newer week (`NaN !== 2026` would skip week_number;
+ * `Infinity` would rank newest). fetchHouseholdWeeks sorts with recency so
  * the week list cannot skip week_number on mixed string/number keys.
  */
 export function recency(a: WeekSlot, b: WeekSlot): number {
@@ -74,6 +77,11 @@ export function recency(a: WeekSlot, b: WeekSlot): number {
   a.week_number = Number(a.week_number);
   b.season_year = Number(b.season_year);
   b.week_number = Number(b.week_number);
+  // leftover missing/unparseable keys cannot hide a newer week
+  if (!Number.isFinite(a.season_year)) a.season_year = 0;
+  if (!Number.isFinite(a.week_number)) a.week_number = 0;
+  if (!Number.isFinite(b.season_year)) b.season_year = 0;
+  if (!Number.isFinite(b.week_number)) b.week_number = 0;
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -121,8 +129,11 @@ export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | n
 
 /** Regular season wraps to week 1 of the next year after week 18. */
 export function nextWeekSlot(week: WeekSlot): WeekSlot {
-  const season_year = Number(week.season_year);
-  const week_number = Number(week.week_number);
+  let season_year = Number(week.season_year);
+  let week_number = Number(week.week_number);
+  // leftover missing/unparseable keys still advance a finite slot
+  if (!Number.isFinite(season_year)) season_year = 0;
+  if (!Number.isFinite(week_number)) week_number = 0;
   if (week_number >= 18) {
     return { season_year: season_year + 1, week_number: 1 };
   }
@@ -676,6 +687,7 @@ export function skipUnlocksCardsOnLockRefresh(
  * `commissioner_edited_at`. Neither does `id`. Neither do `notes` or
  * `updated_at`. Recency is season_year then week_number, not created_at
  * insertion order. recency coerces season_year and week_number to numbers.
+ * recency treats non-finite season_year and week_number as 0.
  */
 export function familyWeekChrome(
   householdName: string | null | undefined,
@@ -691,6 +703,7 @@ export function familyWeekChrome(
   // ranking copies only season_year and week_number before comparing
   // recency copies both operands before comparing
   // recency coerces season_year and week_number to numbers
+  // recency treats non-finite season_year and week_number as 0
   // fetchHouseholdWeeks sorts with recency
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
