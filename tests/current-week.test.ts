@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   canSkipWeek,
+  familyWeekChrome,
   leftoverDraftNextStep,
   nextWeekSlot,
   pickViewWeek,
@@ -194,6 +195,10 @@ describe("selectActiveWeek", () => {
       finalized_at: null,
       lock_at: "2026-09-10T00:20:00+00:00",
       auto_created_at: "2026-09-15T17:53:12.479+00:00",
+      auto_opened_at: null,
+      auto_locked_at: null,
+      commissioner_edited_at: null,
+      autopilot_hold: false,
     };
     const open = {
       id: "52a42a9e-fbce-4e06-a9b4-8a00b1d36994",
@@ -204,6 +209,10 @@ describe("selectActiveWeek", () => {
       finalized_at: "2026-09-15T19:04:43.88+00:00",
       lock_at: "2026-09-18T00:15:00+00:00",
       auto_created_at: "2026-09-15T18:00:32.128+00:00",
+      auto_opened_at: null,
+      auto_locked_at: null,
+      commissioner_edited_at: "2026-09-15T19:04:30.621+00:00",
+      autopilot_hold: false,
     };
     const weeks = [skipped, open];
     const active = selectActiveWeek(weeks);
@@ -234,6 +243,69 @@ describe("selectActiveWeek", () => {
     expect(pickViewWeek(withLater, stillW2, null)?.week_number).toBe(2);
     expect(pickViewWeek(withLater, stillW2, "next")?.id).toBe("auto-w3");
     expect(`Week ${stillW2?.week_number}`).toBe("Week 2");
+    expect(open.auto_opened_at).toBeNull();
+    expect(skipped.auto_opened_at).toBeNull();
+    expect(open.finalized_at).toBe("2026-09-15T19:04:43.88+00:00");
+    expect(familyWeekChrome("The Harper House", active)).toBe("The Harper House · Week 2");
+    expect(familyWeekChrome("The Harper House", stillW2)).toBe("The Harper House · Week 2");
+    expect(`The Harper House · Week ${active?.week_number}`).toBe("The Harper House · Week 2");
+    expect(skipTargetWeek(weeks, open)?.id).toBe("52a42a9e-fbce-4e06-a9b4-8a00b1d36994");
+    expect(skipTargetWeek(weeks, skipped)?.id).toBe("52a42a9e-fbce-4e06-a9b4-8a00b1d36994");
+    expect(skipLandingWeek(weeks, open)?.week_number).toBe(2);
+    expect(skipLandingWeek(weeks, open)?.status).toBe("open");
+    expect(skipControlCopy(open, open, weeks).button).toBe("Clear leftover marks / open this week");
+    expect(skipControlCopy(open, skipped, weeks).button).toBe("Clear leftover marks / open Week 2");
+    const openedByAutopilot = { ...open, auto_opened_at: "2026-09-15T18:05:00+00:00" };
+    expect(selectActiveWeek([skipped, openedByAutopilot])?.week_number).toBe(2);
+    expect(selectActiveWeek([skipped, openedByAutopilot])?.status).toBe("open");
+    expect(familyWeekChrome("The Harper House", openedByAutopilot)).toBe("The Harper House · Week 2");
+  });
+
+  it("live Harper House chrome: The Harper House · Week 2 after skipped W1 + dirty-open W2", () => {
+    const household = {
+      id: "b03e87bd-2899-4e71-b6fb-54399eef3e6d",
+      name: "The Harper House",
+    };
+    const skipped = {
+      id: "3e3aeeeb-4dcb-445b-9297-aa6c20967433",
+      household_id: household.id,
+      season_year: 2026,
+      week_number: 1,
+      status: "final",
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+      auto_opened_at: null,
+    };
+    const dirtyOpen = {
+      id: "52a42a9e-fbce-4e06-a9b4-8a00b1d36994",
+      household_id: household.id,
+      season_year: 2026,
+      week_number: 2,
+      status: "open",
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      lock_at: "2026-09-18T00:15:00+00:00",
+      auto_opened_at: null,
+      commissioner_edited_at: "2026-09-15T19:04:30.621+00:00",
+    };
+    const weeks = [skipped, dirtyOpen];
+    const active = selectActiveWeek(weeks);
+    expect(household.name).toBe("The Harper House");
+    expect(active?.id).toBe(dirtyOpen.id);
+    expect(active?.week_number).toBe(2);
+    expect(active?.status).toBe("open");
+    expect(active?.auto_opened_at).toBeNull();
+    expect(active?.finalized_at).toBe("2026-09-15T19:04:43.88+00:00");
+    expect(weekSwitcherLabel(dirtyOpen, active)).toBe("This Sunday");
+    expect(weekSwitcherLabel(skipped, active)).toBe("Week 1");
+    expect(familyWeekChrome(household.name, active)).toBe("The Harper House · Week 2");
+    expect(familyWeekChrome(household.name, null)).toBe("The Harper House");
+    expect(familyWeekChrome(null, active)).toBe("Your household · Week 2");
+    expect(`Week ${active?.week_number}`).toBe("Week 2");
+    expect(familyWeekChrome(household.name, skipped)).not.toBe("The Harper House · Week 2");
+    expect(familyWeekChrome(household.name, skipped)).toBe("The Harper House · Week 1");
+    expect(familyWeekChrome(household.name, active)).not.toMatch(
+      /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i,
+    );
   });
 
   it("does not keep the leftover-draft trap from 2026-09-15 (any draft over any final)", () => {
@@ -582,6 +654,16 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek([next, leftover])?.week_number).toBe(2);
     expect(selectActiveWeek([leftover, next])?.status).toBe("final");
     expect(selectActiveWeek([leftover, { ...w(2, "open"), finalized_at: next.finalized_at }])?.week_number).toBe(2);
+    const dirtyOpen = {
+      ...w(2, "open"),
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      auto_opened_at: null,
+    };
+    expect(selectActiveWeek([w(1, "final"), dirtyOpen])?.week_number).toBe(2);
+    expect(selectActiveWeek([w(1, "final"), dirtyOpen])?.status).toBe("open");
+    expect(
+      selectActiveWeek([{ ...leftover, auto_opened_at: "2026-09-10T00:00:00.000Z" }, next])?.week_number,
+    ).toBe(2);
   });
 
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
@@ -690,6 +772,22 @@ describe("selectActiveWeek", () => {
     expect(body).not.toMatch(/status === ["']final["']/);
     expect(body).not.toMatch(/finalized_at/);
     expect(body).not.toMatch(/lock_at/);
+    expect(body).not.toMatch(/auto_opened_at/);
+    const inPlayStart = src.indexOf("function isInPlay");
+    const inPlayEnd = src.indexOf("export function isNewerDraft");
+    expect(inPlayStart).toBeGreaterThanOrEqual(0);
+    expect(inPlayEnd).toBeGreaterThan(inPlayStart);
+    const inPlayBody = src.slice(inPlayStart, inPlayEnd);
+    expect(inPlayBody).toMatch(/status === "open" \|\| status === "locked"/);
+    expect(inPlayBody).not.toMatch(/auto_opened_at/);
+    expect(inPlayBody).not.toMatch(/finalized_at/);
+    const chromeStart = src.indexOf("export function familyWeekChrome");
+    const chromeEnd = src.indexOf("export function weekSwitcherLabel");
+    expect(chromeStart).toBeGreaterThanOrEqual(0);
+    expect(chromeEnd).toBeGreaterThan(chromeStart);
+    const chromeBody = src.slice(chromeStart, chromeEnd);
+    expect(chromeBody).toMatch(/householdName \?\? "Your household"/);
+    expect(chromeBody).toMatch(/\$\{name\} · Week \$\{week\.week_number\}/);
     expect(src).not.toMatch(/ranked\.find\(\(w\) => w\.status === "draft"\)/);
     expect(src).not.toMatch(/else latest draft/);
     expect(src).not.toMatch(/open\/locked > draft > final/);
@@ -1830,7 +1928,13 @@ describe("useCurrentWeek production wiring", () => {
   it("family chrome shows the active week number from useCurrentWeek", () => {
     const src = readFileSync(join(process.cwd(), "src/components/bgs/AppShell.tsx"), "utf8");
     expect(src).toMatch(/useProfile/);
-    expect(src).toMatch(/Week \$\{week\.week_number\}/);
+    expect(src).toMatch(/familyWeekChrome\(household\?\.name, week\)/);
+    expect(src).toMatch(/from "@\/lib\/current-week"/);
+    const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
+    expect(lib).toMatch(/export function familyWeekChrome/);
+    expect(lib).toMatch(/\$\{name\} · Week \$\{week\.week_number\}/);
+    const week = readFileSync(join(process.cwd(), "src/routes/_authenticated/week.tsx"), "utf8");
+    expect(week).toMatch(/Week \$\{week\.week_number\}/);
   });
 
   it("profile and default week routes read the active week from useCurrentWeek", () => {

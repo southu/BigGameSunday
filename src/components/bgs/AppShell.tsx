@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Grid3x3, LogOut, Radio, Shield, Sparkles, Trophy } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { familyWeekChrome } from "@/lib/current-week";
 import { useProfile } from "@/lib/profile";
 import { PlayerAvatar } from "./PlayerChip";
 import { SiteFooter } from "./SiteFooter";
@@ -49,8 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 Big Game Sunday
               </span>
               <span className="block truncate text-xs text-cream/70">
-                {household?.name ?? "Your household"}
-                {week ? ` · Week ${week.week_number}` : ""}
+                {familyWeekChrome(household?.name, week)}
               </span>
             </span>
           </Link>

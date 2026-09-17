@@ -15,6 +15,11 @@ export type WeekLike = WeekSlot & {
   finalized_at?: string | null;
   /** Ranking ignores this. Finalize-before-lock is premature. */
   lock_at?: string | null;
+  /**
+   * Ranking ignores this. Live leftover-open weeks can be `open` with
+   * `auto_opened_at` still null (Harper House W2). In-play is status only.
+   */
+  auto_opened_at?: string | null;
 };
 
 export type WeekRef = WeekLike & { id: string };
@@ -565,6 +570,20 @@ export function skipUnlocksCardsOnLockRefresh(
   lockFallback: string | null | undefined,
 ): boolean {
   return typeof lockFallback === "string" && lockFallback.length > 0;
+}
+
+/**
+ * Family header caption from the household name and the active week
+ * (`selectActiveWeek`). Harper House skipped W1 + dirty-open W2 →
+ * "The Harper House · Week 2". Ranking is status-only — a leftover
+ * `finalized_at` or a null `auto_opened_at` does not hide an open week.
+ */
+export function familyWeekChrome(
+  householdName: string | null | undefined,
+  week: WeekSlot | null | undefined,
+): string {
+  const name = householdName ?? "Your household";
+  return week ? `${name} · Week ${week.week_number}` : name;
 }
 
 /** This Sunday = in-play active slot; Next week = the next slot when it is a newer draft. */

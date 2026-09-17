@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
   canSkipWeek,
+  familyWeekChrome,
   leftoverDraftNextStep,
   nextWeekSlot,
   pickViewWeek,
@@ -195,6 +196,10 @@ describe("selectActiveWeek", () => {
       finalized_at: null,
       lock_at: "2026-09-10T00:20:00+00:00",
       auto_created_at: "2026-09-15T17:53:12.479+00:00",
+      auto_opened_at: null,
+      auto_locked_at: null,
+      commissioner_edited_at: null,
+      autopilot_hold: false,
     };
     const open = {
       id: "52a42a9e-fbce-4e06-a9b4-8a00b1d36994",
@@ -205,6 +210,10 @@ describe("selectActiveWeek", () => {
       finalized_at: "2026-09-15T19:04:43.88+00:00",
       lock_at: "2026-09-18T00:15:00+00:00",
       auto_created_at: "2026-09-15T18:00:32.128+00:00",
+      auto_opened_at: null,
+      auto_locked_at: null,
+      commissioner_edited_at: "2026-09-15T19:04:30.621+00:00",
+      autopilot_hold: false,
     };
     const weeks = [skipped, open];
     const active = selectActiveWeek(weeks);
@@ -235,6 +244,70 @@ describe("selectActiveWeek", () => {
     assert.equal(pickViewWeek(withLater, stillW2, null)?.week_number, 2);
     assert.equal(pickViewWeek(withLater, stillW2, "next")?.id, "auto-w3");
     assert.equal(`Week ${stillW2?.week_number}`, "Week 2");
+    assert.equal(open.auto_opened_at, null);
+    assert.equal(skipped.auto_opened_at, null);
+    assert.equal(open.finalized_at, "2026-09-15T19:04:43.88+00:00");
+    assert.equal(familyWeekChrome("The Harper House", active), "The Harper House · Week 2");
+    assert.equal(familyWeekChrome("The Harper House", stillW2), "The Harper House · Week 2");
+    assert.equal(`The Harper House · Week ${active?.week_number}`, "The Harper House · Week 2");
+    assert.equal(skipTargetWeek(weeks, open)?.id, "52a42a9e-fbce-4e06-a9b4-8a00b1d36994");
+    assert.equal(skipTargetWeek(weeks, skipped)?.id, "52a42a9e-fbce-4e06-a9b4-8a00b1d36994");
+    assert.equal(skipLandingWeek(weeks, open)?.week_number, 2);
+    assert.equal(skipLandingWeek(weeks, open)?.status, "open");
+    assert.equal(skipControlCopy(open, open, weeks).button, "Clear leftover marks / open this week");
+    assert.equal(
+      skipControlCopy(open, skipped, weeks).button,
+      "Clear leftover marks / open Week 2",
+    );
+    const openedByAutopilot = { ...open, auto_opened_at: "2026-09-15T18:05:00+00:00" };
+    assert.equal(selectActiveWeek([skipped, openedByAutopilot])?.week_number, 2);
+    assert.equal(selectActiveWeek([skipped, openedByAutopilot])?.status, "open");
+    assert.equal(familyWeekChrome("The Harper House", openedByAutopilot), "The Harper House · Week 2");
+  });
+
+  it("live Harper House chrome: The Harper House · Week 2 after skipped W1 + dirty-open W2", () => {
+    const household = {
+      id: "b03e87bd-2899-4e71-b6fb-54399eef3e6d",
+      name: "The Harper House",
+    };
+    const skipped = {
+      id: "3e3aeeeb-4dcb-445b-9297-aa6c20967433",
+      household_id: household.id,
+      season_year: 2026,
+      week_number: 1,
+      status: "final",
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+      auto_opened_at: null,
+    };
+    const dirtyOpen = {
+      id: "52a42a9e-fbce-4e06-a9b4-8a00b1d36994",
+      household_id: household.id,
+      season_year: 2026,
+      week_number: 2,
+      status: "open",
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      lock_at: "2026-09-18T00:15:00+00:00",
+      auto_opened_at: null,
+      commissioner_edited_at: "2026-09-15T19:04:30.621+00:00",
+    };
+    const weeks = [skipped, dirtyOpen];
+    const active = selectActiveWeek(weeks);
+    assert.equal(household.name, "The Harper House");
+    assert.equal(active?.id, dirtyOpen.id);
+    assert.equal(active?.week_number, 2);
+    assert.equal(active?.status, "open");
+    assert.equal(active?.auto_opened_at, null);
+    assert.equal(active?.finalized_at, "2026-09-15T19:04:43.88+00:00");
+    assert.equal(weekSwitcherLabel(dirtyOpen, active), "This Sunday");
+    assert.equal(weekSwitcherLabel(skipped, active), "Week 1");
+    assert.equal(familyWeekChrome(household.name, active), "The Harper House · Week 2");
+    assert.equal(familyWeekChrome(household.name, null), "The Harper House");
+    assert.equal(familyWeekChrome(null, active), "Your household · Week 2");
+    assert.equal(`Week ${active?.week_number}`, "Week 2");
+    assert.notEqual(familyWeekChrome(household.name, skipped), "The Harper House · Week 2");
+    assert.equal(familyWeekChrome(household.name, skipped), "The Harper House · Week 1");
+    assert.doesNotMatch(familyWeekChrome(household.name, active), /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
   });
 
   it("does not keep the leftover-draft trap from 2026-09-15 (any draft over any final)", () => {
@@ -598,6 +671,17 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([next, leftover])?.week_number, 2);
     assert.equal(selectActiveWeek([leftover, next])?.status, "final");
     assert.equal(selectActiveWeek([leftover, { ...w(2, "open"), finalized_at: next.finalized_at }])?.week_number, 2);
+    const dirtyOpen = {
+      ...w(2, "open"),
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      auto_opened_at: null,
+    };
+    assert.equal(selectActiveWeek([w(1, "final"), dirtyOpen])?.week_number, 2);
+    assert.equal(selectActiveWeek([w(1, "final"), dirtyOpen])?.status, "open");
+    assert.equal(
+      selectActiveWeek([{ ...leftover, auto_opened_at: "2026-09-10T00:00:00.000Z" }, next])?.week_number,
+      2,
+    );
   });
 
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
@@ -709,6 +793,20 @@ describe("selectActiveWeek", () => {
     assert.doesNotMatch(body, /status === ["']final["']/);
     assert.doesNotMatch(body, /finalized_at/);
     assert.doesNotMatch(body, /lock_at/);
+    assert.doesNotMatch(body, /auto_opened_at/);
+    const inPlayStart = src.indexOf("function isInPlay");
+    const inPlayEnd = src.indexOf("export function isNewerDraft");
+    assert.ok(inPlayStart >= 0 && inPlayEnd > inPlayStart);
+    const inPlayBody = src.slice(inPlayStart, inPlayEnd);
+    assert.match(inPlayBody, /status === "open" \|\| status === "locked"/);
+    assert.doesNotMatch(inPlayBody, /auto_opened_at/);
+    assert.doesNotMatch(inPlayBody, /finalized_at/);
+    const chromeStart = src.indexOf("export function familyWeekChrome");
+    const chromeEnd = src.indexOf("export function weekSwitcherLabel");
+    assert.ok(chromeStart >= 0 && chromeEnd > chromeStart);
+    const chromeBody = src.slice(chromeStart, chromeEnd);
+    assert.match(chromeBody, /householdName \?\? "Your household"/);
+    assert.match(chromeBody, /\$\{name\} · Week \$\{week\.week_number\}/);
     assert.doesNotMatch(src, /ranked\.find\(\(w\) => w\.status === "draft"\)/);
     assert.doesNotMatch(src, /else latest draft/);
     assert.doesNotMatch(src, /open\/locked > draft > final/);
@@ -1877,7 +1975,13 @@ describe("useCurrentWeek production wiring", () => {
   it("family chrome shows the active week number from useCurrentWeek", () => {
     const src = readFileSync(join(process.cwd(), "src/components/bgs/AppShell.tsx"), "utf8");
     assert.match(src, /useProfile/);
-    assert.match(src, /Week \$\{week\.week_number\}/);
+    assert.match(src, /familyWeekChrome\(household\?\.name, week\)/);
+    assert.match(src, /from "@\/lib\/current-week"/);
+    const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
+    assert.match(lib, /export function familyWeekChrome/);
+    assert.match(lib, /\$\{name\} · Week \$\{week\.week_number\}/);
+    const week = readFileSync(join(process.cwd(), "src/routes/_authenticated/week.tsx"), "utf8");
+    assert.match(week, /Week \$\{week\.week_number\}/);
   });
 
   it("profile and default week routes read the active week from useCurrentWeek", () => {
