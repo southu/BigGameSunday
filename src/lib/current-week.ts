@@ -186,9 +186,10 @@ function hasNewerThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
  * farther auto-created draft already exists (This Sunday W1 + Next week
  * W2 + W3 draft). A leftover draft behind that farther week still does
  * not reopen leftover next.
- * Skip of This Sunday does not reopen a completed Next week (finalized
- * after lock, in order). Leftover open W1 sitting behind Revealed W2 is
- * still This Sunday via in-play ranking; closing it must leave W2 final.
+ * Skip does not reopen a completed Next week (finalized after lock, in
+ * order). Leftover open W1 sitting behind Revealed W2 is still This Sunday
+ * via in-play ranking; leftover draft W1 sits behind Revealed W2 via
+ * newest-week ranking. Closing either leftover must leave W2 final.
  * Reopening would wipe Reveal. Premature-final Next week still opens.
  * Empty `weeks` still touches (no sibling to inspect).
  */
@@ -208,8 +209,8 @@ export function skipTouchesNextWeek(
   if (
     existing &&
     existing.status === "final" &&
-    leftoverIsThisSunday &&
-    !isPrematureFinalWeek(existing, weeks)
+    !isPrematureFinalWeek(existing, weeks) &&
+    (leftoverIsThisSunday || finalizedAfterLock(existing))
   ) {
     return false;
   }
@@ -234,8 +235,8 @@ function withStatus<T extends WeekLike>(week: T, status: string): T {
  * Next week when a farther auto-created draft already exists — including
  * a premature-final Next week. Opening next clears leftover finalize stamps
  * so landing is a clean open week. A completed Next week stays final —
- * skip of leftover This Sunday lands there without wiping Reveal.
- * Skip-in-place leftover stamps stay put.
+ * skip of leftover This Sunday or leftover draft lands there without
+ * wiping Reveal. Skip-in-place leftover stamps stay put.
  * Dirty-open leftover (open + leftover finalize stamp) and premature-final
  * leftover stay put — scrub in place, do not close it and jump to the next week.
  */
@@ -425,6 +426,13 @@ function finalizedBeforeLock(week: WeekLike): boolean {
   return finalized != null && lock != null && finalized < lock;
 }
 
+/** Finalized after kickoff — Reveal already ran in order. */
+function finalizedAfterLock(week: WeekLike): boolean {
+  const finalized = stampMs(week.finalized_at);
+  const lock = stampMs(week.lock_at);
+  return finalized != null && lock != null && finalized >= lock;
+}
+
 /**
  * This week was marked final before an older sibling was — leftover skip
  * after a premature finalize (W2 finished, then leftover W1 closed later).
@@ -478,7 +486,8 @@ export function skipScrubsViewedInPlace(
  * just closes the leftover and leaves the family on This Sunday.
  * Skip of This Sunday still opens Next week when a farther draft exists,
  * including a premature-final Next week. A completed Next week is left
- * final — skipTouchesNextWeek refuses that reopen.
+ * final — skipTouchesNextWeek refuses that reopen, including leftover
+ * draft W1 sitting behind Revealed W2.
  * Dirty-open next is already This Sunday; scrub it later.
  * Pass leftover so skip of This Sunday can still open Next week.
  */
