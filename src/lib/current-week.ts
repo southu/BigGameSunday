@@ -59,6 +59,7 @@ export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | n
     }
     if (!newest || recency(week, newest) < 0) newest = week;
   }
+  // Newest overall — never leftover draft over a newer final or draft.
   return latestInPlay ?? newest;
 }
 

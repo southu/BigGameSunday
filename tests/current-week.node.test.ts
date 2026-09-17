@@ -237,6 +237,35 @@ describe("selectActiveWeek", () => {
     assert.equal(`Week ${stillW2?.week_number}`, "Week 2");
   });
 
+  it("does not keep the leftover-draft trap from 2026-09-15 (any draft over any final)", () => {
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const premature = wr("52a42a9e", 2, "final");
+    const recencySort = (a, b) =>
+      a.season_year !== b.season_year ? b.season_year - a.season_year : b.week_number - a.week_number;
+    const oldRank = (weeks: ReturnType<typeof wr>[]) => {
+      const ranked = [...weeks].sort(recencySort);
+      const inPlay = ranked.find((week) => week.status === "open" || week.status === "locked");
+      if (inPlay) return inPlay;
+      const draft = ranked.find((week) => week.status === "draft");
+      if (draft) return draft;
+      return ranked.find((week) => week.status === "final") ?? ranked[0] ?? null;
+    };
+    assert.equal(oldRank([leftover, premature])?.id, "3e3aeeeb");
+    assert.equal(oldRank([premature, leftover])?.id, "3e3aeeeb");
+    assert.equal(selectActiveWeek([leftover, premature])?.id, "52a42a9e");
+    assert.equal(selectActiveWeek([premature, leftover])?.id, "52a42a9e");
+    assert.equal(selectActiveWeek([leftover, premature])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftover, premature])?.status, "final");
+    assert.equal(`Week ${selectActiveWeek([leftover, premature])?.week_number}`, "Week 2");
+    const open = wr("w1", 1, "open");
+    const nextDraft = wr("w2", 2, "draft");
+    const inPlay = selectActiveWeek([open, nextDraft]);
+    assert.equal(inPlay?.id, "w1");
+    assert.equal(weekSwitcherLabel(open, inPlay), "This Sunday");
+    assert.equal(weekSwitcherLabel(nextDraft, inPlay), "Next week");
+    assert.equal(pickViewWeek([open, nextDraft], inPlay, "next")?.id, "w2");
+  });
+
   it("draft week N + final/open week N+1 → returns week N+1 (not the old draft)", () => {
     for (const n of [1, 5, 12, 17]) {
       assert.equal(selectActiveWeek([w(n, "draft"), w(n + 1, "final")])?.week_number, n + 1);
