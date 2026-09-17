@@ -83,6 +83,7 @@ export type WeekRef = WeekLike & { id: string };
  * cannot hide a newer week. leftover nan keys rank as 0,0 so they
  * cannot hide a newer week. leftover null keys rank as 0,0 so they
  * cannot hide a newer week. leftover undefined keys rank as 0,0 so they
+ * cannot hide a newer week. leftover accessor keys rank as 0,0 so they
  * cannot hide a newer week. fetchHouseholdWeeks sorts with recency so
  * the week list cannot skip week_number on mixed string/number keys.
  */
@@ -206,6 +207,24 @@ function leftoverUndefinedKey(value: unknown): boolean {
   }
 }
 
+/** Accessor/proxy/inherited keys impersonate recency numbers and would steal in-play over a real week. Recency copies season_year/week_number first, so leftover OPEN getters still rank as latestInPlay. leftover missing-key drafts stay selectable. */
+function leftoverAccessorKey(week: object, key: "season_year" | "week_number"): boolean {
+  try {
+    const desc = Object.getOwnPropertyDescriptor(week, key);
+    if (desc && (desc.get || desc.set)) return true;
+    if (!desc) {
+      try {
+        return (week as Record<string, unknown>)[key] !== undefined;
+      } catch {
+        return true;
+      }
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 export function recency(
   a: WeekSlot | null | undefined | boolean | number | string | unknown[],
   b: WeekSlot | null | undefined | boolean | number | string | unknown[],
@@ -230,6 +249,21 @@ export function recency(
     if (Array.isArray(b)) b = { season_year: 0, week_number: 0 };
   } catch {
     // leftover throwing rows cannot hide a newer week
+    b = { season_year: 0, week_number: 0 };
+  }
+  // leftover accessor keys cannot hide a newer week
+  try {
+    if (leftoverAccessorKey(a, "season_year") || leftoverAccessorKey(a, "week_number")) {
+      a = { season_year: 0, week_number: 0 };
+    }
+  } catch {
+    a = { season_year: 0, week_number: 0 };
+  }
+  try {
+    if (leftoverAccessorKey(b, "season_year") || leftoverAccessorKey(b, "week_number")) {
+      b = { season_year: 0, week_number: 0 };
+    }
+  } catch {
     b = { season_year: 0, week_number: 0 };
   }
   try {
@@ -369,6 +403,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * leftover nan keys cannot hide a newer week.
  * leftover null keys cannot hide a newer week.
  * leftover undefined keys cannot hide a newer week.
+ * leftover accessor keys cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
   weeks: readonly (T | null | undefined | boolean | number | string | unknown[])[] | null | undefined,
@@ -445,6 +480,12 @@ export function selectActiveWeek<T extends WeekLike>(
         } catch {
           continue;
         }
+      }
+      // leftover accessor keys cannot hide a newer week
+      if (
+        leftoverAccessorKey(week, "season_year") || leftoverAccessorKey(week, "week_number")
+      ) {
+        continue;
       }
       if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
         latestInPlay = week;
@@ -585,6 +626,17 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
   }
   try {
     if (leftoverUndefinedKey(week.week_number)) week_number = 0;
+  } catch {
+    week_number = 0;
+  }
+  // leftover accessor keys cannot hide a newer week
+  try {
+    if (leftoverAccessorKey(week, "season_year")) season_year = 0;
+  } catch {
+    season_year = 0;
+  }
+  try {
+    if (leftoverAccessorKey(week, "week_number")) week_number = 0;
   } catch {
     week_number = 0;
   }
@@ -1173,11 +1225,13 @@ export function familyWeekChrome(
   // leftover nan keys cannot hide a newer week
   // leftover null keys cannot hide a newer week
   // leftover undefined keys cannot hide a newer week
+  // leftover accessor keys cannot hide a newer week
   // fetchHouseholdWeeks sorts with recency
   // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
   if (week) {
     try {
+      if (leftoverAccessorKey(week, "week_number")) return name;
       const weekNumber = week.week_number;
       week = { season_year: week.season_year, week_number: week.week_number };
       week.week_number = Number(week.week_number);
@@ -1203,6 +1257,8 @@ export function familyWeekChrome(
 /** This Sunday = in-play active slot; Next week = the next slot when it is a newer draft. */
 export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
   try {
+    // leftover accessor keys cannot hide a newer week
+    if (leftoverAccessorKey(w, "week_number")) w = { ...w, week_number: 0 };
     const weekNumber = w.week_number;
     w = { ...w, week_number: Number(w.week_number) };
     // leftover object keys cannot hide a newer week
