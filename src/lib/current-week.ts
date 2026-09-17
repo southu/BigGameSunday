@@ -61,8 +61,11 @@ export type WeekRef = WeekLike & { id: string };
  * from fetchHouseholdWeeks cannot hide a newer week. PostgREST row order
  * and created_at insertion order are not keys. notes and updated_at are
  * not keys. selectActiveWeek copies only these two numbers before ranking.
+ * recency copies both operands so extra fields on the incumbent cannot leak.
  */
 function recency(a: WeekSlot, b: WeekSlot): number {
+  a = { season_year: a.season_year, week_number: a.week_number };
+  b = { season_year: b.season_year, week_number: b.week_number };
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -650,6 +653,7 @@ export function familyWeekChrome(
   // ranking ignores notes, updated_at
   // recency is season_year then week_number, not created_at insertion order
   // ranking copies only season_year and week_number before comparing
+  // recency copies both operands before comparing
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
 }

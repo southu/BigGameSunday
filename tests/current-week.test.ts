@@ -1475,6 +1475,7 @@ describe("selectActiveWeek", () => {
     expect(chromeBody).toMatch(/recency is season_year then week_number/);
     expect(chromeBody).toMatch(/not created_at insertion order/);
     expect(chromeBody).toMatch(/ranking copies only season_year and week_number/);
+    expect(chromeBody).toMatch(/recency copies both operands before comparing/);
     expect(body).not.toMatch(/\bid\b/);
     expect(inPlayBody).not.toMatch(/\bid\b/);
     const recencyStart = src.indexOf("function recency");
@@ -1482,6 +1483,8 @@ describe("selectActiveWeek", () => {
     expect(recencyStart).toBeGreaterThanOrEqual(0);
     expect(recencyEnd).toBeGreaterThan(recencyStart);
     const recencyImpl = src.slice(src.indexOf("{", recencyStart), recencyEnd);
+    expect(recencyImpl).toMatch(/season_year: a\.season_year, week_number: a\.week_number/);
+    expect(recencyImpl).toMatch(/season_year: b\.season_year, week_number: b\.week_number/);
     expect(recencyImpl).toMatch(/a\.season_year !== b\.season_year/);
     expect(recencyImpl).toMatch(/b\.season_year - a\.season_year/);
     expect(recencyImpl).toMatch(/b\.week_number - a\.week_number/);

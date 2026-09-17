@@ -1517,12 +1517,15 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /recency is season_year then week_number/);
     assert.match(chromeBody, /not created_at insertion order/);
     assert.match(chromeBody, /ranking copies only season_year and week_number/);
+    assert.match(chromeBody, /recency copies both operands before comparing/);
     assert.doesNotMatch(body, /\bid\b/);
     assert.doesNotMatch(inPlayBody, /\bid\b/);
     const recencyStart = src.indexOf("function recency");
     const recencyEnd = src.indexOf("function isNewerThan");
     assert.ok(recencyStart >= 0 && recencyEnd > recencyStart);
     const recencyImpl = src.slice(src.indexOf("{", recencyStart), recencyEnd);
+    assert.match(recencyImpl, /season_year: a\.season_year, week_number: a\.week_number/);
+    assert.match(recencyImpl, /season_year: b\.season_year, week_number: b\.week_number/);
     assert.match(recencyImpl, /a\.season_year !== b\.season_year/);
     assert.match(recencyImpl, /b\.season_year - a\.season_year/);
     assert.match(recencyImpl, /b\.week_number - a\.week_number/);
