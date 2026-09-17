@@ -168,6 +168,7 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
   // leftover accessor keys cannot hide a newer week
   // leftover boolean keys cannot hide a newer week
   // leftover symbol keys cannot hide a newer week
+  // leftover function keys cannot hide a newer week
   const weeks = (data ?? []) as Week[];
   return [...weeks]
     .filter((week) => week)
@@ -209,12 +210,14 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
             yearType === "bigint" ||
             yearType === "boolean" ||
             yearType === "symbol" ||
+            yearType === "function" ||
             week.season_year == null) &&
           (numType === "number" ||
             numType === "string" ||
             numType === "bigint" ||
             numType === "boolean" ||
             numType === "symbol" ||
+            numType === "function" ||
             week.week_number == null)
         );
       } catch {
@@ -369,6 +372,14 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
         return typeof week.season_year !== "symbol" && typeof week.week_number !== "symbol";
       } catch {
         // leftover symbol keys cannot hide a newer week
+        return false;
+      }
+    })
+    .filter((week) => {
+      try {
+        return typeof week.season_year !== "function" && typeof week.week_number !== "function";
+      } catch {
+        // leftover function keys cannot hide a newer week
         return false;
       }
     })
