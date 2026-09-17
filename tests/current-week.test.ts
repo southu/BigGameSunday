@@ -1251,6 +1251,84 @@ describe("selectActiveWeek", () => {
     expect(selectActiveWeek(after)?.status).toBe("open");
   });
 
+  it("skip path: leftover extra/empty/abandoned W1 behind playable W2 closes W1, not W2", () => {
+    const thisSunday = wr("w2", 2, "open");
+    for (const leftoverStatus of ["abandoned", "skipped", ""]) {
+      const leftover = wr("w1", 1, leftoverStatus);
+      const weeks = [leftover, thisSunday];
+      const reverse = [thisSunday, leftover];
+      const active = selectActiveWeek(weeks);
+      expect(active?.id).toBe("w2");
+      expect(active?.status).toBe("open");
+      expect(selectActiveWeek(reverse)?.id).toBe("w2");
+      expect(weekSwitcherLabel(thisSunday, active)).toBe("This Sunday");
+      expect(weekSwitcherLabel(leftover, active)).toBe("Week 1");
+      expect(weekSwitcherLabel(leftover, active)).not.toBe("This Sunday");
+      expect(weekSwitcherLabel(leftover, active)).not.toBe("Next week");
+      expect(familyWeekChrome("The Harper House", active)).toBe("The Harper House · Week 2");
+      expect(skipTargetWeek(weeks, thisSunday)?.id).toBe("w1");
+      expect(skipTargetWeek(weeks, thisSunday)?.status).toBe(leftoverStatus);
+      expect(skipTargetWeek(weeks, thisSunday)?.week_number).not.toBe(2);
+      expect(skipTargetWeek(weeks, leftover)?.id).toBe("w1");
+      expect(skipLandingWeek(weeks, leftover)?.id).toBe("w2");
+      expect(skipLandingWeek(weeks, leftover)?.status).toBe("open");
+      const copy = skipControlCopy(leftover, thisSunday, weeks);
+      expect(copy.button).toBe("Skip leftover Week 1");
+      expect(copy.button).not.toMatch(/open/);
+      expect(copy.button).not.toMatch(/start next week/);
+      expect(copy.hint).toMatch(/without Reveal/);
+      expect(copy.hint).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+      expect(copy.button).not.toMatch(/\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    }
+
+    // a: leftover abandoned/empty W1 + final W2 → active W2
+    expect(selectActiveWeek([w(1, "abandoned"), w(2, "final")])?.week_number).toBe(2);
+    expect(selectActiveWeek([w(1, ""), w(2, "final")])?.week_number).toBe(2);
+    expect(selectActiveWeek([w(2, "final"), w(1, "skipped")])?.status).toBe("final");
+
+    // b: leftover extra W1 + open W2 → active W2
+    expect(selectActiveWeek([w(1, ""), w(2, "open")])?.week_number).toBe(2);
+    expect(selectActiveWeek([w(1, "abandoned"), w(2, "locked")])?.week_number).toBe(2);
+
+    // c: open W1 + abandoned W2 → active W1; W2 is not Next week
+    const open = wr("open-1", 1, "open");
+    const extraNext = wr("extra-2", 2, "abandoned");
+    const c = selectActiveWeek([open, extraNext]);
+    expect(c?.id).toBe("open-1");
+    expect(weekSwitcherLabel(open, c)).toBe("This Sunday");
+    expect(weekSwitcherLabel(extraNext, c)).toBe("Week 2");
+    expect(weekSwitcherLabel(extraNext, c)).not.toBe("Next week");
+    expect(pickViewWeek([open, extraNext], c, "next")?.id).toBe("open-1");
+
+    // d: only abandoned/empty W1 → W1
+    expect(selectActiveWeek([w(1, "abandoned")])?.week_number).toBe(1);
+    expect(selectActiveWeek([w(1, "")])?.week_number).toBe(1);
+
+    // e: skip path: leftover extra closed, family stays on open W2
+    const leftoverAbandoned = wr("w1a", 1, "abandoned");
+    expect(skipTargetWeek([leftoverAbandoned, thisSunday], leftoverAbandoned)?.id).toBe("w1a");
+    expect(selectActiveWeek([w(1, "final"), thisSunday])?.week_number).toBe(2);
+
+    const premature = {
+      ...wr("w2f", 2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const extra = wr("w1e", 1, "abandoned");
+    expect(selectActiveWeek([extra, premature])?.id).toBe("w2f");
+    expect(familyWeekChrome("The Harper House", selectActiveWeek([extra, premature]))).toBe(
+      "The Harper House · Week 2",
+    );
+    expect(skipTargetWeek([extra, premature], extra)?.id).toBe("w1e");
+    expect(skipTargetWeek([extra, premature], premature)?.id).toBe("w1e");
+    const landed = skipLandingWeek([extra, premature], extra);
+    expect(landed?.id).toBe("w2f");
+    expect(landed?.status).toBe("open");
+    expect(skipControlCopy(extra, premature, [extra, premature]).button).toBe(
+      "Skip leftover Week 1 / open this week",
+    );
+  });
+
   it("skip path: leftover in-play behind This Sunday closes W1, not W2", () => {
     const leftoverOpen = w(1, "open");
     const leftoverLocked = w(1, "locked");
@@ -2655,12 +2733,24 @@ describe("useCurrentWeek production wiring", () => {
       lib.indexOf("export function skipTargetWeek"),
     );
     expect(recoverFn).toMatch(/isPrematureFinalWeek\(target, weeks\)/);
+    expect(recoverFn).toMatch(/isUnplayedLeftover\(w\)/);
+    expect(recoverFn).not.toMatch(/w\.status === ["']draft["']/);
     const targetFn = lib.slice(
       lib.indexOf("export function skipTargetWeek"),
       lib.indexOf("function hasPrematureFinalizeLeftover"),
     );
+    expect(targetFn).toMatch(/isUnplayedLeftover\(w\)/);
     expect(targetFn).toMatch(/hasNewerInPlayThan\(w, weeks\)/);
+    expect(targetFn.indexOf("isUnplayedLeftover")).toBeLessThan(targetFn.indexOf("hasNewerInPlayThan"));
     expect(targetFn.indexOf("hasNewerInPlayThan")).toBeLessThan(targetFn.indexOf("canSkipWeek(viewed)"));
+    const unplayedStart = lib.indexOf("function isUnplayedLeftover");
+    const unplayedEnd = lib.indexOf("export function shouldAutopilotOpenDraft");
+    expect(unplayedStart).toBeGreaterThanOrEqual(0);
+    expect(unplayedEnd).toBeGreaterThan(unplayedStart);
+    const unplayedFn = lib.slice(unplayedStart, unplayedEnd);
+    expect(unplayedFn).toMatch(/!isInPlay\(week\.status\)/);
+    expect(unplayedFn).toMatch(/status !== "final"/);
+    expect(unplayedFn).toMatch(/empty, or abandoned/);
     const scrubFn = lib.slice(
       lib.indexOf("function skipScrubsLeftoverInPlace"),
       lib.indexOf("export function skipScrubsViewedInPlace"),

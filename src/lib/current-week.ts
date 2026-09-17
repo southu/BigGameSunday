@@ -126,6 +126,17 @@ export function canSkipWeek(week: WeekLike | null | undefined): boolean {
 }
 
 /**
+ * Leftover skip can close without Reveal: draft, empty, or abandoned.
+ * Not in-play and not already final. Skip must close these behind This
+ * Sunday the same way it closes a leftover draft — never steal the week
+ * the family is about to play.
+ */
+function isUnplayedLeftover(week: WeekLike): boolean {
+  // leftover skip can close without Reveal: draft, empty, or abandoned
+  return !isInPlay(week.status) && week.status !== "final";
+}
+
+/**
  * Autopilot auto-opens a draft 24h after auto-create only when no newer week
  * exists. Opening a leftover draft behind a newer week would trap the family
  * on the skipped week via in-play ranking (Harper: leftover W1 + final W2).
@@ -399,13 +410,14 @@ export function leftoverDraftNextStep(
  * sibling was marked final). Ordinary completed weeks — newest final after
  * older finals — are not recoverable. Do not reopen a lone finished week,
  * and do not reopen a finished week while another week is open or locked.
- * Leftover drafts still close first (skipTargetWeek ranks those ahead).
+ * Leftover unplayed weeks (draft, empty, or abandoned) still close first
+ * (skipTargetWeek ranks those ahead).
  */
 function recoverableFinishedWeek<T extends WeekLike>(weeks: readonly T[]): T | null {
   if (weeks.some((w) => isInPlay(w.status))) return null;
   const newest = [...weeks].sort(recency)[0];
   if (!newest) return null;
-  if (weeks.some((w) => w.status === "draft" && isOlderThan(w, newest))) return null;
+  if (weeks.some((w) => isUnplayedLeftover(w) && isOlderThan(w, newest))) return null;
   const finals = [...weeks].filter((w) => w.status === "final").sort(recency);
   const target = finals[0];
   if (!target) return null;
@@ -416,14 +428,14 @@ function recoverableFinishedWeek<T extends WeekLike>(weeks: readonly T[]): T | n
 
 /**
  * Week the skip control closes.
- * Prefer an older leftover draft behind the viewed week (Harper: draft W1
- * sitting behind open/final W2) so Skip cannot close the week the family
- * is about to play. Prefer an older leftover in-play week behind This Sunday
- * (locked/open W1 sitting behind open/locked W2) for the same reason — Skip
- * must not close the week the family is playing. Otherwise recover a
- * premature-final week when nothing is in play and an older week exists
- * (Harper: skipped W1 + premature-final W2). Otherwise close the viewed week
- * when it is still playable.
+ * Prefer an older leftover unplayed week behind the viewed week (Harper: draft
+ * W1 sitting behind open/final W2; also empty or abandoned leftover W1) so
+ * Skip cannot close the week the family is about to play. Prefer an older
+ * leftover in-play week behind This Sunday (locked/open W1 sitting behind
+ * open/locked W2) for the same reason — Skip must not close the week the
+ * family is playing. Otherwise recover a premature-final week when nothing
+ * is in play and an older week exists (Harper: skipped W1 + premature-final
+ * W2). Otherwise close the viewed week when it is still playable.
  * If the viewed week is already finished, still target a leftover in-play
  * week behind a newer in-play week, or a leftover open week with a premature
  * finalize stamp so Skip can scrub it in place (Harper: skipped W1 + dirty-open
@@ -435,10 +447,10 @@ export function skipTargetWeek<T extends WeekLike>(
   viewed: T | null | undefined,
 ): T | null {
   if (!viewed) return null;
-  const olderDrafts = [...weeks]
-    .filter((w) => w.status === "draft" && isOlderThan(w, viewed))
+  const olderUnplayed = [...weeks]
+    .filter((w) => isUnplayedLeftover(w) && isOlderThan(w, viewed))
     .sort(recency);
-  if (olderDrafts[0]) return olderDrafts[0];
+  if (olderUnplayed[0]) return olderUnplayed[0];
   const olderLeftoverInPlay = [...weeks]
     .filter((w) => isInPlay(w.status) && hasNewerInPlayThan(w, weeks) && isOlderThan(w, viewed))
     .sort(recency);

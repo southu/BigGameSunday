@@ -1290,6 +1290,86 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek(after)?.status, "open");
   });
 
+  it("skip path: leftover extra/empty/abandoned W1 behind playable W2 closes W1, not W2", () => {
+    const thisSunday = wr("w2", 2, "open");
+    for (const leftoverStatus of ["abandoned", "skipped", ""]) {
+      const leftover = wr("w1", 1, leftoverStatus);
+      const weeks = [leftover, thisSunday];
+      const reverse = [thisSunday, leftover];
+      const active = selectActiveWeek(weeks);
+      assert.equal(active?.id, "w2");
+      assert.equal(active?.status, "open");
+      assert.equal(selectActiveWeek(reverse)?.id, "w2");
+      assert.equal(weekSwitcherLabel(thisSunday, active), "This Sunday");
+      assert.equal(weekSwitcherLabel(leftover, active), "Week 1");
+      assert.notEqual(weekSwitcherLabel(leftover, active), "This Sunday");
+      assert.notEqual(weekSwitcherLabel(leftover, active), "Next week");
+      assert.equal(familyWeekChrome("The Harper House", active), "The Harper House · Week 2");
+      assert.equal(skipTargetWeek(weeks, thisSunday)?.id, "w1");
+      assert.equal(skipTargetWeek(weeks, thisSunday)?.status, leftoverStatus);
+      assert.notEqual(skipTargetWeek(weeks, thisSunday)?.week_number, 2);
+      assert.equal(skipTargetWeek(weeks, leftover)?.id, "w1");
+      assert.equal(skipLandingWeek(weeks, leftover)?.id, "w2");
+      assert.equal(skipLandingWeek(weeks, leftover)?.status, "open");
+      const copy = skipControlCopy(leftover, thisSunday, weeks);
+      assert.equal(copy.button, "Skip leftover Week 1");
+      assert.doesNotMatch(copy.button, /open/);
+      assert.doesNotMatch(copy.button, /start next week/);
+      assert.match(copy.hint, /without Reveal/);
+      assert.doesNotMatch(copy.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+      assert.doesNotMatch(copy.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    }
+
+    // a: leftover abandoned/empty W1 + final W2 → active W2
+    assert.equal(selectActiveWeek([w(1, "abandoned"), w(2, "final")])?.week_number, 2);
+    assert.equal(selectActiveWeek([w(1, ""), w(2, "final")])?.week_number, 2);
+    assert.equal(selectActiveWeek([w(2, "final"), w(1, "skipped")])?.status, "final");
+
+    // b: leftover extra W1 + open W2 → active W2
+    assert.equal(selectActiveWeek([w(1, ""), w(2, "open")])?.week_number, 2);
+    assert.equal(selectActiveWeek([w(1, "abandoned"), w(2, "locked")])?.week_number, 2);
+
+    // c: open W1 + abandoned W2 → active W1; W2 is not Next week
+    const open = wr("open-1", 1, "open");
+    const extraNext = wr("extra-2", 2, "abandoned");
+    const c = selectActiveWeek([open, extraNext]);
+    assert.equal(c?.id, "open-1");
+    assert.equal(weekSwitcherLabel(open, c), "This Sunday");
+    assert.equal(weekSwitcherLabel(extraNext, c), "Week 2");
+    assert.notEqual(weekSwitcherLabel(extraNext, c), "Next week");
+    assert.equal(pickViewWeek([open, extraNext], c, "next")?.id, "open-1");
+
+    // d: only abandoned/empty W1 → W1
+    assert.equal(selectActiveWeek([w(1, "abandoned")])?.week_number, 1);
+    assert.equal(selectActiveWeek([w(1, "")])?.week_number, 1);
+
+    // e: skip path: leftover extra closed, family stays on open W2
+    const leftoverAbandoned = wr("w1a", 1, "abandoned");
+    assert.equal(skipTargetWeek([leftoverAbandoned, thisSunday], leftoverAbandoned)?.id, "w1a");
+    assert.equal(selectActiveWeek([w(1, "final"), thisSunday])?.week_number, 2);
+
+    const premature = {
+      ...wr("w2f", 2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const extra = wr("w1e", 1, "abandoned");
+    assert.equal(selectActiveWeek([extra, premature])?.id, "w2f");
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([extra, premature])),
+      "The Harper House · Week 2",
+    );
+    assert.equal(skipTargetWeek([extra, premature], extra)?.id, "w1e");
+    assert.equal(skipTargetWeek([extra, premature], premature)?.id, "w1e");
+    const landed = skipLandingWeek([extra, premature], extra);
+    assert.equal(landed?.id, "w2f");
+    assert.equal(landed?.status, "open");
+    assert.equal(
+      skipControlCopy(extra, premature, [extra, premature]).button,
+      "Skip leftover Week 1 / open this week",
+    );
+  });
+
   it("skip path: leftover in-play behind This Sunday closes W1, not W2", () => {
     const leftoverOpen = w(1, "open");
     const leftoverLocked = w(1, "locked");
@@ -2741,15 +2821,29 @@ describe("useCurrentWeek production wiring", () => {
       lib.indexOf("export function skipTargetWeek"),
     );
     assert.match(recoverFn, /isPrematureFinalWeek\(target, weeks\)/);
+    assert.match(recoverFn, /isUnplayedLeftover\(w\)/);
+    assert.doesNotMatch(recoverFn, /w\.status === ["']draft["']/);
     const targetFn = lib.slice(
       lib.indexOf("export function skipTargetWeek"),
       lib.indexOf("function hasPrematureFinalizeLeftover"),
     );
+    assert.match(targetFn, /isUnplayedLeftover\(w\)/);
     assert.match(targetFn, /hasNewerInPlayThan\(w, weeks\)/);
+    assert.ok(
+      targetFn.indexOf("isUnplayedLeftover") < targetFn.indexOf("hasNewerInPlayThan"),
+      "leftover extra/empty/abandoned behind This Sunday must close before leftover in-play",
+    );
     assert.ok(
       targetFn.indexOf("hasNewerInPlayThan") < targetFn.indexOf("canSkipWeek(viewed)"),
       "leftover in-play behind This Sunday must close before Skip can close the viewed week",
     );
+    const unplayedStart = lib.indexOf("function isUnplayedLeftover");
+    const unplayedEnd = lib.indexOf("export function shouldAutopilotOpenDraft");
+    assert.ok(unplayedStart >= 0 && unplayedEnd > unplayedStart);
+    const unplayedFn = lib.slice(unplayedStart, unplayedEnd);
+    assert.match(unplayedFn, /!isInPlay\(week\.status\)/);
+    assert.match(unplayedFn, /status !== "final"/);
+    assert.match(unplayedFn, /empty, or abandoned/);
     const scrubFn = lib.slice(
       lib.indexOf("function skipScrubsLeftoverInPlace"),
       lib.indexOf("export function skipScrubsViewedInPlace"),
