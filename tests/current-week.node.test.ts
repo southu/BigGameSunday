@@ -1236,6 +1236,48 @@ describe("selectActiveWeek", () => {
     assert.equal(landed?.status, "open");
   });
 
+  it("selectActiveWeek ranks only season_year, week_number, and in-play status", () => {
+    const noise = { extra: "not a ranking key", row: 0, payload: { n: 1 } };
+    // a: draft W1 + final W2 → active W2
+    const leftover = { ...w(1, "draft"), ...noise, extra: "later" };
+    const premature = { ...w(2, "final"), ...noise, extra: "earlier" };
+    assert.equal(selectActiveWeek([leftover, premature])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftover, premature])?.status, "final");
+    assert.equal(selectActiveWeek([premature, leftover])?.week_number, 2);
+
+    // b: draft W1 + open W2 → active W2
+    const openW2 = { ...w(2, "open"), ...noise };
+    assert.equal(selectActiveWeek([leftover, openW2])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftover, openW2])?.status, "open");
+    assert.equal(selectActiveWeek([leftover, { ...w(2, "locked"), ...noise }])?.week_number, 2);
+
+    // c: open W1 + draft W2 → active W1, W2 labeled Next week
+    const openW1 = { ...wr("w1", 1, "open"), ...noise };
+    const nextDraft = { ...wr("w2", 2, "draft"), ...noise, extra: "auto-created" };
+    const c = selectActiveWeek([openW1, nextDraft]);
+    assert.equal(c?.week_number, 1);
+    assert.equal(c?.id, "w1");
+    assert.equal(weekSwitcherLabel(openW1, c), "This Sunday");
+    assert.equal(weekSwitcherLabel(nextDraft, c), "Next week");
+    assert.equal(pickViewWeek([openW1, nextDraft], c, "next")?.id, "w2");
+
+    // d: only final W1 → W1
+    assert.equal(selectActiveWeek([{ ...w(1, "final"), ...noise }])?.week_number, 1);
+
+    // e: skip path: final/skipped W1 + open W2 → W2
+    const skipped = { ...wr("w1", 1, "final"), ...noise };
+    const dirty = {
+      ...wr("w2", 2, "open"),
+      ...noise,
+      finalized_at: "2026-09-15T19:04:43.880Z",
+    };
+    const e = selectActiveWeek([skipped, dirty]);
+    assert.equal(e?.week_number, 2);
+    assert.equal(e?.status, "open");
+    assert.equal(weekSwitcherLabel(dirty, e), "This Sunday");
+    assert.equal(familyWeekChrome("The Harper House", e), "The Harper House · Week 2");
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -1339,8 +1381,9 @@ describe("selectActiveWeek", () => {
     assert.ok(start >= 0 && end > start);
     const body = src.slice(start, end);
     assert.match(body, /return latestInPlay \?\? newest/);
-    assert.match(body, /recency\(week, latestInPlay\)/);
-    assert.match(body, /recency\(week, newest\)/);
+    assert.match(body, /season_year: week\.season_year, week_number: week\.week_number/);
+    assert.match(body, /recency\(slot, latestInPlay\)/);
+    assert.match(body, /recency\(slot, newest\)/);
     assert.match(body, /for \(const week of weeks\)/);
     assert.match(body, /Walk every week/);
     assert.doesNotMatch(body, /weeks\[0\]/);
@@ -1393,6 +1436,7 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /ranking ignores notes, updated_at/);
     assert.match(chromeBody, /recency is season_year then week_number/);
     assert.match(chromeBody, /not created_at insertion order/);
+    assert.match(chromeBody, /ranking copies only season_year and week_number/);
     assert.doesNotMatch(body, /\bid\b/);
     assert.doesNotMatch(inPlayBody, /\bid\b/);
     const recencyStart = src.indexOf("function recency");

@@ -60,7 +60,7 @@ export type WeekRef = WeekLike & { id: string };
  * Timestamps and leftover stamps are not keys. Extra select("*") fields
  * from fetchHouseholdWeeks cannot hide a newer week. PostgREST row order
  * and created_at insertion order are not keys. notes and updated_at are
- * not keys.
+ * not keys. selectActiveWeek copies only these two numbers before ranking.
  */
 function recency(a: WeekSlot, b: WeekSlot): number {
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
@@ -98,10 +98,11 @@ export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | n
   let newest: T | null = null;
   // Walk every week — PostgREST row order is not ranking.
   for (const week of weeks) {
-    if (isInPlay(week.status) && (!latestInPlay || recency(week, latestInPlay) < 0)) {
+    const slot = { season_year: week.season_year, week_number: week.week_number };
+    if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
       latestInPlay = week;
     }
-    if (!newest || recency(week, newest) < 0) newest = week;
+    if (!newest || recency(slot, newest) < 0) newest = week;
   }
   // Newest overall — never leftover draft over a newer final or draft.
   return latestInPlay ?? newest;
@@ -636,6 +637,7 @@ export function familyWeekChrome(
   // ranking ignores id
   // ranking ignores notes, updated_at
   // recency is season_year then week_number, not created_at insertion order
+  // ranking copies only season_year and week_number before comparing
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
 }

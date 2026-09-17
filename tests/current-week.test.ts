@@ -1197,6 +1197,48 @@ describe("selectActiveWeek", () => {
     expect(landed?.status).toBe("open");
   });
 
+  it("selectActiveWeek ranks only season_year, week_number, and in-play status", () => {
+    const noise = { extra: "not a ranking key", row: 0, payload: { n: 1 } };
+    // a: draft W1 + final W2 → active W2
+    const leftover = { ...w(1, "draft"), ...noise, extra: "later" };
+    const premature = { ...w(2, "final"), ...noise, extra: "earlier" };
+    expect(selectActiveWeek([leftover, premature])?.week_number).toBe(2);
+    expect(selectActiveWeek([leftover, premature])?.status).toBe("final");
+    expect(selectActiveWeek([premature, leftover])?.week_number).toBe(2);
+
+    // b: draft W1 + open W2 → active W2
+    const openW2 = { ...w(2, "open"), ...noise };
+    expect(selectActiveWeek([leftover, openW2])?.week_number).toBe(2);
+    expect(selectActiveWeek([leftover, openW2])?.status).toBe("open");
+    expect(selectActiveWeek([leftover, { ...w(2, "locked"), ...noise }])?.week_number).toBe(2);
+
+    // c: open W1 + draft W2 → active W1, W2 labeled Next week
+    const openW1 = { ...wr("w1", 1, "open"), ...noise };
+    const nextDraft = { ...wr("w2", 2, "draft"), ...noise, extra: "auto-created" };
+    const c = selectActiveWeek([openW1, nextDraft]);
+    expect(c?.week_number).toBe(1);
+    expect(c?.id).toBe("w1");
+    expect(weekSwitcherLabel(openW1, c)).toBe("This Sunday");
+    expect(weekSwitcherLabel(nextDraft, c)).toBe("Next week");
+    expect(pickViewWeek([openW1, nextDraft], c, "next")?.id).toBe("w2");
+
+    // d: only final W1 → W1
+    expect(selectActiveWeek([{ ...w(1, "final"), ...noise }])?.week_number).toBe(1);
+
+    // e: skip path: final/skipped W1 + open W2 → W2
+    const skipped = { ...wr("w1", 1, "final"), ...noise };
+    const dirty = {
+      ...wr("w2", 2, "open"),
+      ...noise,
+      finalized_at: "2026-09-15T19:04:43.880Z",
+    };
+    const e = selectActiveWeek([skipped, dirty]);
+    expect(e?.week_number).toBe(2);
+    expect(e?.status).toBe("open");
+    expect(weekSwitcherLabel(dirty, e)).toBe("This Sunday");
+    expect(familyWeekChrome("The Harper House", e)).toBe("The Harper House · Week 2");
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -1297,8 +1339,9 @@ describe("selectActiveWeek", () => {
     expect(end).toBeGreaterThan(start);
     const body = src.slice(start, end);
     expect(body).toMatch(/return latestInPlay \?\? newest/);
-    expect(body).toMatch(/recency\(week, latestInPlay\)/);
-    expect(body).toMatch(/recency\(week, newest\)/);
+    expect(body).toMatch(/season_year: week\.season_year, week_number: week\.week_number/);
+    expect(body).toMatch(/recency\(slot, latestInPlay\)/);
+    expect(body).toMatch(/recency\(slot, newest\)/);
     expect(body).toMatch(/for \(const week of weeks\)/);
     expect(body).toMatch(/Walk every week/);
     expect(body).not.toMatch(/weeks\[0\]/);
@@ -1353,6 +1396,7 @@ describe("selectActiveWeek", () => {
     expect(chromeBody).toMatch(/ranking ignores notes, updated_at/);
     expect(chromeBody).toMatch(/recency is season_year then week_number/);
     expect(chromeBody).toMatch(/not created_at insertion order/);
+    expect(chromeBody).toMatch(/ranking copies only season_year and week_number/);
     expect(body).not.toMatch(/\bid\b/);
     expect(inPlayBody).not.toMatch(/\bid\b/);
     const recencyStart = src.indexOf("function recency");
