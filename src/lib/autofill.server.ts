@@ -113,7 +113,7 @@ export async function ensureNextWeek(
 
   const { data: weeks, error: wErr } = await db
     .from("weeks")
-    .select("id, season_year, week_number, status")
+    .select("id, season_year, week_number, status, finalized_at, lock_at")
     .eq("household_id", householdId)
     .order("season_year", { ascending: false })
     .order("week_number", { ascending: false });

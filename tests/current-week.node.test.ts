@@ -545,6 +545,76 @@ describe("selectActiveWeek", () => {
       familyWeekChrome("The Harper House", selectActiveWeek([leftover, premature, autoW3])),
       "The Harper House · Week 2",
     );
+
+    const skippedClosed = {
+      ...wr("3e3aeeeb", 1, "final"),
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+    };
+    const prematureFinal = {
+      ...wr("52a42a9e", 2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    assert.equal(shouldAutopilotEnsureNextWeek([skippedClosed, prematureFinal]), false);
+    assert.equal(shouldAutopilotEnsureNextWeek([prematureFinal, skippedClosed]), false);
+    assert.equal(selectActiveWeek([skippedClosed, prematureFinal])?.week_number, 2);
+    assert.equal(selectActiveWeek([skippedClosed, prematureFinal])?.status, "final");
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([skippedClosed, prematureFinal])),
+      "The Harper House · Week 2",
+    );
+    assert.equal(selectActiveWeek([skippedClosed, prematureFinal, autoW3])?.week_number, 3);
+    assert.equal(selectActiveWeek([skippedClosed, prematureFinal, autoW3])?.status, "draft");
+    assert.notEqual(
+      familyWeekChrome(
+        "The Harper House",
+        selectActiveWeek([skippedClosed, prematureFinal, autoW3]),
+      ),
+      "The Harper House · Week 2",
+    );
+    assert.equal(skipTargetWeek([skippedClosed, prematureFinal], skippedClosed)?.week_number, 2);
+    assert.equal(
+      skipScrubsViewedInPlace(prematureFinal, skippedClosed, [skippedClosed, prematureFinal]),
+      true,
+    );
+
+    const skippedStrClosed = {
+      season_year: "2026",
+      week_number: "1",
+      status: "final",
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+    } as ReturnType<typeof w> & { finalized_at: null; lock_at: string };
+    const prematureStr = {
+      season_year: "2026",
+      week_number: "2",
+      status: "final",
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    } as ReturnType<typeof w> & { finalized_at: string; lock_at: string };
+    assert.equal(shouldAutopilotEnsureNextWeek([skippedStrClosed, prematureFinal]), false);
+    assert.equal(shouldAutopilotEnsureNextWeek([skippedClosed, prematureStr]), false);
+    assert.equal(shouldAutopilotEnsureNextWeek([skippedStrClosed, prematureStr]), false);
+
+    const skippedLater = { ...w(1, "final"), finalized_at: "2026-09-16T16:00:00.000Z" };
+    const outOfOrder = { ...w(2, "final"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    assert.equal(shouldAutopilotEnsureNextWeek([skippedLater, outOfOrder]), false);
+
+    const played1 = {
+      ...w(1, "final"),
+      finalized_at: "2026-09-08T10:00:00.000Z",
+      lock_at: "2026-09-07T17:00:00.000Z",
+    };
+    const played2 = {
+      ...w(2, "final"),
+      finalized_at: "2026-09-15T10:00:00.000Z",
+      lock_at: "2026-09-13T17:00:00.000Z",
+    };
+    assert.equal(shouldAutopilotEnsureNextWeek([played1, played2]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([w(1, "final"), w(2, "final")]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([prematureFinal]), true);
+    assert.equal(shouldAutopilotEnsureNextWeek([skippedClosed, w(2, "open")]), true);
   });
 
   it("commissioner does not offer Open cards on leftover draft W1 behind newer W2", () => {
@@ -3232,7 +3302,7 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(ensureFn, /shouldAutopilotEnsureNextWeek\(list\)/);
     assert.match(ensureFn, /\[\.\.\.list\]\.sort\(recency\)/);
     assert.doesNotMatch(ensureFn, /\.limit\(1\)/);
-    assert.match(ensureFn, /select\("id, season_year, week_number, status"\)/);
+    assert.match(ensureFn, /select\("id, season_year, week_number, status, finalized_at, lock_at"\)/);
     assert.match(ensureFn, /reason: "leftover"/);
     const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
     const ensureNextGuard = lib.slice(
@@ -3240,6 +3310,7 @@ describe("useCurrentWeek production wiring", () => {
       lib.indexOf("export function shouldAutopilotLockOpen"),
     );
     assert.match(ensureNextGuard, /weeks\.some\(\(w\) => isInPlay\(w\.status\)\)/);
+    assert.match(ensureNextGuard, /recoverableFinishedWeek\(weeks\)/);
     assert.match(ensureNextGuard, /!weeks\.some\(isUnplayedLeftover\)/);
     assert.ok(
       lib.indexOf("export function shouldAutopilotOpenDraft") <

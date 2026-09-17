@@ -163,16 +163,20 @@ export function shouldAutopilotOpenDraft(
 }
 
 /**
- * Autopilot must not auto-create a farther week while leftover unplayed
- * remains and nothing is in play. Creating W3 would hide premature-final
- * W2 via newest-week ranking (Harper: leftover draft W1 + premature-final
- * W2). Skip is the Tuesday path — close leftover without Reveal. Once
- * anything is in play, auto-create may continue (Next week behind This
- * Sunday). Once leftover is closed, auto-create resumes (final/skipped
- * W1 → create W2).
+ * Autopilot must not auto-create a farther week while leftover skip is
+ * still the Tuesday path and nothing is in play. Creating W3 would hide
+ * premature-final W2 via newest-week ranking (Harper: leftover draft W1
+ * + premature-final W2, then leftover skipped-final W1 + premature-final
+ * W2). Skip closes leftover without Reveal, then reopens the premature
+ * final. Once anything is in play, auto-create may continue (Next week
+ * behind This Sunday). Once leftover is closed and the newest week is a
+ * legitimate final, auto-create resumes (final/skipped W1 → create W2).
+ * A lone premature-final with no older week still auto-creates — skip
+ * cannot recover it.
  */
 export function shouldAutopilotEnsureNextWeek(weeks: readonly WeekLike[]): boolean {
   if (weeks.some((w) => isInPlay(w.status))) return true;
+  if (recoverableFinishedWeek(weeks)) return false;
   return !weeks.some(isUnplayedLeftover);
 }
 

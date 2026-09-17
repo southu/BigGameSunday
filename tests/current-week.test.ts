@@ -540,6 +540,73 @@ describe("selectActiveWeek", () => {
     expect(
       familyWeekChrome("The Harper House", selectActiveWeek([leftover, premature, autoW3])),
     ).not.toBe("The Harper House · Week 2");
+
+    const skippedClosed = {
+      ...wr("3e3aeeeb", 1, "final"),
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+    };
+    const prematureFinal = {
+      ...wr("52a42a9e", 2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    expect(shouldAutopilotEnsureNextWeek([skippedClosed, prematureFinal])).toBe(false);
+    expect(shouldAutopilotEnsureNextWeek([prematureFinal, skippedClosed])).toBe(false);
+    expect(selectActiveWeek([skippedClosed, prematureFinal])?.week_number).toBe(2);
+    expect(selectActiveWeek([skippedClosed, prematureFinal])?.status).toBe("final");
+    expect(
+      familyWeekChrome("The Harper House", selectActiveWeek([skippedClosed, prematureFinal])),
+    ).toBe("The Harper House · Week 2");
+    expect(selectActiveWeek([skippedClosed, prematureFinal, autoW3])?.week_number).toBe(3);
+    expect(selectActiveWeek([skippedClosed, prematureFinal, autoW3])?.status).toBe("draft");
+    expect(
+      familyWeekChrome(
+        "The Harper House",
+        selectActiveWeek([skippedClosed, prematureFinal, autoW3]),
+      ),
+    ).not.toBe("The Harper House · Week 2");
+    expect(skipTargetWeek([skippedClosed, prematureFinal], skippedClosed)?.week_number).toBe(2);
+    expect(
+      skipScrubsViewedInPlace(prematureFinal, skippedClosed, [skippedClosed, prematureFinal]),
+    ).toBe(true);
+
+    const skippedStrClosed = {
+      season_year: "2026",
+      week_number: "1",
+      status: "final",
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+    } as ReturnType<typeof w> & { finalized_at: null; lock_at: string };
+    const prematureStr = {
+      season_year: "2026",
+      week_number: "2",
+      status: "final",
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    } as ReturnType<typeof w> & { finalized_at: string; lock_at: string };
+    expect(shouldAutopilotEnsureNextWeek([skippedStrClosed, prematureFinal])).toBe(false);
+    expect(shouldAutopilotEnsureNextWeek([skippedClosed, prematureStr])).toBe(false);
+    expect(shouldAutopilotEnsureNextWeek([skippedStrClosed, prematureStr])).toBe(false);
+
+    const skippedLater = { ...w(1, "final"), finalized_at: "2026-09-16T16:00:00.000Z" };
+    const outOfOrder = { ...w(2, "final"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    expect(shouldAutopilotEnsureNextWeek([skippedLater, outOfOrder])).toBe(false);
+
+    const played1 = {
+      ...w(1, "final"),
+      finalized_at: "2026-09-08T10:00:00.000Z",
+      lock_at: "2026-09-07T17:00:00.000Z",
+    };
+    const played2 = {
+      ...w(2, "final"),
+      finalized_at: "2026-09-15T10:00:00.000Z",
+      lock_at: "2026-09-13T17:00:00.000Z",
+    };
+    expect(shouldAutopilotEnsureNextWeek([played1, played2])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([w(1, "final"), w(2, "final")])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([prematureFinal])).toBe(true);
+    expect(shouldAutopilotEnsureNextWeek([skippedClosed, w(2, "open")])).toBe(true);
   });
 
   it("commissioner does not offer Open cards on leftover draft W1 behind newer W2", () => {
@@ -3109,7 +3176,7 @@ describe("useCurrentWeek production wiring", () => {
     expect(ensureFn).toMatch(/shouldAutopilotEnsureNextWeek\(list\)/);
     expect(ensureFn).toMatch(/\[\.\.\.list\]\.sort\(recency\)/);
     expect(ensureFn).not.toMatch(/\.limit\(1\)/);
-    expect(ensureFn).toMatch(/select\("id, season_year, week_number, status"\)/);
+    expect(ensureFn).toMatch(/select\("id, season_year, week_number, status, finalized_at, lock_at"\)/);
     expect(ensureFn).toMatch(/reason: "leftover"/);
     const lib = readFileSync(join(process.cwd(), "src/lib/current-week.ts"), "utf8");
     const ensureNextGuard = lib.slice(
@@ -3117,6 +3184,7 @@ describe("useCurrentWeek production wiring", () => {
       lib.indexOf("export function shouldAutopilotLockOpen"),
     );
     expect(ensureNextGuard).toMatch(/weeks\.some\(\(w\) => isInPlay\(w\.status\)\)/);
+    expect(ensureNextGuard).toMatch(/recoverableFinishedWeek\(weeks\)/);
     expect(ensureNextGuard).toMatch(/!weeks\.some\(isUnplayedLeftover\)/);
     expect(lib.indexOf("export function shouldAutopilotOpenDraft")).toBeLessThan(
       lib.indexOf("export function shouldAutopilotEnsureNextWeek"),
