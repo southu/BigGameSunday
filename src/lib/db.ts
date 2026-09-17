@@ -432,6 +432,14 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
         return false;
       }
     })
+    .filter((week) => {
+      try {
+        return !(week.season_year instanceof Promise) && !(week.week_number instanceof Promise);
+      } catch {
+        // leftover promise keys cannot hide a newer week
+        return false;
+      }
+    })
     .sort(recency);
 }
 
