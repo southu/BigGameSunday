@@ -45,6 +45,12 @@ export type WeekLike = WeekSlot & {
    * recency is season_year then week_number, not lexicographic id.
    */
   id?: string;
+  /**
+   * Ranking ignores these. Extra select("*") fields such as notes or
+   * updated_at cannot hide a newer week behind a leftover draft.
+   */
+  updated_at?: string | null;
+  notes?: string | null;
 };
 
 export type WeekRef = WeekLike & { id: string };
@@ -53,7 +59,8 @@ export type WeekRef = WeekLike & { id: string };
  * Recency for ranking: higher season_year, then higher week_number.
  * Timestamps and leftover stamps are not keys. Extra select("*") fields
  * from fetchHouseholdWeeks cannot hide a newer week. PostgREST row order
- * and created_at insertion order are not keys.
+ * and created_at insertion order are not keys. notes and updated_at are
+ * not keys.
  */
 function recency(a: WeekSlot, b: WeekSlot): number {
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
@@ -614,8 +621,9 @@ export function skipUnlocksCardsOnLockRefresh(
  * `lock_at_override`, `created_at`, or `featured_game_id`. Neither do
  * `auto_created_at`, `auto_locked_at`, `autopilot_hold`, or
  * `autopilot_checked_at`. Neither do `household_id` or
- * `commissioner_edited_at`. Neither does `id`. Recency is
- * season_year then week_number, not created_at insertion order.
+ * `commissioner_edited_at`. Neither does `id`. Neither do `notes` or
+ * `updated_at`. Recency is season_year then week_number, not created_at
+ * insertion order.
  */
 export function familyWeekChrome(
   householdName: string | null | undefined,
@@ -626,6 +634,7 @@ export function familyWeekChrome(
   // ranking ignores auto_created_at, auto_locked_at, autopilot_hold
   // ranking ignores household_id, commissioner_edited_at, autopilot_checked_at
   // ranking ignores id
+  // ranking ignores notes, updated_at
   // recency is season_year then week_number, not created_at insertion order
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
