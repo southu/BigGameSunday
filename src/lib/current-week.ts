@@ -334,6 +334,15 @@ function leftoverRegExpKey(value: unknown): boolean {
   }
 }
 
+/** ArrayBuffer keys coerce via Number(new ArrayBuffer(8)) (NaN) and would steal recency. JSON/PostgREST never sends ArrayBuffer week keys. leftover missing-key drafts stay selectable. */
+function leftoverArrayBufferKey(value: unknown): boolean {
+  try {
+    return value instanceof ArrayBuffer;
+  } catch {
+    return true;
+  }
+}
+
 export function recency(
   a: WeekSlot | null | undefined | boolean | number | string | unknown[],
   b: WeekSlot | null | undefined | boolean | number | string | unknown[],
@@ -530,6 +539,11 @@ export function recency(
   if (leftoverRegExpKey(aNumKey)) a.week_number = 0;
   if (leftoverRegExpKey(bYearKey)) b.season_year = 0;
   if (leftoverRegExpKey(bNumKey)) b.week_number = 0;
+  // leftover arraybuffer keys cannot hide a newer week
+  if (leftoverArrayBufferKey(aYearKey)) a.season_year = 0;
+  if (leftoverArrayBufferKey(aNumKey)) a.week_number = 0;
+  if (leftoverArrayBufferKey(bYearKey)) b.season_year = 0;
+  if (leftoverArrayBufferKey(bNumKey)) b.week_number = 0;
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -585,6 +599,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * leftover promise keys cannot hide a newer week.
  * leftover error keys cannot hide a newer week.
  * leftover regexp keys cannot hide a newer week.
+ * leftover arraybuffer keys cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
   weeks: readonly (T | null | undefined | boolean | number | string | unknown[])[] | null | undefined,
@@ -714,6 +729,10 @@ export function selectActiveWeek<T extends WeekLike>(
       }
       // leftover regexp keys cannot hide a newer week
       if (leftoverRegExpKey(week.season_year) || leftoverRegExpKey(week.week_number)) {
+        continue;
+      }
+      // leftover arraybuffer keys cannot hide a newer week
+      if (leftoverArrayBufferKey(week.season_year) || leftoverArrayBufferKey(week.week_number)) {
         continue;
       }
       if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
@@ -998,6 +1017,17 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
   }
   try {
     if (leftoverRegExpKey(week.week_number)) week_number = 0;
+  } catch {
+    week_number = 0;
+  }
+  // leftover arraybuffer keys cannot hide a newer week
+  try {
+    if (leftoverArrayBufferKey(week.season_year)) season_year = 0;
+  } catch {
+    season_year = 0;
+  }
+  try {
+    if (leftoverArrayBufferKey(week.week_number)) week_number = 0;
   } catch {
     week_number = 0;
   }
@@ -1599,6 +1629,7 @@ export function familyWeekChrome(
   // leftover promise keys cannot hide a newer week
   // leftover error keys cannot hide a newer week
   // leftover regexp keys cannot hide a newer week
+  // leftover arraybuffer keys cannot hide a newer week
   // fetchHouseholdWeeks sorts with recency
   // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
@@ -1631,6 +1662,7 @@ export function familyWeekChrome(
       if (leftoverPromiseKey(weekNumber)) return name;
       if (leftoverErrorKey(weekNumber)) return name;
       if (leftoverRegExpKey(weekNumber)) return name;
+      if (leftoverArrayBufferKey(weekNumber)) return name;
     } catch {
       // leftover throwing rows cannot hide a newer week
       return name;
@@ -1690,6 +1722,8 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
     if (leftoverErrorKey(weekNumber)) w = { ...w, week_number: 0 };
     // leftover regexp keys cannot hide a newer week
     if (leftoverRegExpKey(weekNumber)) w = { ...w, week_number: 0 };
+    // leftover arraybuffer keys cannot hide a newer week
+    if (leftoverArrayBufferKey(weekNumber)) w = { ...w, week_number: 0 };
   } catch {
     // leftover unconvertible keys cannot hide a newer week
     w = { ...w, week_number: 0 };
