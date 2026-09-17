@@ -102,7 +102,7 @@ function leftoverHostObject(value: object): boolean {
 function leftoverObjectKey(value: unknown): boolean {
   if (value == null) return false;
   const t = typeof value;
-  return t !== "number" && t !== "string" && t !== "bigint" && t !== "boolean";
+  return t !== "number" && t !== "string" && t !== "bigint" && t !== "boolean" && t !== "symbol";
 }
 
 /** Blank/"foo" parse as 0 or NaN and would steal in-play over a newer week. */
@@ -230,6 +230,15 @@ function leftoverAccessorKey(week: object, key: "season_year" | "week_number"): 
 function leftoverBooleanKey(value: unknown): boolean {
   try {
     return typeof value === "boolean";
+  } catch {
+    return true;
+  }
+}
+
+/** Symbol keys throw via Number(Symbol()) and would steal in-play over a real week. JSON/PostgREST never sends symbol week keys. leftover missing-key drafts stay selectable. */
+function leftoverSymbolKey(value: unknown): boolean {
+  try {
+    return typeof value === "symbol";
   } catch {
     return true;
   }
@@ -376,6 +385,11 @@ export function recency(
   if (leftoverBooleanKey(aNumKey)) a.week_number = 0;
   if (leftoverBooleanKey(bYearKey)) b.season_year = 0;
   if (leftoverBooleanKey(bNumKey)) b.week_number = 0;
+  // leftover symbol keys cannot hide a newer week
+  if (leftoverSymbolKey(aYearKey)) a.season_year = 0;
+  if (leftoverSymbolKey(aNumKey)) a.week_number = 0;
+  if (leftoverSymbolKey(bYearKey)) b.season_year = 0;
+  if (leftoverSymbolKey(bNumKey)) b.week_number = 0;
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -420,6 +434,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * leftover undefined keys cannot hide a newer week.
  * leftover accessor keys cannot hide a newer week.
  * leftover boolean keys cannot hide a newer week.
+ * leftover symbol keys cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
   weeks: readonly (T | null | undefined | boolean | number | string | unknown[])[] | null | undefined,
@@ -505,6 +520,10 @@ export function selectActiveWeek<T extends WeekLike>(
       }
       // leftover boolean keys cannot hide a newer week
       if (leftoverBooleanKey(week.season_year) || leftoverBooleanKey(week.week_number)) {
+        continue;
+      }
+      // leftover symbol keys cannot hide a newer week
+      if (leftoverSymbolKey(week.season_year) || leftoverSymbolKey(week.week_number)) {
         continue;
       }
       if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
@@ -668,6 +687,17 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
   }
   try {
     if (leftoverBooleanKey(week.week_number)) week_number = 0;
+  } catch {
+    week_number = 0;
+  }
+  // leftover symbol keys cannot hide a newer week
+  try {
+    if (leftoverSymbolKey(week.season_year)) season_year = 0;
+  } catch {
+    season_year = 0;
+  }
+  try {
+    if (leftoverSymbolKey(week.week_number)) week_number = 0;
   } catch {
     week_number = 0;
   }
@@ -1258,6 +1288,7 @@ export function familyWeekChrome(
   // leftover undefined keys cannot hide a newer week
   // leftover accessor keys cannot hide a newer week
   // leftover boolean keys cannot hide a newer week
+  // leftover symbol keys cannot hide a newer week
   // fetchHouseholdWeeks sorts with recency
   // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
@@ -1279,6 +1310,7 @@ export function familyWeekChrome(
       if (leftoverNullKey(weekNumber)) return name;
       if (leftoverUndefinedKey(weekNumber)) return name;
       if (leftoverBooleanKey(weekNumber)) return name;
+      if (leftoverSymbolKey(weekNumber)) return name;
     } catch {
       // leftover throwing rows cannot hide a newer week
       return name;
@@ -1316,6 +1348,8 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
     if (leftoverUndefinedKey(weekNumber)) w = { ...w, week_number: 0 };
     // leftover boolean keys cannot hide a newer week
     if (leftoverBooleanKey(weekNumber)) w = { ...w, week_number: 0 };
+    // leftover symbol keys cannot hide a newer week
+    if (leftoverSymbolKey(weekNumber)) w = { ...w, week_number: 0 };
   } catch {
     // leftover unconvertible keys cannot hide a newer week
     w = { ...w, week_number: 0 };
