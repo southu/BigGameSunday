@@ -510,6 +510,14 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
         return false;
       }
     })
+    .filter((week) => {
+      try {
+        return !(week.season_year instanceof URL) && !(week.week_number instanceof URL);
+      } catch {
+        // leftover url keys cannot hide a newer week
+        return false;
+      }
+    })
     .sort(recency);
 }
 
