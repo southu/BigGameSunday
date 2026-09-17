@@ -184,21 +184,26 @@ describe("selectActiveWeek", () => {
   });
 
   it("live Harper House: skipped W1 + open W2 shows Week 2 as active", () => {
+    const household_id = "b03e87bd-2899-4e71-b6fb-54399eef3e6d";
     const skipped = {
       id: "3e3aeeeb-4dcb-445b-9297-aa6c20967433",
+      household_id,
       season_year: 2026,
       week_number: 1,
       status: "final",
       finalized_at: null,
-      lock_at: "2026-09-10T00:20:00.000Z",
+      lock_at: "2026-09-10T00:20:00+00:00",
+      auto_created_at: "2026-09-15T17:53:12.479+00:00",
     };
     const open = {
       id: "52a42a9e-fbce-4e06-a9b4-8a00b1d36994",
+      household_id,
       season_year: 2026,
       week_number: 2,
       status: "open",
-      finalized_at: "2026-09-15T19:04:43.880Z",
-      lock_at: "2026-09-18T00:15:00.000Z",
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      lock_at: "2026-09-18T00:15:00+00:00",
+      auto_created_at: "2026-09-15T18:00:32.128+00:00",
     };
     const weeks = [skipped, open];
     const active = selectActiveWeek(weeks);
@@ -213,6 +218,22 @@ describe("selectActiveWeek", () => {
     expect(pickViewWeek(weeks, active, null)?.week_number).toBe(2);
     expect(pickViewWeek(weeks, active, "next")?.week_number).toBe(2);
     expect(`Week ${active?.week_number}`).toBe("Week 2");
+    const laterDraft = {
+      id: "auto-w3",
+      household_id,
+      season_year: 2026,
+      week_number: 3,
+      status: "draft",
+    };
+    const withLater = [skipped, open, laterDraft];
+    const stillW2 = selectActiveWeek(withLater);
+    expect(stillW2?.id).toBe("52a42a9e-fbce-4e06-a9b4-8a00b1d36994");
+    expect(stillW2?.status).toBe("open");
+    expect(weekSwitcherLabel(open, stillW2)).toBe("This Sunday");
+    expect(weekSwitcherLabel(laterDraft, stillW2)).toBe("Next week");
+    expect(pickViewWeek(withLater, stillW2, null)?.week_number).toBe(2);
+    expect(pickViewWeek(withLater, stillW2, "next")?.id).toBe("auto-w3");
+    expect(`Week ${stillW2?.week_number}`).toBe("Week 2");
   });
 
   it("draft week N + final/open week N+1 → returns week N+1 (not the old draft)", () => {
