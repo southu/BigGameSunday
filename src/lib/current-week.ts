@@ -81,6 +81,7 @@ export type WeekRef = WeekLike & { id: string };
  * cannot hide a newer week. leftover non-positive keys rank as 0,0 so they
  * cannot hide a newer week. leftover infinity keys rank as 0,0 so they
  * cannot hide a newer week. leftover nan keys rank as 0,0 so they
+ * cannot hide a newer week. leftover null keys rank as 0,0 so they
  * cannot hide a newer week. fetchHouseholdWeeks sorts with recency so
  * the week list cannot skip week_number on mixed string/number keys.
  */
@@ -181,6 +182,15 @@ function leftoverNaNKey(value: unknown): boolean {
   try {
     if (typeof value !== "number") return false;
     return Number.isNaN(value);
+  } catch {
+    return true;
+  }
+}
+
+/** Null keys (JSON/PostgREST `null`) coerce via Number(null) === 0 and would steal in-play over a real week. Recency zeros them, but leftover OPEN null is still latestInPlay. leftover missing-key drafts stay selectable. */
+function leftoverNullKey(value: unknown): boolean {
+  try {
+    return value === null;
   } catch {
     return true;
   }
@@ -297,6 +307,11 @@ export function recency(
   if (leftoverNaNKey(aNumKey)) a.week_number = 0;
   if (leftoverNaNKey(bYearKey)) b.season_year = 0;
   if (leftoverNaNKey(bNumKey)) b.week_number = 0;
+  // leftover null keys cannot hide a newer week
+  if (leftoverNullKey(aYearKey)) a.season_year = 0;
+  if (leftoverNullKey(aNumKey)) a.week_number = 0;
+  if (leftoverNullKey(bYearKey)) b.season_year = 0;
+  if (leftoverNullKey(bNumKey)) b.week_number = 0;
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -337,6 +352,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * leftover non-positive keys cannot hide a newer week.
  * leftover infinity keys cannot hide a newer week.
  * leftover nan keys cannot hide a newer week.
+ * leftover null keys cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
   weeks: readonly (T | null | undefined | boolean | number | string | unknown[])[] | null | undefined,
@@ -393,6 +409,10 @@ export function selectActiveWeek<T extends WeekLike>(
       }
       // leftover nan keys cannot hide a newer week
       if (leftoverNaNKey(week.season_year) || leftoverNaNKey(week.week_number)) {
+        continue;
+      }
+      // leftover null keys cannot hide a newer week
+      if (leftoverNullKey(week.season_year) || leftoverNullKey(week.week_number)) {
         continue;
       }
       if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
@@ -512,6 +532,17 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
   }
   try {
     if (leftoverNaNKey(week.week_number)) week_number = 0;
+  } catch {
+    week_number = 0;
+  }
+  // leftover null keys cannot hide a newer week
+  try {
+    if (leftoverNullKey(week.season_year)) season_year = 0;
+  } catch {
+    season_year = 0;
+  }
+  try {
+    if (leftoverNullKey(week.week_number)) week_number = 0;
   } catch {
     week_number = 0;
   }
@@ -1098,6 +1129,7 @@ export function familyWeekChrome(
   // leftover non-positive keys cannot hide a newer week
   // leftover infinity keys cannot hide a newer week
   // leftover nan keys cannot hide a newer week
+  // leftover null keys cannot hide a newer week
   // fetchHouseholdWeeks sorts with recency
   // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
@@ -1115,6 +1147,7 @@ export function familyWeekChrome(
       if (leftoverNonPositiveKey(weekNumber)) return name;
       if (leftoverInfinityKey(weekNumber)) return name;
       if (leftoverNaNKey(weekNumber)) return name;
+      if (leftoverNullKey(weekNumber)) return name;
     } catch {
       // leftover throwing rows cannot hide a newer week
       return name;
@@ -1144,6 +1177,8 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
     if (leftoverInfinityKey(weekNumber)) w = { ...w, week_number: 0 };
     // leftover nan keys cannot hide a newer week
     if (leftoverNaNKey(weekNumber)) w = { ...w, week_number: 0 };
+    // leftover null keys cannot hide a newer week
+    if (leftoverNullKey(weekNumber)) w = { ...w, week_number: 0 };
   } catch {
     // leftover unconvertible keys cannot hide a newer week
     w = { ...w, week_number: 0 };
