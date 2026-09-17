@@ -198,6 +198,9 @@ describe("selectActiveWeek", () => {
       status: "final",
       finalized_at: null,
       lock_at: "2026-09-10T00:20:00+00:00",
+      lock_at_override: false,
+      featured_game_id: "d5ce1996-a969-4755-bc8f-899103fe341e",
+      created_at: "2026-09-15T17:53:12.526397+00:00",
       auto_created_at: "2026-09-15T17:53:12.479+00:00",
       auto_opened_at: null,
       auto_locked_at: null,
@@ -212,6 +215,9 @@ describe("selectActiveWeek", () => {
       status: "open",
       finalized_at: "2026-09-15T19:04:43.88+00:00",
       lock_at: "2026-09-18T00:15:00+00:00",
+      lock_at_override: false,
+      featured_game_id: "c08c9c12-78c2-4904-ae34-ffc1d38c81c2",
+      created_at: "2026-09-15T18:00:32.412751+00:00",
       auto_created_at: "2026-09-15T18:00:32.128+00:00",
       auto_opened_at: null,
       auto_locked_at: null,
@@ -250,6 +256,12 @@ describe("selectActiveWeek", () => {
     assert.equal(open.auto_opened_at, null);
     assert.equal(skipped.auto_opened_at, null);
     assert.equal(open.finalized_at, "2026-09-15T19:04:43.88+00:00");
+    assert.equal(skipped.lock_at_override, false);
+    assert.equal(open.lock_at_override, false);
+    assert.equal(skipped.featured_game_id, "d5ce1996-a969-4755-bc8f-899103fe341e");
+    assert.equal(open.featured_game_id, "c08c9c12-78c2-4904-ae34-ffc1d38c81c2");
+    assert.equal(skipped.created_at, "2026-09-15T17:53:12.526397+00:00");
+    assert.equal(open.created_at, "2026-09-15T18:00:32.412751+00:00");
     assert.equal(familyWeekChrome("The Harper House", active), "The Harper House · Week 2");
     assert.equal(familyWeekChrome("The Harper House", stillW2), "The Harper House · Week 2");
     assert.equal(`The Harper House · Week ${active?.week_number}`, "The Harper House · Week 2");
@@ -737,6 +749,63 @@ describe("selectActiveWeek", () => {
     );
   });
 
+  it("ranking ignores lock_at_override, created_at, and featured_game_id", () => {
+    const skipped = {
+      ...wr("3e3aeeeb", 1, "final"),
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+      lock_at_override: false,
+      featured_game_id: "d5ce1996-a969-4755-bc8f-899103fe341e",
+      created_at: "2026-09-15T17:53:12.526397+00:00",
+      commissioner_edited_at: null,
+      auto_opened_at: null,
+    };
+    const dirtyOpen = {
+      ...wr("52a42a9e", 2, "open"),
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      lock_at: "2026-09-18T00:15:00+00:00",
+      lock_at_override: false,
+      featured_game_id: "c08c9c12-78c2-4904-ae34-ffc1d38c81c2",
+      created_at: "2026-09-15T18:00:32.412751+00:00",
+      commissioner_edited_at: "2026-09-15T19:04:30.621+00:00",
+      auto_opened_at: null,
+    };
+    const weeks = [skipped, dirtyOpen];
+    const active = selectActiveWeek(weeks);
+    assert.equal(active?.id, "52a42a9e");
+    assert.equal(active?.week_number, 2);
+    assert.equal(active?.status, "open");
+    assert.equal(selectActiveWeek([dirtyOpen, skipped])?.id, "52a42a9e");
+    assert.equal(weekSwitcherLabel(dirtyOpen, active), "This Sunday");
+    assert.equal(familyWeekChrome("The Harper House", active), "The Harper House · Week 2");
+    const olderOverride = {
+      ...skipped,
+      lock_at_override: true,
+      created_at: "2026-09-01T00:00:00+00:00",
+    };
+    const newerNoFeature = {
+      ...dirtyOpen,
+      featured_game_id: null,
+      lock_at_override: false,
+      created_at: "2026-09-16T00:00:00+00:00",
+    };
+    assert.equal(selectActiveWeek([olderOverride, newerNoFeature])?.week_number, 2);
+    assert.equal(selectActiveWeek([newerNoFeature, olderOverride])?.week_number, 2);
+    assert.equal(selectActiveWeek([olderOverride, newerNoFeature])?.status, "open");
+    const leftoverDraft = { ...skipped, status: "draft", lock_at_override: true };
+    const prematureFinal = { ...dirtyOpen, status: "final" };
+    assert.equal(selectActiveWeek([leftoverDraft, prematureFinal])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverDraft, prematureFinal])?.status, "final");
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftoverDraft, prematureFinal])),
+      "The Harper House · Week 2",
+    );
+    assert.equal(
+      weekSwitcherLabel(leftoverDraft, selectActiveWeek([leftoverDraft, prematureFinal])),
+      "Week 1",
+    );
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -847,6 +916,10 @@ describe("selectActiveWeek", () => {
     assert.doesNotMatch(body, /finalized_at/);
     assert.doesNotMatch(body, /lock_at/);
     assert.doesNotMatch(body, /auto_opened_at/);
+    assert.doesNotMatch(body, /lock_at_override/);
+    assert.doesNotMatch(body, /featured_game_id/);
+    assert.doesNotMatch(body, /\bcreated_at\b/);
+    assert.doesNotMatch(body, /commissioner_edited_at/);
     const inPlayStart = src.indexOf("function isInPlay");
     const inPlayEnd = src.indexOf("export function isNewerDraft");
     assert.ok(inPlayStart >= 0 && inPlayEnd > inPlayStart);
@@ -854,6 +927,9 @@ describe("selectActiveWeek", () => {
     assert.match(inPlayBody, /status === "open" \|\| status === "locked"/);
     assert.doesNotMatch(inPlayBody, /auto_opened_at/);
     assert.doesNotMatch(inPlayBody, /finalized_at/);
+    assert.doesNotMatch(inPlayBody, /lock_at_override/);
+    assert.doesNotMatch(inPlayBody, /featured_game_id/);
+    assert.doesNotMatch(inPlayBody, /\bcreated_at\b/);
     const chromeStart = src.indexOf("export function familyWeekChrome");
     const chromeEnd = src.indexOf("export function weekSwitcherLabel");
     assert.ok(chromeStart >= 0 && chromeEnd > chromeStart);
@@ -862,6 +938,7 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /\$\{name\} · Week \$\{week\.week_number\}/);
     assert.match(chromeBody, /The Harper House · Week 2/);
     assert.match(chromeBody, /leftover draft W1 \+ premature-final W2/);
+    assert.match(chromeBody, /lock_at_override, created_at, featured_game_id/);
     assert.doesNotMatch(src, /ranked\.find\(\(w\) => w\.status === "draft"\)/);
     assert.doesNotMatch(src, /else latest draft/);
     assert.doesNotMatch(src, /open\/locked > draft > final/);

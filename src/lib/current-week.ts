@@ -20,6 +20,15 @@ export type WeekLike = WeekSlot & {
    * `auto_opened_at` still null (Harper House W2). In-play is status only.
    */
   auto_opened_at?: string | null;
+  /**
+   * Ranking ignores these. Live Harper House skipped W1 + dirty-open W2
+   * carry lock_at_override, created_at, featured_game_id, and
+   * commissioner_edited_at; in-play is status only.
+   */
+  lock_at_override?: boolean;
+  featured_game_id?: string | null;
+  created_at?: string | null;
+  commissioner_edited_at?: string | null;
 };
 
 export type WeekRef = WeekLike & { id: string };
@@ -578,13 +587,15 @@ export function skipUnlocksCardsOnLockRefresh(
  * "The Harper House · Week 2". Original incident 2026-09-15
  * leftover draft W1 + premature-final W2 also captions Week 2 — never
  * leftover Week 1. Ranking is status-only — a leftover `finalized_at`
- * or a null `auto_opened_at` does not hide an open week.
+ * or a null `auto_opened_at` does not hide an open week. Neither do
+ * `lock_at_override`, `created_at`, or `featured_game_id`.
  */
 export function familyWeekChrome(
   householdName: string | null | undefined,
   week: WeekSlot | null | undefined,
 ): string {
   // leftover draft W1 + premature-final W2 → The Harper House · Week 2
+  // ranking ignores lock_at_override, created_at, featured_game_id
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
 }
