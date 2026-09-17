@@ -575,13 +575,16 @@ export function skipUnlocksCardsOnLockRefresh(
 /**
  * Family header caption from the household name and the active week
  * (`selectActiveWeek`). Harper House skipped W1 + dirty-open W2 →
- * "The Harper House · Week 2". Ranking is status-only — a leftover
- * `finalized_at` or a null `auto_opened_at` does not hide an open week.
+ * "The Harper House · Week 2". Original incident 2026-09-15
+ * leftover draft W1 + premature-final W2 also captions Week 2 — never
+ * leftover Week 1. Ranking is status-only — a leftover `finalized_at`
+ * or a null `auto_opened_at` does not hide an open week.
  */
 export function familyWeekChrome(
   householdName: string | null | undefined,
   week: WeekSlot | null | undefined,
 ): string {
+  // leftover draft W1 + premature-final W2 → The Harper House · Week 2
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
 }

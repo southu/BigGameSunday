@@ -103,6 +103,8 @@ describe("selectActiveWeek", () => {
     assert.notEqual(weekSwitcherLabel(harperDraft, harper), "This Sunday");
     assert.notEqual(weekSwitcherLabel(harperDraft, harper), "Next week");
     assert.equal(weekSwitcherLabel(harperFinal, harper), "Week 2");
+    assert.equal(familyWeekChrome("The Harper House", harper), "The Harper House · Week 2");
+    assert.notEqual(familyWeekChrome("The Harper House", harperDraft), "The Harper House · Week 2");
     assert.equal(pickViewWeek([harperDraft, harperFinal], harper, null)?.id, "52a42a9e");
     assert.equal(pickViewWeek([harperDraft, harperFinal], harper, "next")?.id, "52a42a9e");
     assert.equal(pickViewWeek([harperFinal, harperDraft], harper, "next")?.id, "52a42a9e");
@@ -123,6 +125,7 @@ describe("selectActiveWeek", () => {
     assert.equal(harper?.id, "52a42a9e");
     assert.equal(harper?.status, "open");
     assert.equal(weekSwitcherLabel(harperOpen, harper), "This Sunday");
+    assert.equal(familyWeekChrome("The Harper House", harper), "The Harper House · Week 2");
     assert.equal(weekSwitcherLabel(harperDraft, harper), "Week 1");
     assert.notEqual(weekSwitcherLabel(harperDraft, harper), "This Sunday");
     assert.notEqual(weekSwitcherLabel(harperDraft, harper), "Next week");
@@ -310,6 +313,52 @@ describe("selectActiveWeek", () => {
     assert.doesNotMatch(familyWeekChrome(household.name, active), /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
   });
 
+  it("live Harper House leftover-draft incident: draft W1 + premature-final W2 shows Week 2", () => {
+    const household = {
+      id: "b03e87bd-2899-4e71-b6fb-54399eef3e6d",
+      name: "The Harper House",
+    };
+    const leftoverDraft = {
+      id: "3e3aeeeb-4dcb-445b-9297-aa6c20967433",
+      household_id: household.id,
+      season_year: 2026,
+      week_number: 1,
+      status: "draft",
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+      auto_opened_at: null,
+    };
+    const prematureFinal = {
+      id: "52a42a9e-fbce-4e06-a9b4-8a00b1d36994",
+      household_id: household.id,
+      season_year: 2026,
+      week_number: 2,
+      status: "final",
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      lock_at: "2026-09-18T00:15:00+00:00",
+      auto_opened_at: null,
+      commissioner_edited_at: "2026-09-15T19:04:30.621+00:00",
+    };
+    const weeks = [leftoverDraft, prematureFinal];
+    const active = selectActiveWeek(weeks);
+    assert.equal(active?.id, prematureFinal.id);
+    assert.equal(active?.week_number, 2);
+    assert.equal(active?.status, "final");
+    assert.equal(selectActiveWeek([prematureFinal, leftoverDraft])?.id, prematureFinal.id);
+    assert.equal(weekSwitcherLabel(leftoverDraft, active), "Week 1");
+    assert.notEqual(weekSwitcherLabel(leftoverDraft, active), "This Sunday");
+    assert.notEqual(weekSwitcherLabel(leftoverDraft, active), "Next week");
+    assert.equal(weekSwitcherLabel(prematureFinal, active), "Week 2");
+    assert.equal(familyWeekChrome(household.name, active), "The Harper House · Week 2");
+    assert.notEqual(familyWeekChrome(household.name, leftoverDraft), "The Harper House · Week 2");
+    assert.equal(familyWeekChrome(household.name, leftoverDraft), "The Harper House · Week 1");
+    assert.equal(`Week ${active?.week_number}`, "Week 2");
+    assert.equal(pickViewWeek(weeks, active, null)?.id, prematureFinal.id);
+    assert.equal(pickViewWeek(weeks, active, "next")?.id, prematureFinal.id);
+    assert.notEqual(pickViewWeek(weeks, active, "next")?.id, leftoverDraft.id);
+    assert.doesNotMatch(familyWeekChrome(household.name, active), /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+  });
+
   it("does not keep the leftover-draft trap from 2026-09-15 (any draft over any final)", () => {
     const leftover = wr("3e3aeeeb", 1, "draft");
     const premature = wr("52a42a9e", 2, "final");
@@ -330,6 +379,10 @@ describe("selectActiveWeek", () => {
     assert.equal(selectActiveWeek([leftover, premature])?.week_number, 2);
     assert.equal(selectActiveWeek([leftover, premature])?.status, "final");
     assert.equal(`Week ${selectActiveWeek([leftover, premature])?.week_number}`, "Week 2");
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftover, premature])),
+      "The Harper House · Week 2",
+    );
     const open = wr("w1", 1, "open");
     const nextDraft = wr("w2", 2, "draft");
     const inPlay = selectActiveWeek([open, nextDraft]);
@@ -807,6 +860,8 @@ describe("selectActiveWeek", () => {
     const chromeBody = src.slice(chromeStart, chromeEnd);
     assert.match(chromeBody, /householdName \?\? "Your household"/);
     assert.match(chromeBody, /\$\{name\} · Week \$\{week\.week_number\}/);
+    assert.match(chromeBody, /The Harper House · Week 2/);
+    assert.match(chromeBody, /leftover draft W1 \+ premature-final W2/);
     assert.doesNotMatch(src, /ranked\.find\(\(w\) => w\.status === "draft"\)/);
     assert.doesNotMatch(src, /else latest draft/);
     assert.doesNotMatch(src, /open\/locked > draft > final/);
