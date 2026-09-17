@@ -324,12 +324,15 @@ describe("selectActiveWeek", () => {
     assert.equal(leftoverDraftNextStep(w(2, "open"), [skipped, w(2, "open")]), null);
     const leftoverOpen = leftoverDraftNextStep(w(1, "open"), [w(1, "open"), w(2, "final")]);
     assert.match(leftoverOpen?.label ?? "", /behind a newer week/);
-    assert.match(leftoverOpen?.label ?? "", /skip it to start next week/);
+    assert.match(leftoverOpen?.label ?? "", /without Reveal/);
+    assert.doesNotMatch(leftoverOpen?.label ?? "", /start next week/);
     assert.doesNotMatch(leftoverOpen?.label ?? "", /Lock the cards/);
     assert.doesNotMatch(leftoverOpen?.label ?? "", /Open cards/);
     assert.doesNotMatch(leftoverOpen?.label ?? "", /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
     const leftoverLocked = leftoverDraftNextStep(w(1, "locked"), [w(1, "locked"), w(2, "final")]);
     assert.match(leftoverLocked?.label ?? "", /behind a newer week/);
+    assert.match(leftoverLocked?.label ?? "", /without Reveal/);
+    assert.doesNotMatch(leftoverLocked?.label ?? "", /start next week/);
     assert.doesNotMatch(leftoverLocked?.label ?? "", /Finalize/);
     assert.match(
       leftoverDraftNextStep(w(1, "open"), [w(1, "open"), w(2, "open")])?.label ?? "",
@@ -1328,6 +1331,101 @@ describe("selectActiveWeek", () => {
     assert.equal(inPlace?.finalized_at, "2026-09-15T19:04:43.880Z");
   });
 
+  it("skip of This Sunday does not reopen a completed Next week", () => {
+    const thisSunday = wr("w1", 1, "open");
+    const lockedSunday = wr("w1l", 1, "locked");
+    const completedNext = {
+      ...wr("w2", 2, "final"),
+      finalized_at: "2026-09-16T16:00:00.000Z",
+      lock_at: "2026-09-13T17:00:00.000Z",
+    };
+    const leftoverDraft = wr("w1d", 1, "draft");
+    const laterDraft = wr("w3", 3, "draft");
+    const weeks = [thisSunday, completedNext];
+    const lockedWeeks = [lockedSunday, completedNext];
+    const wrapSunday = wr("w18", 18, "locked", 2025);
+    const wrapCompleted = {
+      ...wr("w1", 1, "final", 2026),
+      finalized_at: "2026-09-16T16:00:00.000Z",
+      lock_at: "2026-09-13T17:00:00.000Z",
+    };
+    const wrapWeeks = [wrapSunday, wrapCompleted];
+    const harperSunday = wr("3e3aeeeb", 1, "open");
+    const harperCompleted = {
+      ...wr("52a42a9e", 2, "final"),
+      finalized_at: "2026-09-16T16:00:00.000Z",
+      lock_at: "2026-09-13T17:00:00.000Z",
+    };
+
+    assert.equal(selectActiveWeek(weeks)?.id, "w1");
+    assert.equal(selectActiveWeek(weeks)?.status, "open");
+    assert.equal(weekSwitcherLabel(thisSunday, selectActiveWeek(weeks)), "This Sunday");
+    assert.equal(weekSwitcherLabel(completedNext, selectActiveWeek(weeks)), "Week 2");
+    assert.notEqual(weekSwitcherLabel(completedNext, selectActiveWeek(weeks)), "This Sunday");
+    assert.notEqual(weekSwitcherLabel(completedNext, selectActiveWeek(weeks)), "Next week");
+    assert.equal(selectActiveWeek(lockedWeeks)?.id, "w1l");
+    assert.equal(selectActiveWeek(wrapWeeks)?.id, "w18");
+    assert.equal(selectActiveWeek([harperSunday, harperCompleted])?.id, "3e3aeeeb");
+
+    assert.equal(skipTargetWeek(weeks, thisSunday)?.id, "w1");
+    assert.equal(skipTargetWeek(weeks, completedNext), null);
+    assert.equal(skipTouchesNextWeek(completedNext, weeks, thisSunday), false);
+    assert.equal(skipTouchesNextWeek(completedNext, lockedWeeks, lockedSunday), false);
+    assert.equal(skipTouchesNextWeek(wrapCompleted, wrapWeeks, wrapSunday), false);
+    assert.equal(shouldOpenExistingNextWeek(completedNext, weeks, thisSunday), false);
+    assert.equal(shouldOpenExistingNextWeek(completedNext, lockedWeeks, lockedSunday), false);
+    assert.equal(shouldOpenExistingNextWeek(wrapCompleted, wrapWeeks, wrapSunday), false);
+    assert.equal(skipClearsCalledMoments(completedNext), true);
+
+    const landing = skipLandingWeek(weeks, thisSunday);
+    assert.equal(landing?.id, "w2");
+    assert.equal(landing?.status, "final");
+    assert.equal(landing?.finalized_at, "2026-09-16T16:00:00.000Z");
+    assert.equal(weekSwitcherLabel(landing!, landing), "Week 2");
+    assert.notEqual(weekSwitcherLabel(landing!, landing), "This Sunday");
+    assert.equal(selectActiveWeek([w(1, "final"), completedNext])?.id, "w2");
+    assert.equal(selectActiveWeek([w(1, "final"), completedNext])?.status, "final");
+
+    const lockedLanding = skipLandingWeek(lockedWeeks, lockedSunday);
+    assert.equal(lockedLanding?.id, "w2");
+    assert.equal(lockedLanding?.status, "final");
+    assert.equal(lockedLanding?.finalized_at, "2026-09-16T16:00:00.000Z");
+
+    const wrapLanding = skipLandingWeek(wrapWeeks, wrapSunday);
+    assert.equal(wrapLanding?.id, "w1");
+    assert.equal(wrapLanding?.status, "final");
+    assert.equal(wrapLanding?.season_year, 2026);
+    assert.equal(wrapLanding?.finalized_at, "2026-09-16T16:00:00.000Z");
+
+    const harperLanding = skipLandingWeek([harperSunday, harperCompleted], harperSunday);
+    assert.equal(harperLanding?.id, "52a42a9e");
+    assert.equal(harperLanding?.status, "final");
+    assert.equal(harperLanding?.finalized_at, "2026-09-16T16:00:00.000Z");
+
+    const onThisSunday = skipControlCopy(thisSunday, thisSunday, weeks);
+    assert.equal(onThisSunday.button, "Skip this week");
+    assert.doesNotMatch(onThisSunday.button, /next week|open/i);
+    assert.match(onThisSunday.hint, /without Reveal/);
+    assert.match(onThisSunday.hint, /Tuesday/);
+    assert.doesNotMatch(onThisSunday.button, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    assert.doesNotMatch(onThisSunday.hint, /\b(odds|parlay|wager|spread|bet|bets|betting)\b/i);
+    assert.equal(skipControlCopy(lockedSunday, lockedSunday, lockedWeeks).button, "Skip this week");
+    assert.equal(skipControlCopy(wrapSunday, wrapSunday, wrapWeeks).button, "Skip this week");
+
+    const withLater = [thisSunday, completedNext, laterDraft];
+    assert.equal(selectActiveWeek(withLater)?.id, "w1");
+    assert.equal(skipTouchesNextWeek(completedNext, withLater, thisSunday), false);
+    assert.equal(skipLandingWeek(withLater, thisSunday)?.id, "w3");
+    assert.equal(skipLandingWeek(withLater, thisSunday)?.status, "draft");
+    assert.equal(selectActiveWeek([w(1, "final"), completedNext, laterDraft])?.id, "w3");
+
+    assert.equal(skipTouchesNextWeek(completedNext, [leftoverDraft, completedNext], leftoverDraft), true);
+    const leftoverLanding = skipLandingWeek([leftoverDraft, completedNext], leftoverDraft);
+    assert.equal(leftoverLanding?.id, "w2");
+    assert.equal(leftoverLanding?.status, "open");
+    assert.equal(leftoverLanding?.finalized_at, null);
+  });
+
   it("skip refreshes a past lock so Tuesday reopen stays playable", () => {
     const now = Date.parse("2026-09-15T16:00:00.000Z");
     assert.equal(skipLockNeedsRefresh("2026-09-13T17:00:00.000Z", now), true);
@@ -1621,6 +1719,15 @@ describe("useCurrentWeek production wiring", () => {
     assert.ok(
       touchFn.indexOf("isInPlay(existing.status)") < touchFn.indexOf("hasOlderInPlayThan"),
       "skip must not open a farther week when This Sunday remains in play",
+    );
+    assert.match(touchFn, /isPrematureFinalWeek\(existing,\s*weeks\)/);
+    assert.ok(
+      touchFn.indexOf("isInPlay(existing.status)") < touchFn.indexOf("isPrematureFinalWeek"),
+      "skip must not reopen a completed Next week when leftover is This Sunday",
+    );
+    assert.ok(
+      touchFn.indexOf("isPrematureFinalWeek") < touchFn.indexOf("hasOlderInPlayThan"),
+      "completed Next week must stay final before skip considers a farther week",
     );
     assert.match(copyFn, /button: "Skip this week"/);
     const recoverFn = lib.slice(

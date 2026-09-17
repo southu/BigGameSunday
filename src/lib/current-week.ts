@@ -186,6 +186,10 @@ function hasNewerThan(week: WeekSlot, weeks: readonly WeekLike[]): boolean {
  * farther auto-created draft already exists (This Sunday W1 + Next week
  * W2 + W3 draft). A leftover draft behind that farther week still does
  * not reopen leftover next.
+ * Skip of This Sunday does not reopen a completed Next week (finalized
+ * after lock, in order). Leftover open W1 sitting behind Revealed W2 is
+ * still This Sunday via in-play ranking; closing it must leave W2 final.
+ * Reopening would wipe Reveal. Premature-final Next week still opens.
  * Empty `weeks` still touches (no sibling to inspect).
  */
 export function skipTouchesNextWeek(
@@ -194,15 +198,21 @@ export function skipTouchesNextWeek(
   leftover?: WeekSlot | null,
 ): boolean {
   if (!next) return !weeks.some((w) => isInPlay(w.status));
-  if (hasNewerThan(next, weeks)) {
-    const leftoverIsThisSunday =
-      !!leftover &&
-      weeks.some((w) => isInPlay(w.status) && isSameSlot(w, leftover)) &&
-      !weeks.some((w) => isInPlay(w.status) && isNewerThan(w, leftover));
-    if (!leftoverIsThisSunday) return false;
-  }
+  const leftoverIsThisSunday =
+    !!leftover &&
+    weeks.some((w) => isInPlay(w.status) && isSameSlot(w, leftover)) &&
+    !weeks.some((w) => isInPlay(w.status) && isNewerThan(w, leftover));
+  if (hasNewerThan(next, weeks) && !leftoverIsThisSunday) return false;
   const existing = weekAtSlot(weeks, next);
   if (existing && isInPlay(existing.status)) return false;
+  if (
+    existing &&
+    existing.status === "final" &&
+    leftoverIsThisSunday &&
+    !isPrematureFinalWeek(existing, weeks)
+  ) {
+    return false;
+  }
   const remaining = leftover ? weeks.filter((w) => !isSameSlot(w, leftover)) : weeks;
   if (hasOlderInPlayThan(next, remaining)) return false;
   return true;
@@ -223,7 +233,9 @@ function withStatus<T extends WeekLike>(week: T, status: string): T {
  * a farther week and steal the family. Skip of This Sunday still lands on
  * Next week when a farther auto-created draft already exists — including
  * a premature-final Next week. Opening next clears leftover finalize stamps
- * so landing is a clean open week. Skip-in-place leftover stamps stay put.
+ * so landing is a clean open week. A completed Next week stays final —
+ * skip of leftover This Sunday lands there without wiping Reveal.
+ * Skip-in-place leftover stamps stay put.
  * Dirty-open leftover (open + leftover finalize stamp) and premature-final
  * leftover stay put — scrub in place, do not close it and jump to the next week.
  */
@@ -465,7 +477,8 @@ export function skipScrubsViewedInPlace(
  * remain in play after leftover is closed, in which case leftover skip
  * just closes the leftover and leaves the family on This Sunday.
  * Skip of This Sunday still opens Next week when a farther draft exists,
- * including a premature-final Next week.
+ * including a premature-final Next week. A completed Next week is left
+ * final — skipTouchesNextWeek refuses that reopen.
  * Dirty-open next is already This Sunday; scrub it later.
  * Pass leftover so skip of This Sunday can still open Next week.
  */
