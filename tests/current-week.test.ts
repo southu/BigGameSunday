@@ -183,6 +183,38 @@ describe("selectActiveWeek", () => {
     expect(pickViewWeek([harperSkipped, harperOpen], harper, "next")?.id).toBe("52a42a9e");
   });
 
+  it("live Harper House: skipped W1 + open W2 shows Week 2 as active", () => {
+    const skipped = {
+      id: "3e3aeeeb-4dcb-445b-9297-aa6c20967433",
+      season_year: 2026,
+      week_number: 1,
+      status: "final",
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00.000Z",
+    };
+    const open = {
+      id: "52a42a9e-fbce-4e06-a9b4-8a00b1d36994",
+      season_year: 2026,
+      week_number: 2,
+      status: "open",
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const weeks = [skipped, open];
+    const active = selectActiveWeek(weeks);
+    expect(active?.id).toBe("52a42a9e-fbce-4e06-a9b4-8a00b1d36994");
+    expect(active?.week_number).toBe(2);
+    expect(active?.status).toBe("open");
+    expect(selectActiveWeek([open, skipped])?.id).toBe("52a42a9e-fbce-4e06-a9b4-8a00b1d36994");
+    expect(weekSwitcherLabel(open, active)).toBe("This Sunday");
+    expect(weekSwitcherLabel(skipped, active)).toBe("Week 1");
+    expect(weekSwitcherLabel(skipped, active)).not.toBe("This Sunday");
+    expect(weekSwitcherLabel(skipped, active)).not.toBe("Next week");
+    expect(pickViewWeek(weeks, active, null)?.week_number).toBe(2);
+    expect(pickViewWeek(weeks, active, "next")?.week_number).toBe(2);
+    expect(`Week ${active?.week_number}`).toBe("Week 2");
+  });
+
   it("draft week N + final/open week N+1 → returns week N+1 (not the old draft)", () => {
     for (const n of [1, 5, 12, 17]) {
       expect(selectActiveWeek([w(n, "draft"), w(n + 1, "final")])?.week_number).toBe(n + 1);
@@ -606,6 +638,8 @@ describe("selectActiveWeek", () => {
     expect(body).toMatch(/recency\(week, newest\)/);
     expect(body).not.toMatch(/status === ["']draft["']/);
     expect(body).not.toMatch(/status === ["']final["']/);
+    expect(body).not.toMatch(/finalized_at/);
+    expect(body).not.toMatch(/lock_at/);
     expect(src).not.toMatch(/ranked\.find\(\(w\) => w\.status === "draft"\)/);
     expect(src).not.toMatch(/else latest draft/);
     expect(src).not.toMatch(/open\/locked > draft > final/);
