@@ -159,6 +159,7 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
   // leftover non-numeric string keys cannot hide a newer week
   // leftover non-decimal string keys cannot hide a newer week
   // leftover bigint keys cannot hide a newer week
+  // leftover non-integer keys cannot hide a newer week
   const weeks = (data ?? []) as Week[];
   return [...weeks]
     .filter((week) => week)
@@ -242,6 +243,24 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
         return typeof week.season_year !== "bigint" && typeof week.week_number !== "bigint";
       } catch {
         // leftover bigint keys cannot hide a newer week
+        return false;
+      }
+    })
+    .filter((week) => {
+      try {
+        const leftover = (value: unknown) => {
+          if (typeof value === "number") {
+            if (!Number.isFinite(value)) return false;
+            return !Number.isInteger(value);
+          }
+          if (typeof value !== "string") return false;
+          const n = Number(value);
+          if (!Number.isFinite(n)) return false;
+          return !Number.isInteger(n);
+        };
+        return !leftover(week.season_year) && !leftover(week.week_number);
+      } catch {
+        // leftover non-integer keys cannot hide a newer week
         return false;
       }
     })

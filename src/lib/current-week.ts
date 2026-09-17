@@ -77,6 +77,7 @@ export type WeekRef = WeekLike & { id: string };
  * cannot hide a newer week. leftover non-numeric string keys rank as 0,0 so they
  * cannot hide a newer week. leftover non-decimal string keys rank as 0,0 so they
  * cannot hide a newer week. leftover bigint keys rank as 0,0 so they
+ * cannot hide a newer week. leftover non-integer keys rank as 0,0 so they
  * cannot hide a newer week. fetchHouseholdWeeks sorts with recency so
  * the week list cannot skip week_number on mixed string/number keys.
  */
@@ -125,6 +126,22 @@ function leftoverNonDecimalStringKey(value: unknown): boolean {
 function leftoverBigintKey(value: unknown): boolean {
   try {
     return typeof value === "bigint";
+  } catch {
+    return true;
+  }
+}
+
+/** Fractional keys (2.5 / "2.5") coerce via Number and would steal recency over a real week. */
+function leftoverNonIntegerKey(value: unknown): boolean {
+  try {
+    if (typeof value === "number") {
+      if (!Number.isFinite(value)) return false;
+      return !Number.isInteger(value);
+    }
+    if (typeof value !== "string") return false;
+    const n = Number(value);
+    if (!Number.isFinite(n)) return false;
+    return !Number.isInteger(n);
   } catch {
     return true;
   }
@@ -221,6 +238,11 @@ export function recency(
   if (leftoverBigintKey(aNumKey)) a.week_number = 0;
   if (leftoverBigintKey(bYearKey)) b.season_year = 0;
   if (leftoverBigintKey(bNumKey)) b.week_number = 0;
+  // leftover non-integer keys cannot hide a newer week
+  if (leftoverNonIntegerKey(aYearKey)) a.season_year = 0;
+  if (leftoverNonIntegerKey(aNumKey)) a.week_number = 0;
+  if (leftoverNonIntegerKey(bYearKey)) b.season_year = 0;
+  if (leftoverNonIntegerKey(bNumKey)) b.week_number = 0;
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -257,6 +279,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * leftover non-numeric string keys cannot hide a newer week.
  * leftover non-decimal string keys cannot hide a newer week.
  * leftover bigint keys cannot hide a newer week.
+ * leftover non-integer keys cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
   weeks: readonly (T | null | undefined | boolean | number | string | unknown[])[] | null | undefined,
@@ -297,6 +320,10 @@ export function selectActiveWeek<T extends WeekLike>(
       }
       // leftover bigint keys cannot hide a newer week
       if (leftoverBigintKey(week.season_year) || leftoverBigintKey(week.week_number)) {
+        continue;
+      }
+      // leftover non-integer keys cannot hide a newer week
+      if (leftoverNonIntegerKey(week.season_year) || leftoverNonIntegerKey(week.week_number)) {
         continue;
       }
       if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
@@ -372,6 +399,17 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
   }
   try {
     if (leftoverBigintKey(week.week_number)) week_number = 0;
+  } catch {
+    week_number = 0;
+  }
+  // leftover non-integer keys cannot hide a newer week
+  try {
+    if (leftoverNonIntegerKey(week.season_year)) season_year = 0;
+  } catch {
+    season_year = 0;
+  }
+  try {
+    if (leftoverNonIntegerKey(week.week_number)) week_number = 0;
   } catch {
     week_number = 0;
   }
@@ -954,6 +992,7 @@ export function familyWeekChrome(
   // leftover non-numeric string keys cannot hide a newer week
   // leftover non-decimal string keys cannot hide a newer week
   // leftover bigint keys cannot hide a newer week
+  // leftover non-integer keys cannot hide a newer week
   // fetchHouseholdWeeks sorts with recency
   // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
@@ -967,6 +1006,7 @@ export function familyWeekChrome(
       if (leftoverNonNumericStringKey(weekNumber)) return name;
       if (leftoverNonDecimalStringKey(weekNumber)) return name;
       if (leftoverBigintKey(weekNumber)) return name;
+      if (leftoverNonIntegerKey(weekNumber)) return name;
     } catch {
       // leftover throwing rows cannot hide a newer week
       return name;
@@ -988,6 +1028,8 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
     if (leftoverNonDecimalStringKey(weekNumber)) w = { ...w, week_number: 0 };
     // leftover bigint keys cannot hide a newer week
     if (leftoverBigintKey(weekNumber)) w = { ...w, week_number: 0 };
+    // leftover non-integer keys cannot hide a newer week
+    if (leftoverNonIntegerKey(weekNumber)) w = { ...w, week_number: 0 };
   } catch {
     // leftover unconvertible keys cannot hide a newer week
     w = { ...w, week_number: 0 };
