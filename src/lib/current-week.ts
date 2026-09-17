@@ -600,7 +600,8 @@ export function skipUnlocksCardsOnLockRefresh(
  * or a null `auto_opened_at` does not hide an open week. Neither do
  * `lock_at_override`, `created_at`, or `featured_game_id`. Neither do
  * `auto_created_at`, `auto_locked_at`, `autopilot_hold`, or
- * `autopilot_checked_at`.
+ * `autopilot_checked_at`. Neither do `household_id` or
+ * `commissioner_edited_at`.
  */
 export function familyWeekChrome(
   householdName: string | null | undefined,
@@ -609,6 +610,7 @@ export function familyWeekChrome(
   // leftover draft W1 + premature-final W2 → The Harper House · Week 2
   // ranking ignores lock_at_override, created_at, featured_game_id
   // ranking ignores auto_created_at, auto_locked_at, autopilot_hold
+  // ranking ignores household_id, commissioner_edited_at, autopilot_checked_at
   const name = householdName ?? "Your household";
   return week ? `${name} · Week ${week.week_number}` : name;
 }

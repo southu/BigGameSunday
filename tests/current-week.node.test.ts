@@ -206,6 +206,7 @@ describe("selectActiveWeek", () => {
       auto_locked_at: null,
       commissioner_edited_at: null,
       autopilot_hold: false,
+      autopilot_checked_at: null,
     };
     const open = {
       id: "52a42a9e-fbce-4e06-a9b4-8a00b1d36994",
@@ -223,6 +224,7 @@ describe("selectActiveWeek", () => {
       auto_locked_at: null,
       commissioner_edited_at: "2026-09-15T19:04:30.621+00:00",
       autopilot_hold: false,
+      autopilot_checked_at: null,
     };
     const weeks = [skipped, open];
     const active = selectActiveWeek(weeks);
@@ -262,6 +264,12 @@ describe("selectActiveWeek", () => {
     assert.equal(open.featured_game_id, "c08c9c12-78c2-4904-ae34-ffc1d38c81c2");
     assert.equal(skipped.created_at, "2026-09-15T17:53:12.526397+00:00");
     assert.equal(open.created_at, "2026-09-15T18:00:32.412751+00:00");
+    assert.equal(skipped.household_id, household_id);
+    assert.equal(open.household_id, household_id);
+    assert.equal(skipped.commissioner_edited_at, null);
+    assert.equal(open.commissioner_edited_at, "2026-09-15T19:04:30.621+00:00");
+    assert.equal(skipped.autopilot_checked_at, null);
+    assert.equal(open.autopilot_checked_at, null);
     assert.equal(familyWeekChrome("The Harper House", active), "The Harper House · Week 2");
     assert.equal(familyWeekChrome("The Harper House", stillW2), "The Harper House · Week 2");
     assert.equal(`The Harper House · Week ${active?.week_number}`, "The Harper House · Week 2");
@@ -284,6 +292,9 @@ describe("selectActiveWeek", () => {
     const household = {
       id: "b03e87bd-2899-4e71-b6fb-54399eef3e6d",
       name: "The Harper House",
+      owner_user_id: "5de58a82-3776-460d-94ea-2743fd7dc321",
+      created_at: "2026-09-15T17:52:21.562645+00:00",
+      auto_create_weeks: true,
     };
     const skipped = {
       id: "3e3aeeeb-4dcb-445b-9297-aa6c20967433",
@@ -294,6 +305,8 @@ describe("selectActiveWeek", () => {
       finalized_at: null,
       lock_at: "2026-09-10T00:20:00+00:00",
       auto_opened_at: null,
+      commissioner_edited_at: null,
+      autopilot_checked_at: null,
     };
     const dirtyOpen = {
       id: "52a42a9e-fbce-4e06-a9b4-8a00b1d36994",
@@ -305,15 +318,22 @@ describe("selectActiveWeek", () => {
       lock_at: "2026-09-18T00:15:00+00:00",
       auto_opened_at: null,
       commissioner_edited_at: "2026-09-15T19:04:30.621+00:00",
+      autopilot_checked_at: null,
     };
     const weeks = [skipped, dirtyOpen];
     const active = selectActiveWeek(weeks);
     assert.equal(household.name, "The Harper House");
+    assert.equal(household.owner_user_id, "5de58a82-3776-460d-94ea-2743fd7dc321");
+    assert.equal(household.created_at, "2026-09-15T17:52:21.562645+00:00");
+    assert.equal(household.auto_create_weeks, true);
     assert.equal(active?.id, dirtyOpen.id);
     assert.equal(active?.week_number, 2);
     assert.equal(active?.status, "open");
     assert.equal(active?.auto_opened_at, null);
     assert.equal(active?.finalized_at, "2026-09-15T19:04:43.88+00:00");
+    assert.equal(active?.autopilot_checked_at, null);
+    assert.equal(active?.commissioner_edited_at, "2026-09-15T19:04:30.621+00:00");
+    assert.equal(active?.household_id, household.id);
     assert.equal(weekSwitcherLabel(dirtyOpen, active), "This Sunday");
     assert.equal(weekSwitcherLabel(skipped, active), "Week 1");
     assert.equal(familyWeekChrome(household.name, active), "The Harper House · Week 2");
@@ -329,6 +349,9 @@ describe("selectActiveWeek", () => {
     const household = {
       id: "b03e87bd-2899-4e71-b6fb-54399eef3e6d",
       name: "The Harper House",
+      owner_user_id: "5de58a82-3776-460d-94ea-2743fd7dc321",
+      created_at: "2026-09-15T17:52:21.562645+00:00",
+      auto_create_weeks: true,
     };
     const leftoverDraft = {
       id: "3e3aeeeb-4dcb-445b-9297-aa6c20967433",
@@ -339,6 +362,8 @@ describe("selectActiveWeek", () => {
       finalized_at: null,
       lock_at: "2026-09-10T00:20:00+00:00",
       auto_opened_at: null,
+      commissioner_edited_at: null,
+      autopilot_checked_at: null,
     };
     const prematureFinal = {
       id: "52a42a9e-fbce-4e06-a9b4-8a00b1d36994",
@@ -350,12 +375,17 @@ describe("selectActiveWeek", () => {
       lock_at: "2026-09-18T00:15:00+00:00",
       auto_opened_at: null,
       commissioner_edited_at: "2026-09-15T19:04:30.621+00:00",
+      autopilot_checked_at: null,
     };
     const weeks = [leftoverDraft, prematureFinal];
     const active = selectActiveWeek(weeks);
+    assert.equal(household.auto_create_weeks, true);
+    assert.equal(household.owner_user_id, "5de58a82-3776-460d-94ea-2743fd7dc321");
     assert.equal(active?.id, prematureFinal.id);
     assert.equal(active?.week_number, 2);
     assert.equal(active?.status, "final");
+    assert.equal(active?.autopilot_checked_at, null);
+    assert.equal(active?.household_id, household.id);
     assert.equal(selectActiveWeek([prematureFinal, leftoverDraft])?.id, prematureFinal.id);
     assert.equal(weekSwitcherLabel(leftoverDraft, active), "Week 1");
     assert.notEqual(weekSwitcherLabel(leftoverDraft, active), "This Sunday");
@@ -867,6 +897,76 @@ describe("selectActiveWeek", () => {
     );
   });
 
+  it("ranking ignores household_id, commissioner_edited_at, and autopilot_checked_at", () => {
+    const household_id = "b03e87bd-2899-4e71-b6fb-54399eef3e6d";
+    const skipped = {
+      ...wr("3e3aeeeb", 1, "final"),
+      household_id,
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+      commissioner_edited_at: null,
+      autopilot_checked_at: null,
+      auto_opened_at: null,
+    };
+    const dirtyOpen = {
+      ...wr("52a42a9e", 2, "open"),
+      household_id,
+      finalized_at: "2026-09-15T19:04:43.88+00:00",
+      lock_at: "2026-09-18T00:15:00+00:00",
+      commissioner_edited_at: "2026-09-15T19:04:30.621+00:00",
+      autopilot_checked_at: null,
+      auto_opened_at: null,
+    };
+    const weeks = [skipped, dirtyOpen];
+    const active = selectActiveWeek(weeks);
+    assert.equal(active?.id, "52a42a9e");
+    assert.equal(active?.week_number, 2);
+    assert.equal(active?.status, "open");
+    assert.equal(active?.autopilot_checked_at, null);
+    assert.equal(active?.household_id, household_id);
+    assert.equal(active?.commissioner_edited_at, "2026-09-15T19:04:30.621+00:00");
+    assert.equal(selectActiveWeek([dirtyOpen, skipped])?.id, "52a42a9e");
+    assert.equal(weekSwitcherLabel(dirtyOpen, active), "This Sunday");
+    assert.equal(familyWeekChrome("The Harper House", active), "The Harper House · Week 2");
+    const leftoverDraft = {
+      ...skipped,
+      status: "draft",
+      household_id: "other-household",
+      commissioner_edited_at: "2026-09-16T00:00:00+00:00",
+      autopilot_checked_at: "2026-09-16T00:00:00+00:00",
+    };
+    const prematureFinal = {
+      ...dirtyOpen,
+      status: "final",
+      autopilot_checked_at: null,
+    };
+    assert.equal(selectActiveWeek([leftoverDraft, prematureFinal])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverDraft, prematureFinal])?.status, "final");
+    assert.equal(selectActiveWeek([leftoverDraft, prematureFinal])?.autopilot_checked_at, null);
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([leftoverDraft, prematureFinal])),
+      "The Harper House · Week 2",
+    );
+    assert.equal(
+      weekSwitcherLabel(leftoverDraft, selectActiveWeek([leftoverDraft, prematureFinal])),
+      "Week 1",
+    );
+    const leftoverOpen = {
+      ...skipped,
+      status: "open",
+      commissioner_edited_at: "2026-09-16T12:00:00+00:00",
+      autopilot_checked_at: "2026-09-16T12:00:00+00:00",
+    };
+    assert.equal(selectActiveWeek([leftoverOpen, dirtyOpen])?.week_number, 2);
+    assert.equal(selectActiveWeek([leftoverOpen, dirtyOpen])?.status, "open");
+    assert.equal(selectActiveWeek([dirtyOpen, leftoverOpen])?.id, "52a42a9e");
+    assert.equal(selectActiveWeek([leftoverOpen, dirtyOpen])?.autopilot_checked_at, null);
+    assert.equal(
+      weekSwitcherLabel(dirtyOpen, selectActiveWeek([leftoverOpen, dirtyOpen])),
+      "This Sunday",
+    );
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -1000,6 +1100,8 @@ describe("selectActiveWeek", () => {
     assert.doesNotMatch(inPlayBody, /auto_locked_at/);
     assert.doesNotMatch(inPlayBody, /autopilot_hold/);
     assert.doesNotMatch(inPlayBody, /autopilot_checked_at/);
+    assert.doesNotMatch(inPlayBody, /household_id/);
+    assert.doesNotMatch(inPlayBody, /commissioner_edited_at/);
     const chromeStart = src.indexOf("export function familyWeekChrome");
     const chromeEnd = src.indexOf("export function weekSwitcherLabel");
     assert.ok(chromeStart >= 0 && chromeEnd > chromeStart);
@@ -1010,6 +1112,7 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /leftover draft W1 \+ premature-final W2/);
     assert.match(chromeBody, /lock_at_override, created_at, featured_game_id/);
     assert.match(chromeBody, /auto_created_at, auto_locked_at, autopilot_hold/);
+    assert.match(chromeBody, /household_id, commissioner_edited_at, autopilot_checked_at/);
     assert.doesNotMatch(src, /ranked\.find\(\(w\) => w\.status === "draft"\)/);
     assert.doesNotMatch(src, /else latest draft/);
     assert.doesNotMatch(src, /open\/locked > draft > final/);
