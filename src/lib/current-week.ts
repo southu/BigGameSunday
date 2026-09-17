@@ -153,12 +153,20 @@ function isUnplayedLeftover(week: WeekLike): boolean {
  * Autopilot auto-opens a draft 24h after auto-create only when no newer week
  * exists. Opening a leftover draft behind a newer week would trap the family
  * on the skipped week via in-play ranking (Harper: leftover W1 + final W2).
+ * Opening a farther draft while an older premature-final is still recoverable
+ * would hide the week skip should reopen (Harper: leftover skipped W1 +
+ * premature-final W2 + auto-created W3). Skip closes leftover without Reveal,
+ * then reopens the premature final. A legitimate completed older final does
+ * not block auto-open of Next week.
  */
 export function shouldAutopilotOpenDraft(
   week: WeekLike,
   weeks: readonly WeekLike[],
 ): boolean {
   if (week.status !== "draft") return false;
+  if (weeks.some((w) => isOlderThan(w, week) && isPrematureFinalWeek(w, weeks))) {
+    return false;
+  }
   return !weeks.some((w) => isNewerThan(w, week));
 }
 

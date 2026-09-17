@@ -617,6 +617,84 @@ describe("selectActiveWeek", () => {
     assert.equal(shouldAutopilotEnsureNextWeek([skippedClosed, w(2, "open")]), true);
   });
 
+  it("autopilot does not auto-open a farther draft while premature-final next is still the Tuesday path", () => {
+    const leftoverDraft = wr("3e3aeeeb", 1, "draft");
+    const skippedClosed = {
+      ...wr("3e3aeeeb", 1, "final"),
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+    };
+    const prematureFinal = {
+      ...wr("52a42a9e", 2, "final"),
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    };
+    const autoW3 = wr("auto-w3", 3, "draft");
+    const weeks = [skippedClosed, prematureFinal, autoW3];
+    assert.equal(shouldAutopilotOpenDraft(autoW3, weeks), false);
+    assert.equal(shouldAutopilotOpenDraft(autoW3, [autoW3, prematureFinal, skippedClosed]), false);
+    assert.equal(shouldOfferOpenCards(autoW3, weeks), false);
+    assert.equal(skipTargetWeek(weeks, autoW3)?.week_number, 2);
+    assert.equal(skipScrubsViewedInPlace(prematureFinal, autoW3, weeks), true);
+    assert.equal(selectActiveWeek(weeks)?.week_number, 3);
+    assert.equal(selectActiveWeek(weeks)?.status, "draft");
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([skippedClosed, prematureFinal])),
+      "The Harper House · Week 2",
+    );
+
+    const leftoverStillOpen = [leftoverDraft, prematureFinal, autoW3];
+    assert.equal(shouldAutopilotOpenDraft(autoW3, leftoverStillOpen), false);
+    assert.equal(shouldOfferOpenCards(autoW3, leftoverStillOpen), false);
+    assert.equal(shouldAutopilotOpenDraft(leftoverDraft, leftoverStillOpen), false);
+
+    const leftoverOpenW1 = wr("open-w1", 1, "open");
+    assert.equal(
+      shouldAutopilotOpenDraft(autoW3, [leftoverOpenW1, prematureFinal, autoW3]),
+      false,
+    );
+    assert.equal(selectActiveWeek([leftoverOpenW1, prematureFinal, autoW3])?.week_number, 1);
+    assert.notEqual(weekSwitcherLabel(autoW3, leftoverOpenW1), "Next week");
+
+    const skippedStr = {
+      season_year: "2026",
+      week_number: "1",
+      status: "final",
+      finalized_at: null,
+      lock_at: "2026-09-10T00:20:00+00:00",
+    } as ReturnType<typeof w> & { finalized_at: null; lock_at: string };
+    const prematureStr = {
+      season_year: "2026",
+      week_number: "2",
+      status: "final",
+      finalized_at: "2026-09-15T19:04:43.880Z",
+      lock_at: "2026-09-18T00:15:00.000Z",
+    } as ReturnType<typeof w> & { finalized_at: string; lock_at: string };
+    const autoW3Str = {
+      season_year: "2026",
+      week_number: "3",
+      status: "draft",
+    } as ReturnType<typeof w>;
+    assert.equal(shouldAutopilotOpenDraft(autoW3Str, [skippedStr, prematureStr, autoW3Str]), false);
+    assert.equal(shouldAutopilotOpenDraft(autoW3, [skippedClosed, prematureStr, autoW3]), false);
+
+    const played1 = {
+      ...w(1, "final"),
+      finalized_at: "2026-09-08T10:00:00.000Z",
+      lock_at: "2026-09-07T17:00:00.000Z",
+    };
+    const played2 = {
+      ...w(2, "final"),
+      finalized_at: "2026-09-15T10:00:00.000Z",
+      lock_at: "2026-09-13T17:00:00.000Z",
+    };
+    assert.equal(shouldAutopilotOpenDraft(autoW3, [played1, played2, autoW3]), true);
+    assert.equal(shouldOfferOpenCards(autoW3, [played1, played2, autoW3]), true);
+    assert.equal(shouldAutopilotOpenDraft(w(2, "draft"), [w(1, "final"), w(2, "draft")]), true);
+    assert.equal(shouldAutopilotOpenDraft(w(2, "draft"), [w(1, "open"), w(2, "draft")]), true);
+    assert.equal(selectActiveWeek([w(1, "open"), w(2, "draft")])?.week_number, 1);
+  });
+
   it("commissioner does not offer Open cards on leftover draft W1 behind newer W2", () => {
     const leftover = w(1, "draft");
     const premature = w(2, "final");
@@ -3247,7 +3325,7 @@ describe("useCurrentWeek production wiring", () => {
       src.indexOf("// 2. Auto-lock"),
     );
     assert.match(openFn, /shouldAutopilotOpenDraft\(week,/);
-    assert.match(openFn, /select\("season_year, week_number, status"\)/);
+    assert.match(openFn, /select\("season_year, week_number, status, finalized_at, lock_at"\)/);
     assert.doesNotMatch(openFn, /\.neq\("status", "final"\)/);
     assert.ok(
       openFn.indexOf("shouldAutopilotOpenDraft") < openFn.indexOf('status: "open"'),
@@ -3316,6 +3394,16 @@ describe("useCurrentWeek production wiring", () => {
       lib.indexOf("export function shouldAutopilotOpenDraft") <
         lib.indexOf("export function shouldAutopilotEnsureNextWeek"),
       "leftover-unplayed helper must stay before the auto-create guard so its source-scan slice stays intact",
+    );
+    const openDraftFn = lib.slice(
+      lib.indexOf("export function shouldAutopilotOpenDraft"),
+      lib.indexOf("export function shouldAutopilotEnsureNextWeek"),
+    );
+    assert.match(openDraftFn, /isPrematureFinalWeek\(w,\s*weeks\)/);
+    assert.match(openDraftFn, /isOlderThan\(w,\s*week\)/);
+    assert.ok(
+      openDraftFn.indexOf("isPrematureFinalWeek") < openDraftFn.indexOf("isNewerThan"),
+      "older premature-final must block auto-open before the newest-week check",
     );
   });
 });

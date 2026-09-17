@@ -228,13 +228,14 @@ async function advanceWeek(
   const base = { household_id: week.household_id, week_id: week.id, status: "ok" as const };
 
   // 1. Auto-open 24h after auto-creation, unless the Commissioner already touched it.
-  // Sibling slots include finals — leftover W1 must see premature-final W2.
+  // Sibling slots include finals and leftover stamps — leftover W1 must see
+  // premature-final W2, and a farther draft must not auto-open over it.
   if (week.status === "draft") {
     if (!week.auto_created_at || week.commissioner_edited_at) return;
     if (now - new Date(week.auto_created_at).getTime() < DAY_MS) return;
     const { data: householdWeeks, error: slotErr } = await db
       .from("weeks")
-      .select("season_year, week_number, status")
+      .select("season_year, week_number, status, finalized_at, lock_at")
       .eq("household_id", week.household_id);
     if (slotErr) throw slotErr;
     if (!shouldAutopilotOpenDraft(week, householdWeeks ?? [])) return;
