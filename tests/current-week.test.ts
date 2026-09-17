@@ -183,6 +183,42 @@ describe("selectActiveWeek", () => {
     expect(pickViewWeek([harperSkipped, harperOpen], harper, "next")?.id).toBe("52a42a9e");
   });
 
+  it("draft week N + final/open week N+1 → returns week N+1 (not the old draft)", () => {
+    for (const n of [1, 5, 12, 17]) {
+      expect(selectActiveWeek([w(n, "draft"), w(n + 1, "final")])?.week_number).toBe(n + 1);
+      expect(selectActiveWeek([w(n + 1, "final"), w(n, "draft")])?.week_number).toBe(n + 1);
+      expect(selectActiveWeek([w(n, "draft"), w(n + 1, "final")])?.status).toBe("final");
+      expect(selectActiveWeek([w(n, "draft"), w(n + 1, "open")])?.week_number).toBe(n + 1);
+      expect(selectActiveWeek([w(n + 1, "open"), w(n, "draft")])?.week_number).toBe(n + 1);
+      expect(selectActiveWeek([w(n, "draft"), w(n + 1, "open")])?.status).toBe("open");
+      expect(selectActiveWeek([w(n, "draft"), w(n + 1, "locked")])?.week_number).toBe(n + 1);
+    }
+    const wrapDraft = w(18, "draft", 2025);
+    const wrapFinal = w(1, "final", 2026);
+    expect(selectActiveWeek([wrapDraft, wrapFinal])?.season_year).toBe(2026);
+    expect(selectActiveWeek([wrapFinal, wrapDraft])?.week_number).toBe(1);
+    expect(selectActiveWeek([wrapDraft, w(1, "open", 2026)])?.status).toBe("open");
+  });
+
+  it("open week N + draft week N+1 → returns open week N (This Sunday); N+1 is Next week", () => {
+    for (const n of [1, 5, 12, 17]) {
+      const open = wr(`open-${n}`, n, "open");
+      const draft = wr(`draft-${n + 1}`, n + 1, "draft");
+      const active = selectActiveWeek([open, draft]);
+      expect(active?.id).toBe(`open-${n}`);
+      expect(active?.week_number).toBe(n);
+      expect(weekSwitcherLabel(open, active)).toBe("This Sunday");
+      expect(weekSwitcherLabel(draft, active)).toBe("Next week");
+      expect(pickViewWeek([open, draft], active, null)?.id).toBe(`open-${n}`);
+      expect(pickViewWeek([open, draft], active, "next")?.id).toBe(`draft-${n + 1}`);
+      const locked = wr(`locked-${n}`, n, "locked");
+      const lockedActive = selectActiveWeek([locked, draft]);
+      expect(lockedActive?.id).toBe(`locked-${n}`);
+      expect(weekSwitcherLabel(locked, lockedActive)).toBe("This Sunday");
+      expect(weekSwitcherLabel(draft, lockedActive)).toBe("Next week");
+    }
+  });
+
   it("autopilot does not auto-open leftover draft W1 behind newer W2", () => {
     const leftover = wr("3e3aeeeb", 1, "draft");
     const premature = wr("52a42a9e", 2, "final");

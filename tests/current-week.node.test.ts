@@ -184,6 +184,42 @@ describe("selectActiveWeek", () => {
     assert.equal(pickViewWeek([harperSkipped, harperOpen], harper, "next")?.id, "52a42a9e");
   });
 
+  it("draft week N + final/open week N+1 → returns week N+1 (not the old draft)", () => {
+    for (const n of [1, 5, 12, 17]) {
+      assert.equal(selectActiveWeek([w(n, "draft"), w(n + 1, "final")])?.week_number, n + 1);
+      assert.equal(selectActiveWeek([w(n + 1, "final"), w(n, "draft")])?.week_number, n + 1);
+      assert.equal(selectActiveWeek([w(n, "draft"), w(n + 1, "final")])?.status, "final");
+      assert.equal(selectActiveWeek([w(n, "draft"), w(n + 1, "open")])?.week_number, n + 1);
+      assert.equal(selectActiveWeek([w(n + 1, "open"), w(n, "draft")])?.week_number, n + 1);
+      assert.equal(selectActiveWeek([w(n, "draft"), w(n + 1, "open")])?.status, "open");
+      assert.equal(selectActiveWeek([w(n, "draft"), w(n + 1, "locked")])?.week_number, n + 1);
+    }
+    const wrapDraft = w(18, "draft", 2025);
+    const wrapFinal = w(1, "final", 2026);
+    assert.equal(selectActiveWeek([wrapDraft, wrapFinal])?.season_year, 2026);
+    assert.equal(selectActiveWeek([wrapFinal, wrapDraft])?.week_number, 1);
+    assert.equal(selectActiveWeek([wrapDraft, w(1, "open", 2026)])?.status, "open");
+  });
+
+  it("open week N + draft week N+1 → returns open week N (This Sunday); N+1 is Next week", () => {
+    for (const n of [1, 5, 12, 17]) {
+      const open = wr(`open-${n}`, n, "open");
+      const draft = wr(`draft-${n + 1}`, n + 1, "draft");
+      const active = selectActiveWeek([open, draft]);
+      assert.equal(active?.id, `open-${n}`);
+      assert.equal(active?.week_number, n);
+      assert.equal(weekSwitcherLabel(open, active), "This Sunday");
+      assert.equal(weekSwitcherLabel(draft, active), "Next week");
+      assert.equal(pickViewWeek([open, draft], active, null)?.id, `open-${n}`);
+      assert.equal(pickViewWeek([open, draft], active, "next")?.id, `draft-${n + 1}`);
+      const locked = wr(`locked-${n}`, n, "locked");
+      const lockedActive = selectActiveWeek([locked, draft]);
+      assert.equal(lockedActive?.id, `locked-${n}`);
+      assert.equal(weekSwitcherLabel(locked, lockedActive), "This Sunday");
+      assert.equal(weekSwitcherLabel(draft, lockedActive), "Next week");
+    }
+  });
+
   it("autopilot does not auto-open leftover draft W1 behind newer W2", () => {
     const leftover = wr("3e3aeeeb", 1, "draft");
     const premature = wr("52a42a9e", 2, "final");
