@@ -484,6 +484,16 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
         return false;
       }
     })
+    .filter((week) => {
+      try {
+        const leftover = (value: unknown) =>
+          ArrayBuffer.isView(value) && !(value instanceof DataView);
+        return !leftover(week.season_year) && !leftover(week.week_number);
+      } catch {
+        // leftover typedarray keys cannot hide a newer week
+        return false;
+      }
+    })
     .sort(recency);
 }
 

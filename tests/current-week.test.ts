@@ -1816,6 +1816,52 @@ describe("selectActiveWeek", () => {
         } as never,
       ]),
     ).toBeNull();
+    // leftover typedarray keys cannot hide a newer week — skip own typedarrays
+    expect(
+      selectActiveWeek([
+        {
+          season_year: new Uint32Array([2026]),
+          week_number: new Uint8Array([2]),
+          status: "final",
+        } as never,
+      ]),
+    ).toBeNull();
+    expect(
+      selectActiveWeek([
+        {
+          season_year: new Uint32Array(),
+          week_number: new Uint8Array(),
+          status: "final",
+        } as never,
+      ]),
+    ).toBeNull();
+    expect(
+      selectActiveWeek([
+        {
+          season_year: new Int32Array([2026]),
+          week_number: new Int32Array([2]),
+          status: "final",
+        } as never,
+      ]),
+    ).toBeNull();
+    expect(
+      selectActiveWeek([
+        {
+          season_year: new Float64Array([2026]),
+          week_number: new Float32Array([2]),
+          status: "final",
+        } as never,
+      ]),
+    ).toBeNull();
+    expect(
+      selectActiveWeek([
+        {
+          season_year: new BigInt64Array([2026n]),
+          week_number: new BigInt64Array([2n]),
+          status: "final",
+        } as never,
+      ]),
+    ).toBeNull();
 
     // e: skip path: final/skipped W1 with missing year + open W2 → W2
     const skipped = keyedRef("w1s", 1, "final", Number.NaN);
@@ -2268,6 +2314,40 @@ describe("selectActiveWeek", () => {
     expect(
       weekSwitcherLabel(
         { id: "empty-dataview", ...onlyEmptyDataView } as ReturnType<typeof wr>,
+        null,
+      ),
+    ).toBe("Week 0");
+
+    // leftover typedarray keys cannot caption Week 2 — skip the row, chrome is household name only
+    const onlyTypedArray = {
+      season_year: new Uint32Array([2026]),
+      week_number: new Uint8Array([2]),
+      status: "final",
+    } as never;
+    const onlyEmptyTypedArray = {
+      season_year: new Uint32Array(),
+      week_number: new Uint8Array(),
+      status: "final",
+    } as never;
+    expect(selectActiveWeek([onlyTypedArray])).toBeNull();
+    expect(selectActiveWeek([onlyEmptyTypedArray])).toBeNull();
+    expect(familyWeekChrome("The Harper House", onlyTypedArray)).toBe("The Harper House");
+    expect(familyWeekChrome("The Harper House", onlyEmptyTypedArray)).toBe("The Harper House");
+    expect(familyWeekChrome("The Harper House", onlyTypedArray)).not.toBe(
+      "The Harper House · Week 2",
+    );
+    expect(familyWeekChrome("The Harper House", onlyTypedArray)).not.toBe(
+      "The Harper House · Week NaN",
+    );
+    expect(familyWeekChrome("The Harper House", onlyEmptyTypedArray)).not.toBe(
+      "The Harper House · Week 0",
+    );
+    expect(
+      weekSwitcherLabel({ id: "typedarray", ...onlyTypedArray } as ReturnType<typeof wr>, null),
+    ).toBe("Week 0");
+    expect(
+      weekSwitcherLabel(
+        { id: "empty-typedarray", ...onlyEmptyTypedArray } as ReturnType<typeof wr>,
         null,
       ),
     ).toBe("Week 0");
@@ -6215,6 +6295,156 @@ describe("selectActiveWeek", () => {
     expect(() => weekSwitcherLabel(dataViewKeys, e)).not.toThrow();
   });
 
+  it("leftover typedarray keys cannot hide a newer week (a–e)", () => {
+    const typedArrayKeys = {
+      season_year: new Uint32Array([2026]),
+      week_number: new Uint8Array([2]),
+      status: "open",
+    } as never;
+    const typedArrayLocked = {
+      season_year: new Uint32Array([2026]),
+      week_number: new Uint8Array([2]),
+      status: "locked",
+    } as never;
+    const emptyTypedArray = {
+      season_year: new Uint32Array(),
+      week_number: new Uint8Array(),
+      status: "open",
+    } as never;
+    const mixed = {
+      season_year: new Uint32Array([2026]),
+      week_number: 2,
+      status: "open",
+    } as never;
+    const mixedWeek = {
+      season_year: 2026,
+      week_number: new Uint8Array([2]),
+      status: "open",
+    } as never;
+    // a: draft W1 + final W2 + leftover typedarray keys → active W2
+    expect(
+      selectActiveWeek([typedArrayKeys, w(1, "draft"), w(2, "final")])?.week_number,
+    ).toBe(2);
+    expect(selectActiveWeek([w(1, "draft"), typedArrayLocked, w(2, "final")])?.status).toBe(
+      "final",
+    );
+    expect(selectActiveWeek([w(2, "final"), w(1, "draft"), emptyTypedArray])?.week_number).toBe(
+      2,
+    );
+    expect(selectActiveWeek([mixed, w(1, "draft"), w(2, "final")])?.status).toBe("final");
+    expect(selectActiveWeek([mixedWeek, w(1, "draft"), w(2, "final")])?.week_number).toBe(2);
+    expect(
+      familyWeekChrome(
+        "The Harper House",
+        selectActiveWeek([typedArrayKeys, w(1, "draft"), w(2, "final")]),
+      ),
+    ).toBe("The Harper House · Week 2");
+    expect(selectActiveWeek([typedArrayKeys])).toBeNull();
+    expect(selectActiveWeek([typedArrayLocked, emptyTypedArray, mixed])).toBeNull();
+    expect(selectActiveWeek([mixedWeek])).toBeNull();
+    expect(() => selectActiveWeek([typedArrayKeys, w(1, "draft"), w(2, "final")])).not.toThrow();
+    expect(() => selectActiveWeek([typedArrayLocked, w(2, "final")])).not.toThrow();
+    expect(() => recency(typedArrayKeys, w(2, "final"))).not.toThrow();
+    expect(() => recency(typedArrayLocked, w(2, "final"))).not.toThrow();
+    expect(() => recency(emptyTypedArray, w(2, "final"))).not.toThrow();
+    expect(() => recency(mixed, w(2, "final"))).not.toThrow();
+    expect(() => recency(mixedWeek, w(2, "final"))).not.toThrow();
+    expect(() => nextWeekSlot(typedArrayKeys)).not.toThrow();
+    expect(() => nextWeekSlot(typedArrayLocked)).not.toThrow();
+    expect(nextWeekSlot(typedArrayKeys)).toEqual({ season_year: 0, week_number: 1 });
+    expect(nextWeekSlot(typedArrayLocked)).toEqual({ season_year: 0, week_number: 1 });
+    expect(nextWeekSlot(emptyTypedArray)).toEqual({ season_year: 0, week_number: 1 });
+    // leftover typedarray keys must not beat a same-recency leftover draft
+    const leftoverMissingDraft = { status: "draft" } as never;
+    expect(selectActiveWeek([typedArrayKeys, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([leftoverMissingDraft, typedArrayLocked])?.status).toBe("draft");
+    expect(selectActiveWeek([mixed, leftoverMissingDraft])?.status).toBe("draft");
+    expect(selectActiveWeek([emptyTypedArray, leftoverMissingDraft])?.status).toBe("draft");
+    expect(recency(typedArrayKeys, w(2, "final"))).toBeGreaterThan(0);
+    expect(recency(typedArrayLocked, w(2, "final"))).toBeGreaterThan(0);
+    expect(recency(emptyTypedArray, w(2, "final"))).toBeGreaterThan(0);
+    expect(recency(mixed, w(2, "final"))).toBeGreaterThan(0);
+    expect(recency(mixedWeek, w(2, "final"))).toBeGreaterThan(0);
+    // finite integer keys still rank — leftover skip is typedarray only
+    expect(selectActiveWeek([{ ...w(1, "open"), season_year: 2026, week_number: 1 }])?.status).toBe(
+      "open",
+    );
+    expect(
+      selectActiveWeek([
+        { season_year: "2026", week_number: "1", status: "draft" },
+        w(2, "final"),
+      ])?.week_number,
+    ).toBe(2);
+    // leftover missing-key draft stays selectable — leftover skip is typedarray only
+    expect(selectActiveWeek([leftoverMissingDraft])?.status).toBe("draft");
+    // b: draft W1 + open W2 + leftover typedarray keys → active W2
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const open = wr("52a42a9e", 2, "open");
+    const b = selectActiveWeek([typedArrayKeys, leftover, open]);
+    expect(b?.id).toBe("52a42a9e");
+    expect(b?.status).toBe("open");
+    expect(selectActiveWeek([leftover, typedArrayLocked, open])?.week_number).toBe(2);
+    expect(selectActiveWeek([open, leftover, emptyTypedArray])?.id).toBe("52a42a9e");
+    expect(selectActiveWeek([mixed, leftover, open])?.id).toBe("52a42a9e");
+    expect(selectActiveWeek([mixedWeek, leftover, open])?.id).toBe("52a42a9e");
+    expect(weekSwitcherLabel(open, b)).toBe("This Sunday");
+    expect(weekSwitcherLabel(leftover, b)).toBe("Week 1");
+    expect(weekSwitcherLabel(leftover, b)).not.toBe("This Sunday");
+    expect(weekSwitcherLabel(leftover, b)).not.toBe("Next week");
+    expect(familyWeekChrome("The Harper House", b)).toBe("The Harper House · Week 2");
+    expect(pickViewWeek([leftover, open], b, "next")?.id).toBe("52a42a9e");
+    expect([typedArrayKeys, leftover, open].sort(recency)[0]?.week_number).toBe(2);
+    expect([typedArrayLocked, leftover, open].sort(recency)[0]?.week_number).toBe(2);
+    expect([emptyTypedArray, leftover, open].sort(recency)[0]?.week_number).toBe(2);
+    // c: open W1 + draft W2 + leftover typedarray keys → active W1, W2 labeled Next week
+    const thisSunday = wr("w1", 1, "open");
+    const nextDraft = wr("w2", 2, "draft");
+    const c = selectActiveWeek([thisSunday, typedArrayKeys, nextDraft]);
+    expect(c?.id).toBe("w1");
+    expect(c?.week_number).toBe(1);
+    expect(weekSwitcherLabel(thisSunday, c)).toBe("This Sunday");
+    expect(weekSwitcherLabel(nextDraft, c)).toBe("Next week");
+    expect(pickViewWeek([thisSunday, nextDraft], c, "next")?.id).toBe("w2");
+    expect(selectActiveWeek([typedArrayLocked, thisSunday, nextDraft])?.id).toBe("w1");
+    expect(selectActiveWeek([emptyTypedArray, thisSunday, nextDraft])?.id).toBe("w1");
+    expect(selectActiveWeek([mixed, thisSunday, nextDraft])?.id).toBe("w1");
+    expect(selectActiveWeek([mixedWeek, thisSunday, nextDraft])?.id).toBe("w1");
+    // d: only final W1 + leftover typedarray keys → W1
+    expect(
+      selectActiveWeek([typedArrayKeys, w(1, "final"), typedArrayLocked])?.week_number,
+    ).toBe(1);
+    expect(selectActiveWeek([mixed, w(1, "final")])?.status).toBe("final");
+    expect(selectActiveWeek([typedArrayKeys, typedArrayLocked])).toBeNull();
+    expect(selectActiveWeek(null)).toBeNull();
+    expect(selectActiveWeek(undefined)).toBeNull();
+    // e: skip path: final/skipped W1 + open W2 + leftover typedarray keys → W2
+    const skipped = wr("w1s", 1, "final");
+    const dirty = { ...wr("w2d", 2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const e = selectActiveWeek([typedArrayKeys, skipped, dirty]);
+    expect(e?.id).toBe("w2d");
+    expect(e?.status).toBe("open");
+    expect(selectActiveWeek([skipped, typedArrayLocked, dirty])?.week_number).toBe(2);
+    expect(selectActiveWeek([dirty, skipped, emptyTypedArray])?.id).toBe("w2d");
+    expect(selectActiveWeek([mixed, skipped, dirty])?.id).toBe("w2d");
+    expect(selectActiveWeek([mixedWeek, skipped, dirty])?.id).toBe("w2d");
+    expect(weekSwitcherLabel(dirty, e)).toBe("This Sunday");
+    expect(weekSwitcherLabel(skipped, e)).toBe("Week 1");
+    expect(weekSwitcherLabel(skipped, e)).not.toBe("Next week");
+    expect(familyWeekChrome("The Harper House", e)).toBe("The Harper House · Week 2");
+    expect(pickViewWeek([skipped, dirty], e, "next")?.id).toBe("w2d");
+    expect([typedArrayKeys, skipped, dirty].sort(recency)[0]?.week_number).toBe(2);
+    expect(familyWeekChrome("The Harper House", typedArrayKeys)).toBe("The Harper House");
+    expect(familyWeekChrome("The Harper House", typedArrayLocked)).toBe("The Harper House");
+    expect(familyWeekChrome("The Harper House", emptyTypedArray)).toBe("The Harper House");
+    expect(familyWeekChrome("The Harper House", typedArrayKeys)).not.toBe(
+      "The Harper House · Week 2",
+    );
+    expect(familyWeekChrome("The Harper House", typedArrayKeys)).not.toBe(
+      "The Harper House · Week NaN",
+    );
+    expect(() => weekSwitcherLabel(typedArrayKeys, e)).not.toThrow();
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -6461,6 +6691,8 @@ describe("selectActiveWeek", () => {
     expect(body).toMatch(/leftoverSharedArrayBufferKey\(week\.season_year\)/);
     expect(body).toMatch(/leftover dataview keys cannot hide a newer week/);
     expect(body).toMatch(/leftoverDataViewKey\(week\.season_year\)/);
+    expect(body).toMatch(/leftover typedarray keys cannot hide a newer week/);
+    expect(body).toMatch(/leftoverTypedArrayKey\(week\.season_year\)/);
     expect(body).toMatch(/if \(!weeks\?\.length\) return null/);
     expect(body).not.toMatch(/weeks\[0\]/);
     expect(body).not.toMatch(/status === ["']draft["']/);
@@ -6563,6 +6795,8 @@ describe("selectActiveWeek", () => {
     expect(chromeBody).toMatch(/leftoverSharedArrayBufferKey\(weekNumber\)/);
     expect(chromeBody).toMatch(/leftover dataview keys cannot hide a newer week/);
     expect(chromeBody).toMatch(/leftoverDataViewKey\(weekNumber\)/);
+    expect(chromeBody).toMatch(/leftover typedarray keys cannot hide a newer week/);
+    expect(chromeBody).toMatch(/leftoverTypedArrayKey\(weekNumber\)/);
     expect(chromeBody).toMatch(/fetchHouseholdWeeks sorts with recency/);
     expect(chromeBody).toMatch(/familyWeekChrome treats non-finite week_number as 0/);
     expect(chromeBody).toMatch(/Number\(week\.week_number\)/);
@@ -6686,6 +6920,9 @@ describe("selectActiveWeek", () => {
     expect(recencyImpl).toMatch(/leftover dataview keys cannot hide a newer week/);
     expect(recencyImpl).toMatch(/leftoverDataViewKey\(aYearKey\)/);
     expect(recencyImpl).toMatch(/leftoverDataViewKey\(bYearKey\)/);
+    expect(recencyImpl).toMatch(/leftover typedarray keys cannot hide a newer week/);
+    expect(recencyImpl).toMatch(/leftoverTypedArrayKey\(aYearKey\)/);
+    expect(recencyImpl).toMatch(/leftoverTypedArrayKey\(bYearKey\)/);
     expect(recencyImpl).not.toMatch(/\bid\b/);
     expect(recencyImpl).not.toMatch(/status/);
     expect(recencyImpl).not.toMatch(/finalized_at/);
@@ -6769,6 +7006,9 @@ describe("selectActiveWeek", () => {
     expect(nextBody).toMatch(/leftover dataview keys cannot hide a newer week/);
     expect(nextBody).toMatch(/leftoverDataViewKey\(week\.season_year\)/);
     expect(nextBody).toMatch(/leftoverDataViewKey\(week\.week_number\)/);
+    expect(nextBody).toMatch(/leftover typedarray keys cannot hide a newer week/);
+    expect(nextBody).toMatch(/leftoverTypedArrayKey\(week\.season_year\)/);
+    expect(nextBody).toMatch(/leftoverTypedArrayKey\(week\.week_number\)/);
     expect(src).toMatch(/function isNewerThan[\s\S]{0,80}return recency\(week, than\) < 0/);
     expect(src).toMatch(/function isOlderThan[\s\S]{0,80}return recency\(week, than\) > 0/);
     expect(src).toMatch(/function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
@@ -6826,6 +7066,8 @@ describe("selectActiveWeek", () => {
     expect(labelBody).toMatch(/leftoverSharedArrayBufferKey\(weekNumber\)/);
     expect(labelBody).toMatch(/leftover dataview keys cannot hide a newer week/);
     expect(labelBody).toMatch(/leftoverDataViewKey\(weekNumber\)/);
+    expect(labelBody).toMatch(/leftover typedarray keys cannot hide a newer week/);
+    expect(labelBody).toMatch(/leftoverTypedArrayKey\(weekNumber\)/);
     expect(labelBody).not.toMatch(/w\.id === active\.id/);
     const pickStart = src.indexOf("export function pickViewWeek");
     const pickBody = src.slice(pickStart, pickStart + 900);
@@ -8002,6 +8244,7 @@ describe("useCurrentWeek production wiring", () => {
     expect(fetchBody).toMatch(/leftover arraybuffer keys cannot hide a newer week/);
     expect(fetchBody).toMatch(/leftover sharedarraybuffer keys cannot hide a newer week/);
     expect(fetchBody).toMatch(/leftover dataview keys cannot hide a newer week/);
+    expect(fetchBody).toMatch(/leftover typedarray keys cannot hide a newer week/);
     expect(fetchBody).toMatch(/Object.getPrototypeOf\(week\)/);
     expect(fetchBody).not.toMatch(/\.limit\(/);
     expect(fetchBody).not.toMatch(/\.order\("created_at"/);
