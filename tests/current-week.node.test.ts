@@ -1671,6 +1671,68 @@ describe("selectActiveWeek", () => {
       week_number: 2,
     });
     assert.notEqual(nextWeekSlot(keyed("1", "draft", "2026")).week_number, "11");
+
+    // leftover missing rows rank as 0,0 — they cannot hide a newer week
+    assert.ok(recency(null, premature) > 0);
+    assert.ok(recency(undefined, premature) > 0);
+    assert.equal(recency(null, null), 0);
+    assert.equal([null as never, leftoverMissing, premature].sort(recency)[0]?.week_number, 2);
+
+    // d: only-week with unparseable keys still captions a finite week, never Week NaN
+    const onlyNaN = keyed(Number.NaN, "final", Number.NaN);
+    assert.equal(selectActiveWeek([onlyNaN])?.status, "final");
+    assert.equal(familyWeekChrome("The Harper House", onlyNaN), "The Harper House · Week 0");
+    assert.notEqual(familyWeekChrome("The Harper House", onlyNaN), "The Harper House · Week NaN");
+    assert.equal(
+      weekSwitcherLabel({ id: "nan", ...onlyNaN } as ReturnType<typeof wr>, null),
+      "Week 0",
+    );
+  });
+
+  it("leftover holes cannot hide a newer week (a–e)", () => {
+    const hole = null as never;
+    // a: draft W1 + final W2 + hole → active W2
+    assert.equal(selectActiveWeek([hole, w(1, "draft"), w(2, "final")])?.week_number, 2);
+    assert.equal(selectActiveWeek([w(1, "draft"), hole, w(2, "final")])?.status, "final");
+    assert.equal(selectActiveWeek([w(2, "final"), w(1, "draft"), hole])?.week_number, 2);
+    assert.equal(
+      familyWeekChrome("The Harper House", selectActiveWeek([hole, w(1, "draft"), w(2, "final")])),
+      "The Harper House · Week 2",
+    );
+    // b: draft W1 + open W2 + hole → active W2
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const open = wr("52a42a9e", 2, "open");
+    const b = selectActiveWeek([hole, leftover, open]);
+    assert.equal(b?.id, "52a42a9e");
+    assert.equal(b?.status, "open");
+    assert.equal(selectActiveWeek([leftover, hole, open])?.week_number, 2);
+    assert.equal(weekSwitcherLabel(open, b), "This Sunday");
+    assert.equal(weekSwitcherLabel(leftover, b), "Week 1");
+    assert.notEqual(weekSwitcherLabel(leftover, b), "Next week");
+    assert.equal(familyWeekChrome("The Harper House", b), "The Harper House · Week 2");
+    assert.equal(pickViewWeek([leftover, open], b, "next")?.id, "52a42a9e");
+    // c: open W1 + draft W2 + hole → active W1, W2 labeled Next week
+    const thisSunday = wr("w1", 1, "open");
+    const nextDraft = wr("w2", 2, "draft");
+    const c = selectActiveWeek([thisSunday, hole, nextDraft]);
+    assert.equal(c?.id, "w1");
+    assert.equal(weekSwitcherLabel(thisSunday, c), "This Sunday");
+    assert.equal(weekSwitcherLabel(nextDraft, c), "Next week");
+    assert.equal(pickViewWeek([thisSunday, nextDraft], c, "next")?.id, "w2");
+    // d: only final W1 + holes → W1
+    assert.equal(selectActiveWeek([hole, w(1, "final"), hole])?.week_number, 1);
+    assert.equal(selectActiveWeek([hole, hole]) , null);
+    assert.equal(selectActiveWeek(null), null);
+    assert.equal(selectActiveWeek(undefined), null);
+    // e: skip path: final/skipped W1 + open W2 + hole → W2
+    const skipped = wr("w1s", 1, "final");
+    const dirty = { ...wr("w2d", 2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const e = selectActiveWeek([hole, skipped, dirty]);
+    assert.equal(e?.id, "w2d");
+    assert.equal(e?.status, "open");
+    assert.equal(selectActiveWeek([skipped, hole, dirty])?.week_number, 2);
+    assert.equal(weekSwitcherLabel(dirty, e), "This Sunday");
+    assert.equal(familyWeekChrome("The Harper House", e), "The Harper House · Week 2");
   });
 
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
@@ -1861,6 +1923,9 @@ describe("selectActiveWeek", () => {
     assert.match(body, /recency\(slot, newest\)/);
     assert.match(body, /for \(const week of weeks\)/);
     assert.match(body, /Walk every week/);
+    assert.match(body, /if \(!week\) continue/);
+    assert.match(body, /leftover holes cannot hide a newer week/);
+    assert.match(body, /if \(!weeks\?\.length\) return null/);
     assert.doesNotMatch(body, /weeks\[0\]/);
     assert.doesNotMatch(body, /status === ["']draft["']/);
     assert.doesNotMatch(body, /status === ["']final["']/);
@@ -1916,6 +1981,10 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /recency coerces season_year and week_number to numbers/);
     assert.match(chromeBody, /recency treats non-finite season_year and week_number as 0/);
     assert.match(chromeBody, /fetchHouseholdWeeks sorts with recency/);
+    assert.match(chromeBody, /familyWeekChrome treats non-finite week_number as 0/);
+    assert.match(chromeBody, /Number\(week\.week_number\)/);
+    assert.match(chromeBody, /Number\.isFinite\(week\.week_number\)/);
+    assert.match(chromeBody, /week\.week_number = 0/);
     assert.doesNotMatch(body, /\bid\b/);
     assert.doesNotMatch(inPlayBody, /\bid\b/);
     const recencyStart = src.indexOf("function recency");
@@ -1939,6 +2008,9 @@ describe("selectActiveWeek", () => {
     assert.match(recencyImpl, /a\.week_number = 0/);
     assert.match(recencyImpl, /b\.season_year = 0/);
     assert.match(recencyImpl, /b\.week_number = 0/);
+    assert.match(recencyImpl, /if \(!a\)/);
+    assert.match(recencyImpl, /if \(!b\)/);
+    assert.match(recencyImpl, /leftover missing rows cannot hide a newer week/);
     assert.doesNotMatch(recencyImpl, /\bid\b/);
     assert.doesNotMatch(recencyImpl, /status/);
     assert.doesNotMatch(recencyImpl, /finalized_at/);
@@ -1972,6 +2044,9 @@ describe("selectActiveWeek", () => {
     const labelBody = src.slice(labelStart, labelEnd);
     assert.match(labelBody, /isInPlay\(active\.status\) && isSameSlot\(w, active\)/);
     assert.match(labelBody, /isInPlay\(active\.status\) && isNewerDraft\(w, active\)/);
+    assert.match(labelBody, /Number\(w\.week_number\)/);
+    assert.match(labelBody, /Number\.isFinite\(w\.week_number\)/);
+    assert.match(labelBody, /w\.week_number = 0/);
     assert.doesNotMatch(labelBody, /w\.id === active\.id/);
     const pickStart = src.indexOf("export function pickViewWeek");
     const pickBody = src.slice(pickStart, pickStart + 900);
@@ -3143,6 +3218,8 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(fetchBody, /\.sort\(recency\)/);
     assert.match(fetchBody, /mixed string\/number keys cannot skip week_number/);
     assert.match(fetchBody, /non-finite keys as 0/);
+    assert.match(fetchBody, /\.filter\(\(week\) => week\)/);
+    assert.match(fetchBody, /leftover holes cannot hide a newer week/);
     assert.doesNotMatch(fetchBody, /\.limit\(/);
     assert.doesNotMatch(fetchBody, /\.order\("created_at"/);
     assert.doesNotMatch(fetchBody, /\.order\("id"/);

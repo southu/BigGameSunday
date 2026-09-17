@@ -149,8 +149,9 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
   // never an older leftover draft over a newer final or draft.
   // recency coerces so mixed string/number keys cannot skip week_number.
   // recency treats non-finite keys as 0 so leftover drafts cannot hide a newer week.
+  // leftover holes cannot hide a newer week
   const weeks = (data ?? []) as Week[];
-  return [...weeks].sort(recency);
+  return [...weeks].filter((week) => week).sort(recency);
 }
 
 /** Every week for the household (same cache as useCurrentWeek). */

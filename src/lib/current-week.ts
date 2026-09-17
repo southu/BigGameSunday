@@ -67,10 +67,14 @@ export type WeekRef = WeekLike & { id: string };
  * otherwise skip week_number). recency treats non-finite season_year and
  * week_number as 0 so a leftover draft with missing or unparseable keys
  * cannot hide a newer week (`NaN !== 2026` would skip week_number;
- * `Infinity` would rank newest). fetchHouseholdWeeks sorts with recency so
+ * `Infinity` would rank newest). leftover missing rows rank as 0,0 so they
+ * cannot hide a newer week. fetchHouseholdWeeks sorts with recency so
  * the week list cannot skip week_number on mixed string/number keys.
  */
-export function recency(a: WeekSlot, b: WeekSlot): number {
+export function recency(a: WeekSlot | null | undefined, b: WeekSlot | null | undefined): number {
+  // leftover missing rows cannot hide a newer week
+  if (!a) a = { season_year: 0, week_number: 0 };
+  if (!b) b = { season_year: 0, week_number: 0 };
   a = { season_year: a.season_year, week_number: a.week_number };
   b = { season_year: b.season_year, week_number: b.week_number };
   a.season_year = Number(a.season_year);
@@ -109,14 +113,19 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
 /**
  * Latest open|locked (highest season_year, then week_number). Else newest
  * week overall — draft vs final is not a rank, so leftover draft W1 cannot
- * hide a newer final W2 (Harper House).
+ * hide a newer final W2 (Harper House). leftover holes in the week list
+ * cannot hide a newer week.
  */
-export function selectActiveWeek<T extends WeekLike>(weeks: readonly T[]): T | null {
-  if (weeks.length === 0) return null;
+export function selectActiveWeek<T extends WeekLike>(
+  weeks: readonly (T | null | undefined)[] | null | undefined,
+): T | null {
+  if (!weeks?.length) return null;
   let latestInPlay: T | null = null;
   let newest: T | null = null;
   // Walk every week — PostgREST row order is not ranking.
   for (const week of weeks) {
+    // leftover holes cannot hide a newer week
+    if (!week) continue;
     const slot = { season_year: week.season_year, week_number: week.week_number };
     if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
       latestInPlay = week;
@@ -688,6 +697,8 @@ export function skipUnlocksCardsOnLockRefresh(
  * `updated_at`. Recency is season_year then week_number, not created_at
  * insertion order. recency coerces season_year and week_number to numbers.
  * recency treats non-finite season_year and week_number as 0.
+ * familyWeekChrome treats non-finite week_number as 0 so a leftover
+ * unparseable key cannot caption Week NaN.
  */
 export function familyWeekChrome(
   householdName: string | null | undefined,
@@ -705,12 +716,20 @@ export function familyWeekChrome(
   // recency coerces season_year and week_number to numbers
   // recency treats non-finite season_year and week_number as 0
   // fetchHouseholdWeeks sorts with recency
+  // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
+  if (week) {
+    week = { season_year: week.season_year, week_number: week.week_number };
+    week.week_number = Number(week.week_number);
+    if (!Number.isFinite(week.week_number)) week.week_number = 0;
+  }
   return week ? `${name} · Week ${week.week_number}` : name;
 }
 
 /** This Sunday = in-play active slot; Next week = the next slot when it is a newer draft. */
 export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
+  w = { ...w, week_number: Number(w.week_number) };
+  if (!Number.isFinite(w.week_number)) w.week_number = 0;
   if (!active) return `Week ${w.week_number}`;
   if (isInPlay(active.status) && isSameSlot(w, active)) return "This Sunday";
   if (isInPlay(active.status) && isNewerDraft(w, active) && isSameSlot(w, nextWeekSlot(active))) {
