@@ -156,6 +156,7 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
   // leftover throwing rows cannot hide a newer week
   // leftover unconvertible keys cannot hide a newer week
   // leftover object keys cannot hide a newer week
+  // leftover non-numeric string keys cannot hide a newer week
   const weeks = (data ?? []) as Week[];
   return [...weeks]
     .filter((week) => week)
@@ -203,6 +204,19 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
         );
       } catch {
         // leftover object keys cannot hide a newer week
+        return false;
+      }
+    })
+    .filter((week) => {
+      try {
+        const leftover = (value: unknown) => {
+          if (typeof value !== "string") return false;
+          if (value.trim() === "") return true;
+          return !Number.isFinite(Number(value));
+        };
+        return !leftover(week.season_year) && !leftover(week.week_number);
+      } catch {
+        // leftover non-numeric string keys cannot hide a newer week
         return false;
       }
     })
