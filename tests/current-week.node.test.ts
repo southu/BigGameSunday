@@ -2210,6 +2210,28 @@ describe("selectActiveWeek", () => {
       null,
     );
 
+    // leftover compression stream keys cannot hide a newer week — skip own compression stream
+    assert.equal(
+      selectActiveWeek([
+        {
+          season_year: new CompressionStream("gzip"),
+          week_number: new CompressionStream("gzip"),
+          status: "final",
+        } as never,
+      ]),
+      null,
+    );
+    assert.equal(
+      selectActiveWeek([
+        {
+          season_year: new CompressionStream("deflate"),
+          week_number: new CompressionStream("deflate"),
+          status: "final",
+        } as never,
+      ]),
+      null,
+    );
+
     // e: skip path: final/skipped W1 with missing year + open W2 → W2
     const skipped = keyedRef("w1s", 1, "final", Number.NaN);
     const dirty = {
@@ -3240,6 +3262,49 @@ describe("selectActiveWeek", () => {
     assert.equal(
       weekSwitcherLabel(
         { id: "empty-transform", ...onlyEmptyTransform } as ReturnType<typeof wr>,
+        null,
+      ),
+      "Week 0",
+    );
+
+    // leftover compression stream keys cannot caption Week NaN — skip the row, chrome is household name only
+    const onlyCompression = {
+      season_year: new CompressionStream("gzip"),
+      week_number: new CompressionStream("gzip"),
+      status: "final",
+    } as never;
+    const onlyEmptyCompression = {
+      season_year: new CompressionStream("deflate"),
+      week_number: new CompressionStream("deflate"),
+      status: "final",
+    } as never;
+    assert.equal(selectActiveWeek([onlyCompression]), null);
+    assert.equal(selectActiveWeek([onlyEmptyCompression]), null);
+    assert.equal(familyWeekChrome("The Harper House", onlyCompression), "The Harper House");
+    assert.equal(familyWeekChrome("The Harper House", onlyEmptyCompression), "The Harper House");
+    assert.notEqual(
+      familyWeekChrome("The Harper House", onlyCompression),
+      "The Harper House · Week 2",
+    );
+    assert.notEqual(
+      familyWeekChrome("The Harper House", onlyCompression),
+      "The Harper House · Week NaN",
+    );
+    assert.notEqual(
+      familyWeekChrome("The Harper House", onlyEmptyCompression),
+      "The Harper House · Week 0",
+    );
+    assert.notEqual(
+      familyWeekChrome("The Harper House", onlyEmptyCompression),
+      "The Harper House · Week NaN",
+    );
+    assert.equal(
+      weekSwitcherLabel({ id: "compression", ...onlyCompression } as ReturnType<typeof wr>, null),
+      "Week 0",
+    );
+    assert.equal(
+      weekSwitcherLabel(
+        { id: "empty-compression", ...onlyEmptyCompression } as ReturnType<typeof wr>,
         null,
       ),
       "Week 0",
@@ -9234,6 +9299,164 @@ describe("selectActiveWeek", () => {
     assert.doesNotThrow(() => weekSwitcherLabel(transformKeys, e));
   });
 
+  it("leftover compression stream keys cannot hide a newer week (a–e)", () => {
+    const compressionKeys = {
+      season_year: new CompressionStream("gzip"),
+      week_number: new CompressionStream("gzip"),
+      status: "open",
+    } as never;
+    const compressionLocked = {
+      season_year: new CompressionStream("gzip"),
+      week_number: new CompressionStream("gzip"),
+      status: "locked",
+    } as never;
+    const emptyCompression = {
+      season_year: new CompressionStream("deflate"),
+      week_number: new CompressionStream("deflate"),
+      status: "open",
+    } as never;
+    const mixed = {
+      season_year: new CompressionStream("gzip"),
+      week_number: 2,
+      status: "open",
+    } as never;
+    const mixedWeek = {
+      season_year: 2026,
+      week_number: new CompressionStream("gzip"),
+      status: "open",
+    } as never;
+    // a: draft W1 + final W2 + leftover compression stream keys → active W2
+    assert.equal(selectActiveWeek([compressionKeys, w(1, "draft"), w(2, "final")])?.week_number, 2);
+    assert.equal(
+      selectActiveWeek([w(1, "draft"), compressionLocked, w(2, "final")])?.status,
+      "final",
+    );
+    assert.equal(
+      selectActiveWeek([w(2, "final"), w(1, "draft"), emptyCompression])?.week_number,
+      2,
+    );
+    assert.equal(selectActiveWeek([mixed, w(1, "draft"), w(2, "final")])?.status, "final");
+    assert.equal(selectActiveWeek([mixedWeek, w(1, "draft"), w(2, "final")])?.week_number, 2);
+    assert.equal(
+      familyWeekChrome(
+        "The Harper House",
+        selectActiveWeek([compressionKeys, w(1, "draft"), w(2, "final")]),
+      ),
+      "The Harper House · Week 2",
+    );
+    assert.equal(selectActiveWeek([compressionKeys]), null);
+    assert.equal(selectActiveWeek([compressionLocked, emptyCompression, mixed]), null);
+    assert.equal(selectActiveWeek([mixedWeek]), null);
+    assert.doesNotThrow(() =>
+      selectActiveWeek([compressionKeys, w(1, "draft"), w(2, "final")]),
+    );
+    assert.doesNotThrow(() => selectActiveWeek([compressionLocked, w(2, "final")]));
+    assert.doesNotThrow(() => recency(compressionKeys, w(2, "final")));
+    assert.doesNotThrow(() => recency(compressionLocked, w(2, "final")));
+    assert.doesNotThrow(() => recency(emptyCompression, w(2, "final")));
+    assert.doesNotThrow(() => recency(mixed, w(2, "final")));
+    assert.doesNotThrow(() => recency(mixedWeek, w(2, "final")));
+    assert.doesNotThrow(() => nextWeekSlot(compressionKeys));
+    assert.doesNotThrow(() => nextWeekSlot(compressionLocked));
+    assert.deepEqual(nextWeekSlot(compressionKeys), { season_year: 0, week_number: 1 });
+    assert.deepEqual(nextWeekSlot(compressionLocked), { season_year: 0, week_number: 1 });
+    assert.deepEqual(nextWeekSlot(emptyCompression), { season_year: 0, week_number: 1 });
+    // leftover compression stream keys must not beat a same-recency leftover draft
+    const leftoverMissingDraft = { status: "draft" } as never;
+    assert.equal(selectActiveWeek([compressionKeys, leftoverMissingDraft])?.status, "draft");
+    assert.equal(selectActiveWeek([leftoverMissingDraft, compressionLocked])?.status, "draft");
+    assert.equal(selectActiveWeek([mixed, leftoverMissingDraft])?.status, "draft");
+    assert.equal(selectActiveWeek([emptyCompression, leftoverMissingDraft])?.status, "draft");
+    assert.ok(recency(compressionKeys, w(2, "final")) > 0);
+    assert.ok(recency(compressionLocked, w(2, "final")) > 0);
+    assert.ok(recency(emptyCompression, w(2, "final")) > 0);
+    assert.ok(recency(mixed, w(2, "final")) > 0);
+    assert.ok(recency(mixedWeek, w(2, "final")) > 0);
+    // finite integer keys still rank — leftover skip is compression stream only
+    assert.equal(
+      selectActiveWeek([{ ...w(1, "open"), season_year: 2026, week_number: 1 }])?.status,
+      "open",
+    );
+    assert.equal(
+      selectActiveWeek([
+        { season_year: "2026", week_number: "1", status: "draft" },
+        w(2, "final"),
+      ])?.week_number,
+      2,
+    );
+    // leftover missing-key draft stays selectable — leftover skip is compression stream only
+    assert.equal(selectActiveWeek([leftoverMissingDraft])?.status, "draft");
+    // b: draft W1 + open W2 + leftover compression stream keys → active W2
+    const leftover = wr("3e3aeeeb", 1, "draft");
+    const open = wr("52a42a9e", 2, "open");
+    const b = selectActiveWeek([compressionKeys, leftover, open]);
+    assert.equal(b?.id, "52a42a9e");
+    assert.equal(b?.status, "open");
+    assert.equal(selectActiveWeek([leftover, compressionLocked, open])?.week_number, 2);
+    assert.equal(selectActiveWeek([open, leftover, emptyCompression])?.id, "52a42a9e");
+    assert.equal(selectActiveWeek([mixed, leftover, open])?.id, "52a42a9e");
+    assert.equal(selectActiveWeek([mixedWeek, leftover, open])?.id, "52a42a9e");
+    assert.equal(weekSwitcherLabel(open, b), "This Sunday");
+    assert.equal(weekSwitcherLabel(leftover, b), "Week 1");
+    assert.notEqual(weekSwitcherLabel(leftover, b), "This Sunday");
+    assert.notEqual(weekSwitcherLabel(leftover, b), "Next week");
+    assert.equal(familyWeekChrome("The Harper House", b), "The Harper House · Week 2");
+    assert.equal(pickViewWeek([leftover, open], b, "next")?.id, "52a42a9e");
+    assert.equal([compressionKeys, leftover, open].sort(recency)[0]?.week_number, 2);
+    assert.equal([compressionLocked, leftover, open].sort(recency)[0]?.week_number, 2);
+    assert.equal([emptyCompression, leftover, open].sort(recency)[0]?.week_number, 2);
+    // c: open W1 + draft W2 + leftover compression stream keys → active W1, W2 labeled Next week
+    const thisSunday = wr("w1", 1, "open");
+    const nextDraft = wr("w2", 2, "draft");
+    const c = selectActiveWeek([thisSunday, compressionKeys, nextDraft]);
+    assert.equal(c?.id, "w1");
+    assert.equal(c?.week_number, 1);
+    assert.equal(weekSwitcherLabel(thisSunday, c), "This Sunday");
+    assert.equal(weekSwitcherLabel(nextDraft, c), "Next week");
+    assert.equal(pickViewWeek([thisSunday, nextDraft], c, "next")?.id, "w2");
+    assert.equal(selectActiveWeek([compressionLocked, thisSunday, nextDraft])?.id, "w1");
+    assert.equal(selectActiveWeek([emptyCompression, thisSunday, nextDraft])?.id, "w1");
+    assert.equal(selectActiveWeek([mixed, thisSunday, nextDraft])?.id, "w1");
+    assert.equal(selectActiveWeek([mixedWeek, thisSunday, nextDraft])?.id, "w1");
+    // d: only final W1 + leftover compression stream keys → W1
+    assert.equal(
+      selectActiveWeek([compressionKeys, w(1, "final"), compressionLocked])?.week_number,
+      1,
+    );
+    assert.equal(selectActiveWeek([mixed, w(1, "final")])?.status, "final");
+    assert.equal(selectActiveWeek([compressionKeys, compressionLocked]), null);
+    assert.equal(selectActiveWeek(null), null);
+    assert.equal(selectActiveWeek(undefined), null);
+    // e: skip path: final/skipped W1 + open W2 + leftover compression stream keys → W2
+    const skipped = wr("w1s", 1, "final");
+    const dirty = { ...wr("w2d", 2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
+    const e = selectActiveWeek([compressionKeys, skipped, dirty]);
+    assert.equal(e?.id, "w2d");
+    assert.equal(e?.status, "open");
+    assert.equal(selectActiveWeek([skipped, compressionLocked, dirty])?.week_number, 2);
+    assert.equal(selectActiveWeek([dirty, skipped, emptyCompression])?.id, "w2d");
+    assert.equal(selectActiveWeek([mixed, skipped, dirty])?.id, "w2d");
+    assert.equal(selectActiveWeek([mixedWeek, skipped, dirty])?.id, "w2d");
+    assert.equal(weekSwitcherLabel(dirty, e), "This Sunday");
+    assert.equal(weekSwitcherLabel(skipped, e), "Week 1");
+    assert.notEqual(weekSwitcherLabel(skipped, e), "Next week");
+    assert.equal(familyWeekChrome("The Harper House", e), "The Harper House · Week 2");
+    assert.equal(pickViewWeek([skipped, dirty], e, "next")?.id, "w2d");
+    assert.equal([compressionKeys, skipped, dirty].sort(recency)[0]?.week_number, 2);
+    assert.equal(familyWeekChrome("The Harper House", compressionKeys), "The Harper House");
+    assert.equal(familyWeekChrome("The Harper House", compressionLocked), "The Harper House");
+    assert.equal(familyWeekChrome("The Harper House", emptyCompression), "The Harper House");
+    assert.notEqual(
+      familyWeekChrome("The Harper House", compressionKeys),
+      "The Harper House · Week 2",
+    );
+    assert.notEqual(
+      familyWeekChrome("The Harper House", compressionKeys),
+      "The Harper House · Week NaN",
+    );
+    assert.doesNotThrow(() => weekSwitcherLabel(compressionKeys, e));
+  });
+
   it("skip path: leftover draft behind playable W2 closes W1, not W2", () => {
     const leftover = w(1, "draft");
     const open = w(2, "open");
@@ -9509,6 +9732,8 @@ describe("selectActiveWeek", () => {
     assert.match(body, /leftoverWritableStreamKey\(week\.season_year\)/);
     assert.match(body, /leftover transform stream keys cannot hide a newer week/);
     assert.match(body, /leftoverTransformStreamKey\(week\.season_year\)/);
+    assert.match(body, /leftover compression stream keys cannot hide a newer week/);
+    assert.match(body, /leftoverCompressionStreamKey\(week\.season_year\)/);
     assert.match(body, /if \(!weeks\?\.length\) return null/);
     assert.doesNotMatch(body, /weeks\[0\]/);
     assert.doesNotMatch(body, /status === ["']draft["']/);
@@ -9633,6 +9858,8 @@ describe("selectActiveWeek", () => {
     assert.match(chromeBody, /leftoverWritableStreamKey\(weekNumber\)/);
     assert.match(chromeBody, /leftover transform stream keys cannot hide a newer week/);
     assert.match(chromeBody, /leftoverTransformStreamKey\(weekNumber\)/);
+    assert.match(chromeBody, /leftover compression stream keys cannot hide a newer week/);
+    assert.match(chromeBody, /leftoverCompressionStreamKey\(weekNumber\)/);
     assert.match(chromeBody, /fetchHouseholdWeeks sorts with recency/);
     assert.match(chromeBody, /familyWeekChrome treats non-finite week_number as 0/);
     assert.match(chromeBody, /Number\(week\.week_number\)/);
@@ -9791,6 +10018,9 @@ describe("selectActiveWeek", () => {
     assert.match(recencyImpl, /leftover transform stream keys cannot hide a newer week/);
     assert.match(recencyImpl, /leftoverTransformStreamKey\(aYearKey\)/);
     assert.match(recencyImpl, /leftoverTransformStreamKey\(bYearKey\)/);
+    assert.match(recencyImpl, /leftover compression stream keys cannot hide a newer week/);
+    assert.match(recencyImpl, /leftoverCompressionStreamKey\(aYearKey\)/);
+    assert.match(recencyImpl, /leftoverCompressionStreamKey\(bYearKey\)/);
     assert.doesNotMatch(recencyImpl, /\bid\b/);
     assert.doesNotMatch(recencyImpl, /status/);
     assert.doesNotMatch(recencyImpl, /finalized_at/);
@@ -9909,6 +10139,9 @@ describe("selectActiveWeek", () => {
     assert.match(nextBody, /leftover transform stream keys cannot hide a newer week/);
     assert.match(nextBody, /leftoverTransformStreamKey\(week\.season_year\)/);
     assert.match(nextBody, /leftoverTransformStreamKey\(week\.week_number\)/);
+    assert.match(nextBody, /leftover compression stream keys cannot hide a newer week/);
+    assert.match(nextBody, /leftoverCompressionStreamKey\(week\.season_year\)/);
+    assert.match(nextBody, /leftoverCompressionStreamKey\(week\.week_number\)/);
     assert.match(src, /function isNewerThan[\s\S]{0,80}return recency\(week, than\) < 0/);
     assert.match(src, /function isOlderThan[\s\S]{0,80}return recency\(week, than\) > 0/);
     assert.match(src, /function isSameSlot[\s\S]{0,80}return recency\(a, b\) === 0/);
@@ -9989,6 +10222,8 @@ describe("selectActiveWeek", () => {
     assert.match(labelBody, /leftoverWritableStreamKey\(weekNumber\)/);
     assert.match(labelBody, /leftover transform stream keys cannot hide a newer week/);
     assert.match(labelBody, /leftoverTransformStreamKey\(weekNumber\)/);
+    assert.match(labelBody, /leftover compression stream keys cannot hide a newer week/);
+    assert.match(labelBody, /leftoverCompressionStreamKey\(weekNumber\)/);
     assert.doesNotMatch(labelBody, /w\.id === active\.id/);
     const pickStart = src.indexOf("export function pickViewWeek");
     const pickBody = src.slice(pickStart, pickStart + 900);
@@ -11207,6 +11442,7 @@ describe("useCurrentWeek production wiring", () => {
     assert.match(fetchBody, /leftover readable stream keys cannot hide a newer week/);
     assert.match(fetchBody, /leftover writable stream keys cannot hide a newer week/);
     assert.match(fetchBody, /leftover transform stream keys cannot hide a newer week/);
+    assert.match(fetchBody, /leftover compression stream keys cannot hide a newer week/);
     assert.match(fetchBody, /Object.getPrototypeOf\(week\)/);
     assert.doesNotMatch(fetchBody, /\.limit\(/);
     assert.doesNotMatch(fetchBody, /\.order\("created_at"/);
