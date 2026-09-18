@@ -573,6 +573,18 @@ async function fetchHouseholdWeeks(householdId: string): Promise<Week[]> {
         return false;
       }
     })
+    .filter((week) => {
+      try {
+        if (typeof WritableStream !== "function") return true;
+        return (
+          !(week.season_year instanceof WritableStream) &&
+          !(week.week_number instanceof WritableStream)
+        );
+      } catch {
+        // leftover writable stream keys cannot hide a newer week
+        return false;
+      }
+    })
     .sort(recency);
 }
 
