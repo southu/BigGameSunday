@@ -194,4 +194,51 @@ describe("card lock production wiring", () => {
     assert.match(src, /is_longshot/);
     assert.match(src, /count >= 3/);
   });
+
+  it("database migration denies pick writes after lock_at and locks open weeks", () => {
+    const sql = readFileSync(
+      join(ROOT, "supabase/migrations/20260918030000_week_pick_lock_enforcement.sql"),
+      "utf8",
+    );
+    assert.match(sql, /week_picks_are_locked/);
+    assert.match(sql, /card_picks_are_locked/);
+    assert.match(sql, /lock_open_weeks_past_lock_at/);
+    assert.match(sql, /deny_pick_writes_after_lock/);
+    assert.match(sql, /deny_card_square_writes_after_lock/);
+    assert.match(sql, /deny_upset_pick_writes_after_lock/);
+    assert.match(sql, /status IN \('locked', 'final'\)/);
+    assert.match(sql, /now\(\) >= w\.lock_at/);
+    assert.match(sql, /SET\s+status = 'locked'/);
+    assert.match(sql, /auto_locked_at = COALESCE/);
+    assert.match(sql, /w\.status = 'open'/);
+    assert.match(sql, /card_squares/);
+    assert.match(sql, /upset_picks/);
+    assert.doesNotMatch(sql, GAMBLE);
+    const checks = readFileSync(join(ROOT, "supabase/tests/week_pick_lock.sql"), "utf8");
+    assert.match(checks, /INSERT square after lock_at was allowed/);
+    assert.match(checks, /DELETE square after lock_at was allowed/);
+    assert.match(checks, /Finalized week was unlocked/);
+    assert.match(checks, /Pre-lock squares did not persist/);
+    assert.doesNotMatch(checks, GAMBLE);
+  });
+
+  it("autopilot calls the kickoff lock job before per-week lock", () => {
+    const src = readFileSync(join(ROOT, "src/lib/autopilot.server.ts"), "utf8");
+    assert.match(src, /lock_open_weeks_past_lock_at/);
+    assert.ok(
+      src.indexOf("lock_open_weeks_past_lock_at") < src.indexOf("// 2. Auto-lock"),
+      "database kickoff lock must run before the per-week lock branch",
+    );
+    assert.match(src, /shouldAutopilotLockOpen\(week,/);
+    assert.doesNotMatch(src, GAMBLE);
+  });
+
+  it("/live does not mutate picks", () => {
+    const src = readFileSync(join(ROOT, "src/routes/_authenticated/live.tsx"), "utf8");
+    assert.doesNotMatch(src, /\.from\("card_squares"\)/);
+    assert.doesNotMatch(src, /\.from\("upset_picks"\)/);
+    assert.doesNotMatch(src, /\.insert\(/);
+    assert.doesNotMatch(src, /\.delete\(/);
+    assert.doesNotMatch(src, GAMBLE);
+  });
 });

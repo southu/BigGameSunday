@@ -818,9 +818,11 @@ describe("selectActiveWeek", () => {
     );
   });
 
-  it("autopilot does not lock a dirty-open leftover week", () => {
+  it("autopilot locks a dirty-open This Sunday week at kickoff", () => {
     const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
-    expect(shouldAutopilotLockOpen(dirtyOpen)).toBe(false);
+    expect(shouldAutopilotLockOpen(dirtyOpen)).toBe(true);
+    expect(shouldAutopilotLockOpen(dirtyOpen, [w(1, "final"), dirtyOpen])).toBe(true);
+    expect(shouldOfferOpenCards(dirtyOpen, [w(1, "final"), dirtyOpen])).toBe(false);
     expect(shouldAutopilotLockOpen(w(2, "open"))).toBe(true);
     expect(shouldAutopilotLockOpen(w(2, "draft"))).toBe(false);
     expect(shouldAutopilotLockOpen(w(2, "locked"))).toBe(false);
@@ -925,7 +927,8 @@ describe("selectActiveWeek", () => {
     expect(skipLandingWeek(weeks, dirtyOpen)?.week_number).toBe(2);
     expect(skipLandingWeek(weeks, dirtyOpen)?.status).toBe("open");
     expect(shouldOfferOpenCards(dirtyOpen, weeks)).toBe(false);
-    expect(shouldAutopilotLockOpen(dirtyOpen)).toBe(false);
+    expect(shouldAutopilotLockOpen(dirtyOpen)).toBe(true);
+    expect(shouldAutopilotLockOpen(dirtyOpen, weeks)).toBe(true);
     expect(leftoverDraftNextStep(dirtyOpen, weeks)?.label).toMatch(/leftover marks/);
     expect(leftoverDraftNextStep(dirtyOpen, weeks)?.label).not.toMatch(/Lock the cards/);
   });

@@ -836,9 +836,11 @@ describe("selectActiveWeek", () => {
     );
   });
 
-  it("autopilot does not lock a dirty-open leftover week", () => {
+  it("autopilot locks a dirty-open This Sunday week at kickoff", () => {
     const dirtyOpen = { ...w(2, "open"), finalized_at: "2026-09-15T19:04:43.880Z" };
-    assert.equal(shouldAutopilotLockOpen(dirtyOpen), false);
+    assert.equal(shouldAutopilotLockOpen(dirtyOpen), true);
+    assert.equal(shouldAutopilotLockOpen(dirtyOpen, [w(1, "final"), dirtyOpen]), true);
+    assert.equal(shouldOfferOpenCards(dirtyOpen, [w(1, "final"), dirtyOpen]), false);
     assert.equal(shouldAutopilotLockOpen(w(2, "open")), true);
     assert.equal(shouldAutopilotLockOpen(w(2, "draft")), false);
     assert.equal(shouldAutopilotLockOpen(w(2, "locked")), false);
@@ -948,7 +950,8 @@ describe("selectActiveWeek", () => {
     assert.equal(skipLandingWeek(weeks, dirtyOpen)?.week_number, 2);
     assert.equal(skipLandingWeek(weeks, dirtyOpen)?.status, "open");
     assert.equal(shouldOfferOpenCards(dirtyOpen, weeks), false);
-    assert.equal(shouldAutopilotLockOpen(dirtyOpen), false);
+    assert.equal(shouldAutopilotLockOpen(dirtyOpen), true);
+    assert.equal(shouldAutopilotLockOpen(dirtyOpen, weeks), true);
     assert.match(leftoverDraftNextStep(dirtyOpen, weeks)?.label ?? "", /leftover marks/);
     assert.doesNotMatch(leftoverDraftNextStep(dirtyOpen, weeks)?.label ?? "", /Lock the cards/);
   });

@@ -1613,16 +1613,18 @@ export function shouldAutopilotEnsureNextWeek(weeks: readonly WeekLike[]): boole
 }
 
 /**
- * Autopilot must not lock a leftover-open week skip should close.
- * Dirty-open leftover marks would freeze as misses; leftover open W1
- * behind a newer final/open/locked week would trap the family via
- * in-play ranking. Skip is the Tuesday path — no Reveal required.
+ * Autopilot locks This Sunday at kickoff, including dirty-open leftover
+ * marks — pick writes freeze at lock_at. Autopilot must not lock leftover
+ * open W1 behind a newer final/open/locked week; that would trap the family
+ * via in-play ranking. Skip is the Tuesday path — no Reveal required.
  */
 export function shouldAutopilotLockOpen(
   week: WeekLike,
   weeks: readonly WeekLike[] = [],
 ): boolean {
-  return week.status === "open" && shouldOfferOpenCards(week, weeks);
+  if (week.status !== "open") return false;
+  if (hasNewerNonDraftThan(week, weeks)) return false;
+  return true;
 }
 
 /**

@@ -160,6 +160,15 @@ export async function runAutopilot(
     }
   };
 
+  try {
+    const client = db as Db & { rpc?: (fn: string) => Promise<{ error: { message?: string } | null }> };
+    if (typeof client.rpc === "function") {
+      await client.rpc("lock_open_weeks_past_lock_at");
+    }
+  } catch {
+    /* function may not be installed yet; per-week lock below still runs */
+  }
+
   let householdsQuery = db.from("households").select("id, auto_create_weeks");
   if (opts.householdId) householdsQuery = householdsQuery.eq("id", opts.householdId);
   const { data: households, error: hErr } = await householdsQuery;
@@ -265,7 +274,8 @@ async function advanceWeek(
       const { error } = await db
         .from("weeks")
         .update({ status: "locked", auto_locked_at: stamp })
-        .eq("id", week.id);
+        .eq("id", week.id)
+        .eq("status", "open");
       if (error) throw error;
       await db.from("cards").update({ locked_at: stamp }).eq("week_id", week.id).is("locked_at", null);
       week.status = "locked";

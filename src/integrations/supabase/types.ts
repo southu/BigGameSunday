@@ -497,6 +497,9 @@ export type Database = {
       }
       owns_card: { Args: { _card_id: string }; Returns: boolean }
       owns_household: { Args: { _household_id: string }; Returns: boolean }
+      week_picks_are_locked: { Args: { _week_id: string }; Returns: boolean }
+      card_picks_are_locked: { Args: { _card_id: string }; Returns: boolean }
+      lock_open_weeks_past_lock_at: { Args: Record<PropertyKey, never>; Returns: number }
     }
     Enums: {
       resolution_source: "auto_score" | "manual"
