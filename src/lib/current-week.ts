@@ -460,6 +460,15 @@ function leftoverWritableStreamKey(value: unknown): boolean {
   }
 }
 
+/** TransformStream keys coerce via Number(new TransformStream({ transform(chunk, controller) { controller.enqueue(chunk); } })) (NaN) and Number(new TransformStream()) (NaN) and would steal recency. JSON/PostgREST never sends TransformStream week keys. leftover missing-key drafts stay selectable. */
+function leftoverTransformStreamKey(value: unknown): boolean {
+  try {
+    return typeof TransformStream === "function" && value instanceof TransformStream;
+  } catch {
+    return true;
+  }
+}
+
 export function recency(
   a: WeekSlot | null | undefined | boolean | number | string | unknown[],
   b: WeekSlot | null | undefined | boolean | number | string | unknown[],
@@ -726,6 +735,11 @@ export function recency(
   if (leftoverWritableStreamKey(aNumKey)) a.week_number = 0;
   if (leftoverWritableStreamKey(bYearKey)) b.season_year = 0;
   if (leftoverWritableStreamKey(bNumKey)) b.week_number = 0;
+  // leftover transform stream keys cannot hide a newer week
+  if (leftoverTransformStreamKey(aYearKey)) a.season_year = 0;
+  if (leftoverTransformStreamKey(aNumKey)) a.week_number = 0;
+  if (leftoverTransformStreamKey(bYearKey)) b.season_year = 0;
+  if (leftoverTransformStreamKey(bNumKey)) b.week_number = 0;
   if (a.season_year !== b.season_year) return b.season_year - a.season_year;
   return b.week_number - a.week_number;
 }
@@ -795,6 +809,7 @@ export function isNewerDraft(w: WeekLike, active: WeekLike): boolean {
  * leftover response keys cannot hide a newer week.
  * leftover readable stream keys cannot hide a newer week.
  * leftover writable stream keys cannot hide a newer week.
+ * leftover transform stream keys cannot hide a newer week.
  */
 export function selectActiveWeek<T extends WeekLike>(
   weeks: readonly (T | null | undefined | boolean | number | string | unknown[])[] | null | undefined,
@@ -986,6 +1001,10 @@ export function selectActiveWeek<T extends WeekLike>(
       }
       // leftover writable stream keys cannot hide a newer week
       if (leftoverWritableStreamKey(week.season_year) || leftoverWritableStreamKey(week.week_number)) {
+        continue;
+      }
+      // leftover transform stream keys cannot hide a newer week
+      if (leftoverTransformStreamKey(week.season_year) || leftoverTransformStreamKey(week.week_number)) {
         continue;
       }
       if (isInPlay(week.status) && (!latestInPlay || recency(slot, latestInPlay) < 0)) {
@@ -1424,6 +1443,17 @@ export function nextWeekSlot(week: WeekSlot): WeekSlot {
   }
   try {
     if (leftoverWritableStreamKey(week.week_number)) week_number = 0;
+  } catch {
+    week_number = 0;
+  }
+  // leftover transform stream keys cannot hide a newer week
+  try {
+    if (leftoverTransformStreamKey(week.season_year)) season_year = 0;
+  } catch {
+    season_year = 0;
+  }
+  try {
+    if (leftoverTransformStreamKey(week.week_number)) week_number = 0;
   } catch {
     week_number = 0;
   }
@@ -2039,6 +2069,7 @@ export function familyWeekChrome(
   // leftover response keys cannot hide a newer week
   // leftover readable stream keys cannot hide a newer week
   // leftover writable stream keys cannot hide a newer week
+  // leftover transform stream keys cannot hide a newer week
   // fetchHouseholdWeeks sorts with recency
   // familyWeekChrome treats non-finite week_number as 0
   const name = householdName ?? "Your household";
@@ -2085,6 +2116,7 @@ export function familyWeekChrome(
       if (leftoverResponseKey(weekNumber)) return name;
       if (leftoverReadableStreamKey(weekNumber)) return name;
       if (leftoverWritableStreamKey(weekNumber)) return name;
+      if (leftoverTransformStreamKey(weekNumber)) return name;
     } catch {
       // leftover throwing rows cannot hide a newer week
       return name;
@@ -2172,6 +2204,8 @@ export function weekSwitcherLabel(w: WeekRef, active: WeekRef | null): string {
     if (leftoverReadableStreamKey(weekNumber)) w = { ...w, week_number: 0 };
     // leftover writable stream keys cannot hide a newer week
     if (leftoverWritableStreamKey(weekNumber)) w = { ...w, week_number: 0 };
+    // leftover transform stream keys cannot hide a newer week
+    if (leftoverTransformStreamKey(weekNumber)) w = { ...w, week_number: 0 };
   } catch {
     // leftover unconvertible keys cannot hide a newer week
     w = { ...w, week_number: 0 };
