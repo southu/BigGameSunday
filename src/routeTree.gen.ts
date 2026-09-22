@@ -24,6 +24,12 @@ import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authentic
 import { Route as AuthenticatedResultsRouteImport } from './routes/_authenticated/results'
 import { Route as AuthenticatedSeasonRouteImport } from './routes/_authenticated/season'
 import { Route as AuthenticatedWeekRouteImport } from './routes/_authenticated/week'
+import { Route as ApiAutopilotRouteImport } from './routes/api/autopilot'
+import { Route as ApiGridRouteImport } from './routes/api/grid'
+import { Route as ApiPicksRouteImport } from './routes/api/picks'
+import { Route as ApiScoreRouteImport } from './routes/api/score'
+import { Route as ApiUpsetRouteImport } from './routes/api/upset'
+import { Route as ApiWeekRouteImport } from './routes/api/week'
 import { Route as ApiPublicHooksAutopilotRouteImport } from './routes/api/public/hooks/autopilot'
 
 const IndexRoute = IndexRouteImport.update({
@@ -101,6 +107,36 @@ const AuthenticatedWeekRoute = AuthenticatedWeekRouteImport.update({
   path: '/week',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiAutopilotRoute = ApiAutopilotRouteImport.update({
+  id: '/api/autopilot',
+  path: '/api/autopilot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGridRoute = ApiGridRouteImport.update({
+  id: '/api/grid',
+  path: '/api/grid',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPicksRoute = ApiPicksRouteImport.update({
+  id: '/api/picks',
+  path: '/api/picks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiScoreRoute = ApiScoreRouteImport.update({
+  id: '/api/score',
+  path: '/api/score',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUpsetRoute = ApiUpsetRouteImport.update({
+  id: '/api/upset',
+  path: '/api/upset',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWeekRoute = ApiWeekRouteImport.update({
+  id: '/api/week',
+  path: '/api/week',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksAutopilotRoute = ApiPublicHooksAutopilotRouteImport.update({
   id: '/api/public/hooks/autopilot',
   path: '/api/public/hooks/autopilot',
@@ -122,6 +158,12 @@ export interface FileRoutesByFullPath {
   '/results': typeof AuthenticatedResultsRoute
   '/season': typeof AuthenticatedSeasonRoute
   '/week': typeof AuthenticatedWeekRoute
+  '/api/autopilot': typeof ApiAutopilotRoute
+  '/api/grid': typeof ApiGridRoute
+  '/api/picks': typeof ApiPicksRoute
+  '/api/score': typeof ApiScoreRoute
+  '/api/upset': typeof ApiUpsetRoute
+  '/api/week': typeof ApiWeekRoute
   '/api/public/hooks/autopilot': typeof ApiPublicHooksAutopilotRoute
 }
 export interface FileRoutesByTo {
@@ -139,6 +181,12 @@ export interface FileRoutesByTo {
   '/results': typeof AuthenticatedResultsRoute
   '/season': typeof AuthenticatedSeasonRoute
   '/week': typeof AuthenticatedWeekRoute
+  '/api/autopilot': typeof ApiAutopilotRoute
+  '/api/grid': typeof ApiGridRoute
+  '/api/picks': typeof ApiPicksRoute
+  '/api/score': typeof ApiScoreRoute
+  '/api/upset': typeof ApiUpsetRoute
+  '/api/week': typeof ApiWeekRoute
   '/api/public/hooks/autopilot': typeof ApiPublicHooksAutopilotRoute
 }
 export interface FileRoutesById {
@@ -158,6 +206,12 @@ export interface FileRoutesById {
   '/_authenticated/results': typeof AuthenticatedResultsRoute
   '/_authenticated/season': typeof AuthenticatedSeasonRoute
   '/_authenticated/week': typeof AuthenticatedWeekRoute
+  '/api/autopilot': typeof ApiAutopilotRoute
+  '/api/grid': typeof ApiGridRoute
+  '/api/picks': typeof ApiPicksRoute
+  '/api/score': typeof ApiScoreRoute
+  '/api/upset': typeof ApiUpsetRoute
+  '/api/week': typeof ApiWeekRoute
   '/api/public/hooks/autopilot': typeof ApiPublicHooksAutopilotRoute
 }
 export interface FileRouteTypes {
@@ -177,6 +231,12 @@ export interface FileRouteTypes {
     | '/results'
     | '/season'
     | '/week'
+    | '/api/autopilot'
+    | '/api/grid'
+    | '/api/picks'
+    | '/api/score'
+    | '/api/upset'
+    | '/api/week'
     | '/api/public/hooks/autopilot'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -194,6 +254,12 @@ export interface FileRouteTypes {
     | '/results'
     | '/season'
     | '/week'
+    | '/api/autopilot'
+    | '/api/grid'
+    | '/api/picks'
+    | '/api/score'
+    | '/api/upset'
+    | '/api/week'
     | '/api/public/hooks/autopilot'
   id:
     | '__root__'
@@ -212,6 +278,12 @@ export interface FileRouteTypes {
     | '/_authenticated/results'
     | '/_authenticated/season'
     | '/_authenticated/week'
+    | '/api/autopilot'
+    | '/api/grid'
+    | '/api/picks'
+    | '/api/score'
+    | '/api/upset'
+    | '/api/week'
     | '/api/public/hooks/autopilot'
   fileRoutesById: FileRoutesById
 }
@@ -224,6 +296,12 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   VersionRoute: typeof VersionRoute
+  ApiAutopilotRoute: typeof ApiAutopilotRoute
+  ApiGridRoute: typeof ApiGridRoute
+  ApiPicksRoute: typeof ApiPicksRoute
+  ApiScoreRoute: typeof ApiScoreRoute
+  ApiUpsetRoute: typeof ApiUpsetRoute
+  ApiWeekRoute: typeof ApiWeekRoute
   ApiPublicHooksAutopilotRoute: typeof ApiPublicHooksAutopilotRoute
 }
 
@@ -334,6 +412,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWeekRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/autopilot': {
+      id: '/api/autopilot'
+      path: '/api/autopilot'
+      fullPath: '/api/autopilot'
+      preLoaderRoute: typeof ApiAutopilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/grid': {
+      id: '/api/grid'
+      path: '/api/grid'
+      fullPath: '/api/grid'
+      preLoaderRoute: typeof ApiGridRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/picks': {
+      id: '/api/picks'
+      path: '/api/picks'
+      fullPath: '/api/picks'
+      preLoaderRoute: typeof ApiPicksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/score': {
+      id: '/api/score'
+      path: '/api/score'
+      fullPath: '/api/score'
+      preLoaderRoute: typeof ApiScoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/upset': {
+      id: '/api/upset'
+      path: '/api/upset'
+      fullPath: '/api/upset'
+      preLoaderRoute: typeof ApiUpsetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/week': {
+      id: '/api/week'
+      path: '/api/week'
+      fullPath: '/api/week'
+      preLoaderRoute: typeof ApiWeekRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/autopilot': {
       id: '/api/public/hooks/autopilot'
       path: '/api/public/hooks/autopilot'
@@ -376,6 +496,12 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   VersionRoute: VersionRoute,
+  ApiAutopilotRoute: ApiAutopilotRoute,
+  ApiGridRoute: ApiGridRoute,
+  ApiPicksRoute: ApiPicksRoute,
+  ApiScoreRoute: ApiScoreRoute,
+  ApiUpsetRoute: ApiUpsetRoute,
+  ApiWeekRoute: ApiWeekRoute,
   ApiPublicHooksAutopilotRoute: ApiPublicHooksAutopilotRoute,
 }
 export const routeTree = rootRouteImport

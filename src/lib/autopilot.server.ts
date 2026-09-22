@@ -12,6 +12,7 @@ import {
   shouldAutopilotOpenDraft,
   shouldAutopilotResolveScores,
 } from "./current-week";
+import { weekScheduledDetail } from "./week-play";
 
 type Db = { from: (table: string) => any };
 
@@ -75,7 +76,7 @@ export async function resolveWeekFromEspn(db: Db, week: WeekRow) {
   let upsetsSettled = 0;
   const now = new Date().toISOString();
 
-  for (const game of ((games ?? []) as GameRow[])) {
+  for (const game of (games ?? []) as GameRow[]) {
     const live =
       (game.espn_event_id ? byId.get(game.espn_event_id) : undefined) ??
       byTeams.get(`${game.away_team}@${game.home_team}`);
@@ -161,7 +162,9 @@ export async function runAutopilot(
   };
 
   try {
-    const client = db as Db & { rpc?: (fn: string) => Promise<{ error: { message?: string } | null }> };
+    const client = db as Db & {
+      rpc?: (fn: string) => Promise<{ error: { message?: string } | null }>;
+    };
     if (typeof client.rpc === "function") {
       await client.rpc("lock_open_weeks_past_lock_at");
     }
@@ -174,7 +177,7 @@ export async function runAutopilot(
   const { data: households, error: hErr } = await householdsQuery;
   if (hErr) throw hErr;
 
-  for (const household of ((households ?? []) as any[])) {
+  for (const household of (households ?? []) as any[]) {
     const hid = household.id as string;
 
     if (household.auto_create_weeks) {
@@ -209,7 +212,7 @@ export async function runAutopilot(
       .neq("status", "final");
     if (wErr) throw wErr;
 
-    for (const week of ((weeks ?? []) as WeekRow[])) {
+    for (const week of (weeks ?? []) as WeekRow[]) {
       if (week.autopilot_hold) continue;
       try {
         await advanceWeek(db, week, record);
@@ -228,11 +231,7 @@ export async function runAutopilot(
   return { actions };
 }
 
-async function advanceWeek(
-  db: Db,
-  week: WeekRow,
-  record: (a: AutopilotAction) => Promise<void>,
-) {
+async function advanceWeek(db: Db, week: WeekRow, record: (a: AutopilotAction) => Promise<void>) {
   const now = Date.now();
   const base = { household_id: week.household_id, week_id: week.id, status: "ok" as const };
 
@@ -277,12 +276,32 @@ async function advanceWeek(
         .eq("id", week.id)
         .eq("status", "open");
       if (error) throw error;
-      await db.from("cards").update({ locked_at: stamp }).eq("week_id", week.id).is("locked_at", null);
+      await db
+        .from("cards")
+        .update({ locked_at: stamp })
+        .eq("week_id", week.id)
+        .is("locked_at", null);
       week.status = "locked";
       await record({
         ...base,
         action: "week_locked",
         detail: `Week ${week.week_number} cards locked at kickoff.`,
+      });
+    }
+  }
+
+  if (week.status === "open" && week.lock_at && now < new Date(week.lock_at).getTime()) {
+    const { data: slate, error: slateErr } = await db
+      .from("games")
+      .select("id")
+      .eq("week_id", week.id);
+    if (slateErr) throw slateErr;
+    const gameCount = (slate ?? []).length;
+    if (gameCount > 0) {
+      await record({
+        ...base,
+        action: "week_scheduled",
+        detail: weekScheduledDetail(week.week_number, gameCount, week.lock_at),
       });
     }
   }
